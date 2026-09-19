@@ -16,6 +16,9 @@ class RateLimiter {
    * @returns {{ allowed: boolean, reason?: string }}
    */
   canPerform(actionType, platform = "threads") {
+    const normalizedType = (actionType === "COMMENT" || actionType === "NEW_POST_COMMENT")
+      ? "NEW_POST_COMMENT"
+      : actionType;
     const windowActions = stateStore.getActionsInWindow(null, 3600 * 1000); // 1 hour
 
     // Filter by platform if desired, or enforce aggregate limit across both
@@ -30,7 +33,7 @@ class RateLimiter {
       };
     }
 
-    if (actionType === "NEW_POST_COMMENT") {
+    if (normalizedType === "NEW_POST_COMMENT") {
       const newPostComments = windowActions.filter(
         a => a.type === "COMMENT_POSTED" || a.type === "COMMENT_EXECUTED"
       ).length;
@@ -40,7 +43,7 @@ class RateLimiter {
           reason: `Exceeded new post comments limit (${newPostComments}/${CONFIG.MAX_NEW_POST_REPLIES_PER_HOUR}) on ${platform}.`
         };
       }
-    } else if (actionType === "DM_REPLY") {
+    } else if (normalizedType === "DM_REPLY") {
       const dmReplies = windowActions.filter(
         a => a.type === "DM_REPLIED" || a.type === "DM_EXECUTED"
       ).length;
@@ -53,6 +56,13 @@ class RateLimiter {
     }
 
     return { allowed: true };
+  }
+
+  /**
+   * Alias for canPerform to support standard rate limiter API.
+   */
+  canPerformAction(actionType, platform = "threads") {
+    return this.canPerform(actionType, platform);
   }
 
   /**

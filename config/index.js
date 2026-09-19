@@ -39,12 +39,6 @@ function loadEnvFile() {
 
 loadEnvFile();
 
-function sanitizeApiKey(key) {
-  if (!key) return "";
-  const firstLine = String(key).split("\n")[0].trim();
-  return firstLine.replace(/^["']|["']$/g, "").trim();
-}
-
 const CONFIG = {
   ROOT_DIR,
   KNOWLEDGE_DIR: path.resolve(ROOT_DIR, "knowledge"),
@@ -54,9 +48,8 @@ const CONFIG = {
   LOGS_DIR: path.resolve(ROOT_DIR, "logs"),
   BACKUPS_DIR: path.resolve(ROOT_DIR, "backups"),
 
-  // AI Settings
-  AI_RUNTIME: process.env.AI_RUNTIME || "antigravity", // "antigravity" (primary) or "direct" (REST API fallback)
-  GEMINI_API_KEY: sanitizeApiKey(process.env.GEMINI_API_KEY),
+  // AI Settings (Pure Antigravity AI Runtime)
+  AI_RUNTIME: "antigravity",
   MODEL: process.env.AI_MODEL || "gemini-3.6-flash",
 
   // Browser CDP & Display Configuration (Chrome, Edge, Brave, Chromium)
@@ -101,14 +94,6 @@ const CONFIG = {
   // Dynamic reference to knowledge engine
   get knowledge() {
     return require("../src/knowledge/knowledge-engine");
-  },
-
-  validateApiKey() {
-    if (!this.GEMINI_API_KEY || !this.GEMINI_API_KEY.trim()) {
-      throw new Error(
-        "❌ Missing GEMINI_API_KEY.\nPlease set the environment variable: export GEMINI_API_KEY=\"YOUR_KEY\" or configure .env"
-      );
-    }
   }
 };
 

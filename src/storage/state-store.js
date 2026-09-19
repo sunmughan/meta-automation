@@ -112,6 +112,9 @@ class StateStore {
     if (post) {
       post.status = status;
       post.updatedAt = new Date().toISOString();
+      if (status === "COMMENT_POSTED" || status === "COMMENTED" || status === "POSTED_LIVE") {
+        post.commentPosted = true;
+      }
       Object.assign(post, extra);
       this.saveState();
     }
@@ -122,12 +125,20 @@ class StateStore {
     const key = this.getPostKey(platform, postId);
     if (this.state.comments[key] || this.state.comments[postId]) return true;
     const post = this.state.posts[key] || this.state.posts[postId];
-    return post && (post.status === "COMMENT_POSTED" || post.commentPosted === true);
+    return Boolean(
+      post && (
+        post.status === "COMMENT_POSTED" ||
+        post.status === "COMMENTED" ||
+        post.status === "POSTED_LIVE" ||
+        post.commentPosted === true
+      )
+    );
   }
 
   recordComment(postId, commentData, platform = "threads") {
     const key = this.getPostKey(platform, postId);
     const now = new Date().toISOString();
+    const isLive = commentData.status === "POSTED" || commentData.status === "POSTED_LIVE" || commentData.status === "COMMENTED";
     this.state.comments[key] = {
       key,
       platform,
@@ -135,20 +146,20 @@ class StateStore {
       username: commentData.username,
       url: commentData.url,
       comment: commentData.comment,
-      status: commentData.status || "POSTED",
+      status: commentData.status || (isLive ? "POSTED" : "PENDING"),
       postedAt: now,
       approvalRequired: Boolean(commentData.approvalRequired)
     };
 
     const post = this.state.posts[key] || this.state.posts[postId];
     if (post) {
-      post.status = commentData.status === "POSTED" ? "COMMENT_POSTED" : "COMMENT_PENDING";
+      post.status = isLive ? "COMMENT_POSTED" : "COMMENT_PENDING";
       post.commentText = commentData.comment;
-      post.commentPosted = commentData.status === "POSTED";
+      post.commentPosted = isLive;
       post.updatedAt = now;
     }
 
-    if (commentData.status === "POSTED") {
+    if (isLive) {
       this.state.stats.total_comments_posted++;
       this.recordAction("COMMENT_POSTED", postId, { platform, username: commentData.username });
     } else {

@@ -35,6 +35,13 @@ This file is the authoritative service-matching reference for lead qualification
 - Workflow management
 - Customer management
 
+## HOSPITALITY & HOTEL SYSTEMS
+
+- PixelGo HMS (Unified Hotel Management System)
+- Hotel PMS & Reservation Platforms
+- Hospitality Booking Systems
+- Hotel POS & Billing Systems
+
 ## MOBILE
 
 - Android

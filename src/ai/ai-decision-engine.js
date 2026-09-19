@@ -153,12 +153,14 @@ class AiDecisionEngine {
       };
     }
 
-    // 1. Attempt LLM Semantic Reasoning via Antigravity AI Runtime if options.useAiCall is enabled
-    if (options.useAiCall) {
+    // 1. Attempt LLM Semantic Reasoning via Antigravity AI Runtime
+    // Options defaults useAiCall to true unless explicitly disabled
+    const shouldCallAi = options.useAiCall !== false;
+    if (shouldCallAi) {
       try {
         const prompt = this.buildFullSemanticPrompt(post);
         const aiRes = await aiRuntime.callAi(prompt);
-        if (aiRes && aiRes.intent) {
+        if (aiRes && (aiRes.intent || aiRes.decision)) {
           return this.normalizeAiResponse(aiRes, post);
         }
       } catch (err) {
@@ -183,14 +185,25 @@ class AiDecisionEngine {
     const lower = text.toLowerCase();
 
     // -------------------------------------------------------------
-    // DISQUALIFIER 1: SERVICE PROVIDER (Sellers advertising own services)
+    // BUYER INTENT DETECTION (Semantic cues of client demand or hiring intent)
     // -------------------------------------------------------------
-    const isSeller =
-      /\b(i('?m|\s+am)\s+([a-z\s]+)?(developer|designer|engineer|builder|manager|marketer|specialist|consultant|strategist|creator|freelancer|editor)|my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|hire\s+me|what\s+you\s+have\s+in\s+mind.*vercel\.app)\b/i.test(lower) ||
-      (/\blooking\s+for\s+a\s+(website|web|app|mobile|software)?\s*(designer|developer|agency)\s*\?/i.test(lower) && /\b(we|i|here|dm|contact|agency|studio)\b/i.test(lower)) ||
-      (/\b(i\s+think\s+)?you\s+need\b/i.test(lower) && !/\b(i|we)\s+need\b/i.test(lower));
+    const hasBuyerIntent =
+      /\b((i|we)\s+need|need\s+(someone|somebody|a\s+|an?\s+|to\s+hire)|needing|looking\s+for|looking\s+to\s+hire|(i|we)\s+want|seeking|hiring|hire|in\s+search\s+of|searching\s+for|can\s+(someone|anyone)|who\s+can|anyone\s+knows?|anyone\s+can|does\s+anyone|recommend|recommendations?\s+for|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|proposals?))\b/i.test(lower);
 
-    if (isSeller) {
+    // -------------------------------------------------------------
+    // DISQUALIFIER 1: SERVICE PROVIDER (Sellers advertising own services)
+    // ONLY triggers if author is pitching themselves or advertising their own work,
+    // and NOT expressing genuine buyer demand for their own project.
+    // -------------------------------------------------------------
+    const isRhetoricalSellerQuestion =
+      (/\blooking\s+for\s+a\s+(website|web|app|mobile|software)?\s*(designer|developer|agency)\s*\?/i.test(lower) &&
+       /\b(we|i|here|dm|contact|agency|studio|duo)\b/i.test(lower));
+
+    const isDirectSellerPromotion =
+      /\b(my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|hire\s+me\b|what\s+you\s+have\s+in\s+mind.*vercel\.app)\b/i.test(lower) ||
+      (/\b(i('?m|\s+am)\s+([a-z\s]+)?(developer|designer|engineer|builder|manager|marketer|specialist|consultant|strategist|creator|freelancer|editor))\b/i.test(lower) && !hasBuyerIntent);
+
+    if (isRhetoricalSellerQuestion || isDirectSellerPromotion) {
       return {
         intent: "SERVICE_PROVIDER",
         requirement: "Author offering/advertising their own development or design services.",
@@ -207,7 +220,8 @@ class AiDecisionEngine {
     // DISQUALIFIER 2: JOB SEEKER (Candidate asking for employment)
     // -------------------------------------------------------------
     const isJobSeeker =
-      /\b(hire\s+me|open\s+to\s+work|open\s+for\s+work|looking\s+for\s+(a\s+)?(job|work|internship)|seeking\s+(opportunities|employment|job|roles?)|available\s+for\s+(work|hire|employment)|freelancer\s+available|actively\s+looking\s+for\s+(work|a\s+job)|seeking\s+(software|web|flutter|developer)\s+opportunities)\b/i.test(lower);
+      /\b(open\s+to\s+work|open\s+for\s+work|looking\s+for\s+(a\s+)?(job|internship)|seeking\s+(opportunities|employment|job|roles?)|available\s+for\s+(work|hire|employment)|freelancer\s+available|actively\s+looking\s+for\s+(work|a\s+job)|seeking\s+(software|web|flutter|developer)\s+opportunities)\b/i.test(lower) &&
+      !hasBuyerIntent;
 
     if (isJobSeeker) {
       return {
@@ -306,8 +320,6 @@ class AiDecisionEngine {
     // Checks for genuine client demand across natural phrasing:
     // "I need a website designer", "looking for someone to help with my website",
     // "need an app for my business", "can someone develop this", "looking for a developer to build my platform"
-    const hasBuyerIntent =
-      /\b((i|we)\s+need|need\s+(someone|somebody|a\s+|an?\s+|to\s+hire)|needing|looking\s+for|looking\s+to\s+hire|(i|we)\s+want|seeking|hiring|hire|in\s+search\s+of|searching\s+for|can\s+(someone|anyone)|who\s+can|anyone\s+knows?|anyone\s+can|does\s+anyone|recommend|recommendations?\s+for|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges))\b/i.test(lower);
 
     const hasTargetRoleOrEntity =
       /\b(developer|dev|devs|programmer|coder|engineer|designer|web\s+designer|website\s+designer|web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|frontend\s+developer|backend\s+developer|ai\s+developer|ai\s+engineer|freelancer|contractor|agency|team|company|partner|firm|someone|somebody|expert|specialist)\b/i.test(lower);
@@ -515,33 +527,56 @@ class AiDecisionEngine {
   }
 
   buildFullSemanticPrompt(post) {
+    const approved = knowledge.getApprovedServices();
+    const excluded = knowledge.getExcludedServices();
+    const profiles = knowledge.getOfficialProfiles();
+
     return `
 You are the autonomous AI Lead Specialist for CodeAir Software Solutions.
 Knowledge Base: Custom software, SaaS platforms, web applications, Flutter mobile apps, AI automations, hospitality systems (PixelGo HMS).
 Founder: Sunmughan Swamy (Founder & Technical Architect).
+
+Official URLs:
+- Company Website: ${profiles.company.website || "https://www.codeair.tech"}
+- PixelGo HMS (Hospitality): ${profiles.company.pixelgo || "https://pixelgo.live"}
+- Founder LinkedIn: ${profiles.founder.linkedin || "https://www.linkedin.com/in/sunmughan/"}
+
+Approved Capabilities:
+${approved.slice(0, 25).map(s => `- ${s}`).join("\n")}
+
+Excluded Non-Software Capabilities:
+${excluded.slice(0, 10).map(s => `- ${s}`).join("\n")}
 
 Analyze this social media post with zero bias:
 AUTHOR: @${post.username || "user"}
 CONTENT:
 """${post.text || ""}"""
 
-TASK:
+CRITICAL INSTRUCTIONS:
 1. Classify INTENT: BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
-2. Extract REQUIREMENT in natural language.
-3. Determine TARGET_ENTITY: INDIVIDUAL (freelancer/developer) | COMPANY (agency/team) | EITHER.
-4. Match capability against knowledge base (Web Development, Mobile Development, AI & Automation, Hospitality, SaaS development, Business Systems, Backend & APIs).
-5. Select REPRESENTATION: FOUNDER | COMPANY | BOTH | NEUTRAL | IGNORE.
-6. If BUYER, generate a personalized, natural discovery comment with single-URL discipline (https://www.codeair.tech or https://pixelgo.live for hospitality).
+2. Genuine buyers are anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
+3. Extract REQUIREMENT in natural language.
+4. Determine TARGET_ENTITY: INDIVIDUAL (freelancer/developer) | COMPANY (agency/team) | EITHER.
+5. Match capability against approved capabilities.
+6. Select REPRESENTATION: FOUNDER | COMPANY | BOTH | NEUTRAL | IGNORE.
+   - If user asks for an individual/freelancer/developer: FOUNDER
+   - If user asks for an agency/company/team: COMPANY
+   - If open to either: BOTH (or COMPANY)
+7. Single-URL Discipline:
+   - For FOUNDER: Share Founder LinkedIn only.
+   - For COMPANY: Share Company Website only (or PixelGo HMS for hospitality).
+   - For NEUTRAL: Zero URLs.
+   - Maximum 1 URL total.
 
 OUTPUT STRICT JSON:
 {
   "intent": "BUYER" | "RECRUITMENT" | "JOB_SEEKER" | "SERVICE_PROVIDER" | "NETWORKING" | "IRRELEVANT" | "NEEDS_REVIEW",
   "requirement": "string",
   "target_entity": "INDIVIDUAL" | "COMPANY" | "EITHER",
-  "service_match": true/false,
+  "service_match": true,
   "primary_capability": "string",
   "representation": "FOUNDER" | "COMPANY" | "BOTH" | "NEUTRAL" | "IGNORE",
-  "is_genuine_buyer": true/false,
+  "is_genuine_buyer": true,
   "decision": "QUALIFIED" | "IGNORED",
   "reason": "string",
   "generated_comment": "string"
