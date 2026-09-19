@@ -225,41 +225,66 @@ class ThreadsActions {
 
       await new Promise(r => setTimeout(r, 1500));
 
-      // Click the "Post" button
-      logger.info(`Clicking Post button...`);
+      // Click the Reply submit button (Arrow button or Reply button strictly in composer / dialog)
+      logger.info(`Clicking Reply submit button...`);
       const postClicked = await page.evaluate(() => {
-        // Priority 1: Check modal dialog if open
+        // Priority 1: Check modal dialog if open (Ensure it is a reply modal, not "New thread")
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
         if (dialog) {
-          const btns = Array.from(dialog.querySelectorAll('div[role="button"], button'));
-          const pBtn = btns.find(b => (b.innerText || "").trim().toLowerCase() === 'post' && !b.getAttribute('aria-disabled'));
-          if (pBtn) {
-            pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            pBtn.click();
-            return true;
+          const isNewThreadModal = (dialog.innerText || "").toLowerCase().includes("new thread");
+          if (isNewThreadModal) {
+            // Cancel accidental profile post modal immediately
+            const cancelBtn = Array.from(dialog.querySelectorAll('div[role="button"], button'))
+              .find(b => (b.innerText || "").trim().toLowerCase() === 'cancel');
+            if (cancelBtn) cancelBtn.click();
+          } else {
+            const btns = Array.from(dialog.querySelectorAll('div[role="button"], button'));
+            const pBtn = btns.find(b => {
+              const txt = (b.innerText || "").trim().toLowerCase();
+              return (txt === 'post' || txt === 'reply') && !b.getAttribute('aria-disabled');
+            });
+            if (pBtn) {
+              pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              pBtn.click();
+              return true;
+            }
           }
         }
 
-        // Priority 2: Inline Post button near textbox
+        // Priority 2: Inline Reply submit arrow or button strictly within the textbox parent tree
         const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
         if (tb) {
-          const container = tb.closest('div[data-pressable-container="true"], article, form') || document.body;
-          const btns = Array.from(container.querySelectorAll('div[role="button"], button'));
-          const pBtn = btns.find(b => (b.innerText || "").trim().toLowerCase() === 'post' && !b.getAttribute('aria-disabled'));
-          if (pBtn) {
-            pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            pBtn.click();
-            return true;
-          }
-        }
+          let parent = tb.parentElement;
+          for (let depth = 0; depth < 8; depth++) {
+            if (!parent) break;
+            
+            // Look for the submit arrow SVG icon (M1 6h10 or title "Reply")
+            const svgs = Array.from(parent.querySelectorAll('svg'));
+            const submitSvg = svgs.find(s => {
+              const title = (s.querySelector('title')?.textContent || s.getAttribute('aria-label') || "").toLowerCase();
+              const d = s.querySelector('path')?.getAttribute('d') || "";
+              return title === 'reply' || d.includes('M1 6h10');
+            });
+            if (submitSvg) {
+              const btn = submitSvg.closest('div[role="button"], button') || submitSvg;
+              btn.click();
+              return true;
+            }
 
-        // Priority 3: Any enabled Post button in document
-        const allBtns = Array.from(document.querySelectorAll('div[role="button"], button'));
-        const pBtn = allBtns.find(b => (b.innerText || "").trim().toLowerCase() === 'post' && !b.getAttribute('aria-disabled'));
-        if (pBtn) {
-          pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          pBtn.click();
-          return true;
+            // Look for Post or Reply button strictly inside this composer row
+            const btns = Array.from(parent.querySelectorAll('div[role="button"], button'));
+            const pBtn = btns.find(b => {
+              const txt = (b.innerText || "").trim().toLowerCase();
+              return (txt === 'reply' || txt === 'post') && !b.getAttribute('aria-disabled');
+            });
+            if (pBtn) {
+              pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              pBtn.click();
+              return true;
+            }
+
+            parent = parent.parentElement;
+          }
         }
 
         return false;
@@ -271,6 +296,16 @@ class ThreadsActions {
         await page.keyboard.press("Enter");
         await page.keyboard.up("Control");
       }
+
+      // Safeguard: Ensure no "New thread" profile modal was left open
+      await page.evaluate(() => {
+        const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
+        if (dialog && (dialog.innerText || "").toLowerCase().includes("new thread")) {
+          const cancelBtn = Array.from(dialog.querySelectorAll('div[role="button"], button'))
+            .find(b => (b.innerText || "").trim().toLowerCase() === 'cancel');
+          if (cancelBtn) cancelBtn.click();
+        }
+      });
 
       // Step 4: Verify submission (poll until textbox is cleared or toast "Posted" appears)
       let isVerifiedPosted = false;
