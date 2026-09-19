@@ -72,7 +72,9 @@ async function commandScan(options = {}) {
 }
 
 async function commandAnalyze(options = {}) {
-  const maxLiveComments = options.maxLiveComments !== undefined ? options.maxLiveComments : 2;
+  const maxLiveComments = options.maxLiveComments !== undefined
+    ? options.maxLiveComments
+    : (CONFIG.MAX_NEW_POST_REPLIES_PER_HOUR || 5);
   let liveCommentsPosted = 0;
 
   let maxPosts = options.maxPosts;
@@ -123,8 +125,10 @@ async function commandAnalyze(options = {}) {
       identity: decision.representation || "COMPANY"
     }) : null);
 
-    // 2. Determine Action (Separating Detection from Safety / Execution Gates)
+    // 2. Determine Action (Governed dynamically by safety limits and rate limiter)
     let action = "SKIPPED";
+    const canCommentCheck = rateLimiter.canPerformAction("COMMENT", post.platform || "threads");
+
     if (isQualified) {
       if (temperature === "HOT") hotCount++;
       else warmCount++;
@@ -135,8 +139,10 @@ async function commandAnalyze(options = {}) {
         action = "QUEUED_FOR_APPROVAL";
       } else if (!CONFIG.POSTING_ENABLED) {
         action = "BLOCKED_BY_SAFETY_LOCK (Posting disabled)";
+      } else if (!canCommentCheck.allowed) {
+        action = `RATE_LIMITED (${canCommentCheck.reason})`;
       } else if (liveCommentsPosted >= maxLiveComments) {
-        action = `COMMENT_QUEUED (Cycle limit of ${maxLiveComments} reached)`;
+        action = `COMMENT_QUEUED (Hourly session cap of ${maxLiveComments} reached)`;
       } else {
         action = "COMMENT_POSTED";
       }
@@ -181,7 +187,8 @@ async function commandAnalyze(options = {}) {
       stateStore.saveState();
 
       // Post live if conditions permit
-      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && liveCommentsPosted < maxLiveComments) {
+      const canCommentNow = rateLimiter.canPerformAction("COMMENT", post.platform || "threads");
+      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && canCommentNow.allowed && liveCommentsPosted < maxLiveComments) {
         console.log(`  🚀 Posting live comment on @${post.username}'s post...`);
         const postRes = await threadsActions.postComment(post, commentToPost);
         if (postRes.success) {
@@ -385,7 +392,7 @@ async function commandRun() {
 
       // 4. Lead qualification & live commenting on qualified founder / buyer / tech posts
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
-      await commandAnalyze({ maxLiveComments: 3 });
+      await commandAnalyze();
 
       // 5. Smoothly refresh the feed to bring in fresh new posts for next scan
       const page = await browserManager.getThreadsPage();

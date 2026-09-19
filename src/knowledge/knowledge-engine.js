@@ -1,16 +1,14 @@
 /**
  * src/knowledge/knowledge-engine.js
  * Authoritative Dynamic Knowledge Base Engine for CodeAir Software Solutions.
- * Reads and interprets all markdown files in knowledge/ dynamically.
+ * Reads, parses, and interprets markdown files in knowledge/ dynamically.
  *
- * Source of truth for:
- * - Founder identity & principles (founder.md)
- * - Company capabilities & positioning (company.md, positioning.md)
- * - Service catalog & exclusion rules (services.md)
- * - Communication guidelines & tone (communication-style.md)
- * - Lead qualification rules & stage definitions (lead-rules.md)
- * - Official profile links & resolver (profiles.md)
- * - Conversational behavioral patterns (examples.md)
+ * Markdown files are the SINGLE SOURCE OF TRUTH:
+ * - services.md (Dynamically parsed service catalogue & exclusions)
+ * - profiles.md (Dynamically parsed official founder & company links)
+ * - founder.md (Founder identity & technical background)
+ * - company.md & positioning.md (Company capabilities & zero-hype posture)
+ * - lead-rules.md (Qualification boundaries)
  */
 
 const fs = require("fs");
@@ -21,9 +19,9 @@ const logger = require("../logging/logger");
 class KnowledgeEngine {
   constructor(knowledgeDir = CONFIG.KNOWLEDGE_DIR) {
     this.knowledgeDir = knowledgeDir;
-    this.cache = new Map(); // filename -> { mtime, raw }
+    this.cache = new Map(); // filename -> { mtime, raw, parsed }
     this.lastChecked = 0;
-    this.checkIntervalMs = 3000;
+    this.checkIntervalMs = 2000;
     this.loadAll();
   }
 
@@ -50,13 +48,135 @@ class KnowledgeEngine {
           this.cache.set(file, {
             mtime: stats.mtimeMs,
             raw: content,
-            fullPath
+            fullPath,
+            parsed: this.parseMarkdownFile(file, content)
           });
         }
       }
     } catch (err) {
       logger.error("Error reading knowledge directory:", err);
     }
+  }
+
+  /**
+   * Internal parser: Extracts structured data from Markdown files on load/change.
+   */
+  parseMarkdownFile(fileName, content) {
+    if (fileName === "services.md") {
+      return this.parseServicesMarkdown(content);
+    }
+    if (fileName === "profiles.md") {
+      return this.parseProfilesMarkdown(content);
+    }
+    return null;
+  }
+
+  /**
+   * Dynamically parses services.md into approved services and excluded services.
+   */
+  parseServicesMarkdown(content) {
+    const approved = new Set();
+    const excluded = new Set();
+
+    const sections = content.split(/^##\s+/m);
+    for (const sec of sections) {
+      const trimmed = sec.trim();
+      if (!trimmed) continue;
+
+      const lines = trimmed.split("\n");
+      const heading = lines[0].trim().toUpperCase();
+      const isExcluded = heading.includes("NOT A CODEAIR SERVICE") || heading.includes("EXCLUSION");
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith("- ") || line.startsWith("* ")) {
+          const item = line.slice(2).trim();
+          if (item) {
+            if (isExcluded) excluded.add(item);
+            else approved.add(item);
+          }
+        }
+      }
+    }
+
+    return {
+      approved: Array.from(approved),
+      excluded: Array.from(excluded)
+    };
+  }
+
+  /**
+   * Dynamically parses profiles.md into official founder and company profile URLs.
+   */
+  parseProfilesMarkdown(content) {
+    const profiles = {
+      founder: {
+        name: "Sunmughan Swamy",
+        role: "Founder / CEO / Technical Architect",
+        github: "",
+        facebook: "",
+        instagram: "",
+        linkedin: ""
+      },
+      company: {
+        name: "CodeAir Software Solutions",
+        website: "",
+        pixelgo: "",
+        facebook: "",
+        instagram: "",
+        linkedin: ""
+      }
+    };
+
+    // Regex match markdown sections like:
+    // ### GitHub\nhttps://github.com/sunmughan
+    // ### Website\nhttps://www.codeair.tech
+    const lines = content.split("\n");
+    let currentScope = "FOUNDER"; // FOUNDER or COMPANY
+    let currentSubHeading = "";
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      if (line.startsWith("# ") || line.startsWith("## ")) {
+        const hUpper = line.toUpperCase();
+        if (hUpper.includes("COMPANY")) currentScope = "COMPANY";
+        else if (hUpper.includes("FOUNDER")) currentScope = "FOUNDER";
+      } else if (line.startsWith("### ")) {
+        currentSubHeading = line.slice(4).trim().toLowerCase();
+      } else if (line.startsWith("http://") || line.startsWith("https://")) {
+        const url = line.split(" ")[0].trim();
+        if (currentScope === "FOUNDER") {
+          if (currentSubHeading.includes("github") && !profiles.founder.github) profiles.founder.github = url;
+          else if (currentSubHeading.includes("linkedin") && !profiles.founder.linkedin) profiles.founder.linkedin = url;
+          else if (currentSubHeading.includes("instagram") && !profiles.founder.instagram) profiles.founder.instagram = url;
+          else if (currentSubHeading.includes("facebook") && !profiles.founder.facebook) profiles.founder.facebook = url;
+        } else if (currentScope === "COMPANY") {
+          if (currentSubHeading.includes("pixelgo") && !profiles.company.pixelgo) profiles.company.pixelgo = url;
+          else if ((currentSubHeading.includes("website") || currentSubHeading.includes("site")) && !profiles.company.website) profiles.company.website = url;
+          else if (currentSubHeading.includes("linkedin") && !profiles.company.linkedin) profiles.company.linkedin = url;
+          else if (currentSubHeading.includes("instagram") && !profiles.company.instagram) profiles.company.instagram = url;
+          else if (currentSubHeading.includes("facebook") && !profiles.company.facebook) profiles.company.facebook = url;
+        }
+        currentSubHeading = "";
+      }
+    }
+
+    // Default fallback normalization if explicit subheadings had slight naming difference
+    if (!profiles.company.website) {
+      const m = content.match(/https?:\/\/(www\.)?codeair\.tech[^\s)]*/i);
+      if (m) profiles.company.website = m[0];
+    }
+    if (!profiles.company.pixelgo) {
+      const m = content.match(/https?:\/\/(www\.)?pixelgo\.live[^\s)]*/i);
+      if (m) profiles.company.pixelgo = m[0];
+    }
+    if (!profiles.founder.linkedin) {
+      const m = content.match(/https?:\/\/(www\.)?linkedin\.com\/in\/sunmughan[^\s)]*/i);
+      if (m) profiles.founder.linkedin = m[0];
+    }
+
+    return profiles;
   }
 
   getRaw(fileName) {
@@ -76,100 +196,44 @@ class KnowledgeEngine {
   }
 
   // ============================================================
-  // APPROVED SERVICE CATALOGUE (services.md & company.md)
+  // APPROVED SERVICE CATALOGUE (services.md is single source of truth)
   // ============================================================
 
   getApprovedServices() {
-    return [
-      "Custom web application development",
-      "Business websites",
-      "E-commerce development",
-      "SaaS development",
-      "Custom software",
-      "Business software",
-      "CRM systems",
-      "ERP systems",
-      "POS systems",
-      "Billing systems",
-      "Admin dashboards",
-      "Business portals",
-      "Custom platforms",
-      "Mobile applications",
-      "Android applications",
-      "iOS applications",
-      "Flutter applications",
-      "React Native applications",
-      "Backend development",
-      "Node.js",
-      "PHP / Laravel",
-      "APIs",
-      "REST APIs",
-      "API integrations",
-      "Database systems",
-      "AI integration",
-      "LLM integration",
-      "RAG systems",
-      "AI agents",
-      "AI automation",
-      "AI chatbots",
-      "Voice AI",
-      "AI calling systems",
-      "Business automation",
-      "Workflow automation",
-      "Cloud deployment",
-      "DevOps",
-      "Servers",
-      "Infrastructure",
-      "Scaling",
-      "Technical consulting"
-    ];
+    this.loadAll();
+    const entry = this.cache.get("services.md");
+    if (entry && entry.parsed && entry.parsed.approved && entry.parsed.approved.length > 0) {
+      return entry.parsed.approved;
+    }
+    return [];
   }
 
   getExcludedServices() {
-    return [
-      "Graphic design",
-      "Logo design",
-      "Brand identity design",
-      "Photography",
-      "Video editing",
-      "Video production",
-      "Social media management",
-      "Marketing-only services",
-      "SEO-only services",
-      "HR services",
-      "Recruitment services",
-      "Accounting services",
-      "Legal services"
-    ];
+    this.loadAll();
+    const entry = this.cache.get("services.md");
+    if (entry && entry.parsed && entry.parsed.excluded && entry.parsed.excluded.length > 0) {
+      return entry.parsed.excluded;
+    }
+    return [];
   }
 
   // ============================================================
-  // OFFICIAL PROFILES & LINK RESOLVER (profiles.md)
+  // OFFICIAL PROFILES & LINK RESOLVER (profiles.md is single source of truth)
   // ============================================================
 
   getOfficialProfiles() {
-    return {
-      founder: {
-        name: "Sunmughan Swamy",
-        role: "Founder / CEO / Technical Architect",
-        github: "https://github.com/sunmughan",
-        facebook: "https://facebook.com/sunmughan",
-        instagram: "https://instagram.com/sunmughan",
-        linkedin: "https://linkedin.com/in/sunmughan"
-      },
-      company: {
-        name: "CodeAir Software Solutions",
-        website: "https://codeair.tech",
-        facebook: "https://facebook.com/codeairofficial",
-        instagram: "https://instagram.com/codeairofficial",
-        linkedin: "https://linkedin.com/company/codeairofficial"
-      }
-    };
+    this.loadAll();
+    const entry = this.cache.get("profiles.md");
+    if (entry && entry.parsed) {
+      return entry.parsed;
+    }
+    // Fallback if profiles.md parse failed
+    return this.parseProfilesMarkdown(this.getRaw("profiles.md"));
   }
 
   /**
    * Resolves a verified official link for a specific entity and platform.
-   * Never invents or modifies URLs.
+   * Single source of truth is knowledge/profiles.md.
    */
   getProfileLink(target = "COMPANY", platform = "website") {
     const profiles = this.getOfficialProfiles();
@@ -276,8 +340,8 @@ class KnowledgeEngine {
       return {
         target: "COMPANY",
         platform: "pixelgo",
-        url: "https://pixelgo.live",
-        text: "PixelGo HMS (Flagship Unified Hotel Management System): https://pixelgo.live"
+        url: profiles.company.pixelgo || "https://pixelgo.live",
+        text: `PixelGo HMS (Flagship Unified Hotel Management System): ${profiles.company.pixelgo || "https://pixelgo.live"}`
       };
     }
 
@@ -291,7 +355,12 @@ class KnowledgeEngine {
 
     return null;
   }
+
+  isHospitalityQuery(text = "") {
+    const lower = String(text || "").toLowerCase();
+    return /\b(hotel|resort|hospitality|restaurant|pms|room\s+management|property\s+management\s+system|pixelgo)\b/i.test(lower);
+  }
 }
 
-const knowledge = new KnowledgeEngine();
-module.exports = knowledge;
+const knowledgeEngine = new KnowledgeEngine();
+module.exports = knowledgeEngine;

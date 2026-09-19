@@ -358,9 +358,9 @@ async function runAllTests() {
     });
 
     const pixelGoCount = (comment.match(/pixelgo\.live/g) || []).length;
-    const codeAirCount = (comment.match(/codeair\.tech/g) || []).length;
     assert.strictEqual(pixelGoCount, 1, "pixelgo.live must appear EXACTLY ONCE for hospitality post");
-    assert.strictEqual(codeAirCount, 1, "codeair.tech must appear EXACTLY ONCE");
+    const totalUrls = (comment.match(/https?:\/\/[^\s]+/g) || []).length;
+    assert.strictEqual(totalUrls, 1, "Single URL discipline: hospitality comment must contain exactly 1 URL");
     assert(comment.toLowerCase().includes("pixelgo hms"), "Must mention PixelGo HMS");
   });
 
@@ -518,6 +518,88 @@ async function runAllTests() {
       assert.strictEqual(decision.decision, "IGNORED", `Must be IGNORED: ${p.text}`);
       assert.strictEqual(decision.service_match, false, `Service match must be false: ${p.text}`);
     }
+  });
+
+  // 37. Dynamic Knowledge Engine Parsing (Single Source of Truth)
+  await test("37. Knowledge Engine dynamically parses services.md and profiles.md without hardcoded arrays", () => {
+    const approved = knowledge.getApprovedServices();
+    const excluded = knowledge.getExcludedServices();
+    const profiles = knowledge.getOfficialProfiles();
+
+    assert(Array.isArray(approved) && approved.length >= 50, `Approved services count must be >= 50 (got ${approved.length})`);
+    assert(approved.some(s => s.toLowerCase().includes("custom software")), "Approved services must include custom software");
+    assert(approved.some(s => s.toLowerCase().includes("pixelgo")), "Approved services must include PixelGo HMS");
+
+    assert(Array.isArray(excluded) && excluded.length >= 10, `Excluded services count must be >= 10 (got ${excluded.length})`);
+    assert(excluded.some(s => s.toLowerCase().includes("graphic design")), "Excluded services must include graphic design");
+
+    assert.strictEqual(profiles.company.website, "https://www.codeair.tech", "Company website parsed correctly");
+    assert.strictEqual(profiles.company.pixelgo, "https://pixelgo.live", "PixelGo URL parsed correctly");
+    assert.strictEqual(profiles.founder.linkedin, "https://linkedin.com/in/sunmughan", "Founder LinkedIn parsed correctly");
+  });
+
+  // 38. Strict Representation Voice Separation & Single URL Discipline
+  await test("38. Strict Representation Voice Separation & Single URL Discipline", () => {
+    // 1. FOUNDER mode
+    const founderComment = commentGenerator.generateEngagingComment({
+      text: "Looking for a freelance developer to help build my web app",
+      username: "client_founder",
+      matchedCategories: ["Web Development"],
+      identity: "FOUNDER"
+    });
+    assert(founderComment.includes("linkedin.com/in/sunmughan"), "FOUNDER mode must include founder LinkedIn");
+    assert(!founderComment.includes("codeair.tech"), "FOUNDER mode must NEVER push company website");
+    assert.strictEqual((founderComment.match(/https?:\/\/[^\s]+/g) || []).length, 1, "FOUNDER comment must have exactly 1 link");
+
+    // 2. COMPANY mode
+    const companyComment = commentGenerator.generateEngagingComment({
+      text: "Looking for an agency to build a custom CRM and dashboard",
+      username: "client_company",
+      matchedCategories: ["Business Systems"],
+      identity: "COMPANY"
+    });
+    assert(companyComment.includes("https://www.codeair.tech"), "COMPANY mode must include company website");
+    assert(!companyComment.includes("linkedin.com/in/sunmughan/"), "COMPANY mode must NEVER push personal founder LinkedIn");
+    assert.strictEqual((companyComment.match(/https?:\/\/[^\s]+/g) || []).length, 1, "COMPANY comment must have exactly 1 link");
+
+    // 3. NEUTRAL mode
+    const neutralComment = commentGenerator.generateEngagingComment({
+      text: "What do you think is the best database architecture for multi-tenant SaaS?",
+      username: "tech_user",
+      matchedCategories: ["Backend & APIs"],
+      identity: "NEUTRAL"
+    });
+    assert.strictEqual((neutralComment.match(/https?:\/\/[^\s]+/g) || []).length, 0, "NEUTRAL comment must contain ZERO links");
+  });
+
+  // 39. Pure Antigravity AI Runtime Architecture
+  await test("39. Pure Antigravity AI Runtime Architecture (No REST or API key leaks)", () => {
+    const aiRuntimeModule = require("../src/ai/ai-runtime");
+    const configModule = require("../config");
+
+    assert.strictEqual(configModule.AI_RUNTIME, "antigravity", "AI_RUNTIME must be antigravity");
+    assert.strictEqual(configModule.GEMINI_API_KEY, undefined, "GEMINI_API_KEY must not exist in config");
+    assert.strictEqual(typeof aiRuntimeModule.callGeminiRest, "undefined", "callGeminiRest must not exist on ai-runtime");
+    assert.strictEqual(typeof aiRuntimeModule.callAi, "function", "callAi must be exposed as primary entry point");
+  });
+
+  // 40. Unified State Store Lifecycle Semantics
+  await test("40. StateStore recognizes COMMENTED, POSTED_LIVE, and COMMENT_POSTED", () => {
+    const testPostId1 = "test_lifecycle_1";
+    const testPostId2 = "test_lifecycle_2";
+    const testPostId3 = "test_lifecycle_3";
+
+    stateStore.addDiscoveredPost({ postId: testPostId1, username: "user1", text: "hello" });
+    stateStore.updatePostStatus(testPostId1, "COMMENTED");
+    assert.strictEqual(stateStore.hasCommented(testPostId1), true, "hasCommented must recognize COMMENTED");
+
+    stateStore.addDiscoveredPost({ postId: testPostId2, username: "user2", text: "hello" });
+    stateStore.updatePostStatus(testPostId2, "POSTED_LIVE");
+    assert.strictEqual(stateStore.hasCommented(testPostId2), true, "hasCommented must recognize POSTED_LIVE");
+
+    stateStore.addDiscoveredPost({ postId: testPostId3, username: "user3", text: "hello" });
+    stateStore.updatePostStatus(testPostId3, "COMMENT_POSTED");
+    assert.strictEqual(stateStore.hasCommented(testPostId3), true, "hasCommented must recognize COMMENT_POSTED");
   });
 
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
