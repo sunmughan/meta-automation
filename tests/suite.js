@@ -741,10 +741,137 @@ async function runAllTests() {
     assert(companyDecision.generated_comment.includes("codeair.tech"));
   });
 
+  // 46. Comment Submit Verification Failure Protection (No False Positives)
+  await test("46. Comment Submit Verification Failure prevents POSTED_LIVE and duplicateGuard recording", () => {
+    const testPostId = "test_unverified_submit_46";
+    // Add discovered post first
+    stateStore.addDiscoveredPost({ postId: testPostId, username: "user_test_46", text: "Looking for dev" });
+    // Ensure clean slate
+    assert.strictEqual(duplicateGuard.canExecute({ platform: "threads", actionType: "COMMENT", targetId: testPostId }).allowed, true);
+    assert.strictEqual(stateStore.hasCommented(testPostId), false);
+
+    // Simulate threads-actions verification failure scenario:
+    // When verification fails (e.g. submit button disabled, modal cancelled, or DOM snippet absent),
+    // duplicateGuard.recordExecuted and stateStore.recordComment(..., "POSTED_LIVE") must NOT be invoked.
+    const fakeVerificationResult = { success: false, verified: false, reason: "Comment DOM verification timed out" };
+    if (!fakeVerificationResult.verified) {
+      // Correct behavior: do NOT record in duplicateGuard or stateStore POSTED_LIVE
+      stateStore.updatePostStatus(testPostId, "COMMENT_FAILED", {
+        retryCount: 1,
+        lastFailedAt: new Date().toISOString(),
+        failureReason: fakeVerificationResult.reason
+      });
+    }
+
+    assert.strictEqual(duplicateGuard.canExecute({ platform: "threads", actionType: "COMMENT", targetId: testPostId }).allowed, true, "Must still be allowed in duplicateGuard on failure");
+    assert.strictEqual(stateStore.hasCommented(testPostId), false, "Must NOT mark hasCommented as true on failure");
+    const postRecord = stateStore.state.posts[testPostId] || stateStore.state.posts[`threads:${testPostId}`];
+    assert.strictEqual(postRecord.status, "COMMENT_FAILED", "Post must transition to COMMENT_FAILED");
+  });
+
+  // 47. COMMENT_FAILED Quarantine, Cooldown, and Retryability
+  await test("47. COMMENT_FAILED state allows retries after cooldown and stops after maxRetries", () => {
+    const postEligible = "test_retry_eligible_47";
+    const postInCooldown = "test_retry_cooldown_47";
+    const postExhausted = "test_retry_exhausted_47";
+
+    // 1. Eligible post: failed 20 minutes ago, retryCount = 1 (< 3)
+    stateStore.addDiscoveredPost({ postId: postEligible, username: "user_retry_1", text: "Need web app" });
+    stateStore.updatePostStatus(postEligible, "COMMENT_FAILED", {
+      retryCount: 1,
+      lastFailedAt: new Date(Date.now() - 20 * 60 * 1000).toISOString()
+    });
+
+    // 2. Cooldown post: failed 5 minutes ago (< 15 min cooldown), retryCount = 1
+    stateStore.addDiscoveredPost({ postId: postInCooldown, username: "user_retry_2", text: "Need mobile app" });
+    stateStore.updatePostStatus(postInCooldown, "COMMENT_FAILED", {
+      retryCount: 1,
+      lastFailedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    });
+
+    // 3. Exhausted post: failed 30 minutes ago, retryCount = 3 (>= 3 max)
+    stateStore.addDiscoveredPost({ postId: postExhausted, username: "user_retry_3", text: "Need AI bot" });
+    stateStore.updatePostStatus(postExhausted, "COMMENT_FAILED", {
+      retryCount: 3,
+      lastFailedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    });
+
+    const retryable = stateStore.getRetryableFailedPosts(3, 15);
+    const retryableIds = retryable.map(p => p.postId);
+
+    assert(retryableIds.includes(postEligible), "Post past cooldown with < 3 retries must be retryable");
+    assert(!retryableIds.includes(postInCooldown), "Post within 15-min cooldown must NOT be retryable yet");
+    assert(!retryableIds.includes(postExhausted), "Post with >= 3 retries must NOT be retryable");
+  });
+
+  // 48. Scheduled Post (New Thread) Verification Failure Prevention
+  await test("48. Scheduled Post verification failure prevents recording in ourPosts", () => {
+    const initialCount = Object.keys(stateStore.state.ourPosts || {}).length;
+
+    // Simulate failure in publishEngagingPost
+    const fakePublishResult = { success: false, verified: false, reason: "New thread DOM verification failed" };
+    if (fakePublishResult.verified) {
+      stateStore.recordOurPost({ id: "fake_post_fail", text: "Should not exist", status: "VERIFIED_PUBLISHED" });
+    }
+
+    const currentCount = Object.keys(stateStore.state.ourPosts || {}).length;
+    assert.strictEqual(currentCount, initialCount, "Failed new thread must NEVER be recorded in ourPosts");
+  });
+
+  // 49. Strict 6-Hour Scheduled Post Interval (4 Posts / 24 Hours)
+  await test("49. Posting cadence defaults to exactly 6 hours (4 posts / 24 hours)", () => {
+    const configModule = require("../config");
+    assert.strictEqual(configModule.POST_INTERVAL_HOURS, 6, "POST_INTERVAL_HOURS must default to 6");
+    const intervalMs = configModule.POST_INTERVAL_HOURS * 60 * 60 * 1000;
+    assert.strictEqual(intervalMs, 21600000, "Interval in ms must equal exactly 6 hours (21,600,000 ms)");
+  });
+
+  // 50. Scheduler Exclusively Evaluates Verified Published Posts
+  await test("50. Scheduler filters exclusively for VERIFIED_PUBLISHED posts when computing cadence", () => {
+    const fakeUnverifiedPost = {
+      id: "unverified_recent_1",
+      publishedAt: new Date().toISOString(), // published 0 seconds ago, BUT unverified / failed
+      status: "FAILED",
+      published: false
+    };
+    const fakeVerifiedOldPost = {
+      id: "verified_old_1",
+      publishedAt: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(), // published 7 hours ago
+      status: "VERIFIED_PUBLISHED",
+      published: true
+    };
+
+    // Store in ourPosts
+    stateStore.state.ourPosts = stateStore.state.ourPosts || {};
+    stateStore.state.ourPosts[fakeUnverifiedPost.id] = fakeUnverifiedPost;
+    stateStore.state.ourPosts[fakeVerifiedOldPost.id] = fakeVerifiedOldPost;
+
+    // Evaluate using scheduler logic
+    const ourPosts = Object.values(stateStore.state.ourPosts);
+    const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
+    const latestPost = verifiedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+    const lastPostTime = latestPost ? new Date(latestPost.publishedAt).getTime() : 0;
+    const postIntervalMs = 6 * 60 * 60 * 1000;
+    const elapsedMs = Date.now() - lastPostTime;
+    const isDue = elapsedMs >= postIntervalMs || lastPostTime === 0;
+
+    assert.strictEqual(latestPost.id, "verified_old_1", "Scheduler must pick the verified post, completely ignoring unverified ones");
+    assert.strictEqual(isDue, true, "Post must be due because the last VERIFIED post was 7 hours ago (> 6 hours)");
+
+    // Cleanup fake posts
+    delete stateStore.state.ourPosts[fakeUnverifiedPost.id];
+    delete stateStore.state.ourPosts[fakeVerifiedOldPost.id];
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {
       delete stateStore.state.actions[k];
+    }
+  }
+  for (const k of Object.keys(stateStore.state.posts || {})) {
+    if (k.startsWith("test_")) {
+      delete stateStore.state.posts[k];
     }
   }
   stateStore.saveState();

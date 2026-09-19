@@ -87,8 +87,8 @@ const CONFIG = {
   SCAN_INTERVAL_SECONDS: Number(process.env.SCAN_INTERVAL_SECONDS) || 300,
   MAX_POSTS_PER_SCAN: Number(process.env.MAX_POSTS_PER_SCAN) || 50,
 
-  // Publishing Cadence
-  POST_INTERVAL_HOURS: Number(process.env.POST_INTERVAL_HOURS) || 3,
+  // Publishing Cadence (6 hours = 4 posts per 24 hours)
+  POST_INTERVAL_HOURS: Number(process.env.POST_INTERVAL_HOURS) || 6,
   CAROUSEL_INTERVAL_DAYS: Number(process.env.CAROUSEL_INTERVAL_DAYS) || 2,
 
   // Dynamic reference to knowledge engine

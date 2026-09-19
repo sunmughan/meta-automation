@@ -97,8 +97,11 @@ async function commandAnalyze(options = {}) {
   console.log(`Approval Mode: ${CONFIG.APPROVAL_MODE ? "ENABLED" : "DISABLED"}`);
   console.log(`Dry Run      : ${CONFIG.DRY_RUN ? "ENABLED" : "DISABLED"}\n`);
 
+  const retryableFailed = stateStore.getRetryableFailedPosts ? stateStore.getRetryableFailedPosts(3, 15) : [];
+  const retryablePostIds = new Set(retryableFailed.map(p => p.postId));
+
   const unanalyzed = Object.values(stateStore.state.posts)
-    .filter(p => (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING") && !stateStore.hasCommented(p.postId, p.platform))
+    .filter(p => (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform))
     .sort((a, b) => new Date(b.discoveredAt || 0) - new Date(a.discoveredAt || 0));
 
   const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed;
@@ -141,8 +144,6 @@ async function commandAnalyze(options = {}) {
         action = "BLOCKED_BY_SAFETY_LOCK (Posting disabled)";
       } else if (!canCommentCheck.allowed) {
         action = `RATE_LIMITED (${canCommentCheck.reason})`;
-      } else if (liveCommentsPosted >= maxLiveComments) {
-        action = `COMMENT_QUEUED (Hourly session cap of ${maxLiveComments} reached)`;
       } else {
         action = "COMMENT_POSTED";
       }
@@ -189,17 +190,30 @@ async function commandAnalyze(options = {}) {
       stateStore.state.stats.total_qualified++;
       stateStore.saveState();
 
-      // Post live if conditions permit
+      // Post live if conditions permit (rateLimiter is the canonical governor)
       const canCommentNow = rateLimiter.canPerformAction("COMMENT", post.platform || "threads");
-      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && canCommentNow.allowed && liveCommentsPosted < maxLiveComments) {
+      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && canCommentNow.allowed) {
         console.log(`  🚀 Posting live comment on @${post.username}'s post...`);
         const postRes = await threadsActions.postComment(post, commentToPost);
-        if (postRes.success) {
+        if (postRes && postRes.success) {
           liveCommentsPosted++;
-          stateStore.updatePostStatus(post.postId, "COMMENTED", { commentText: commentToPost }, post.platform || "threads");
+          stateStore.updatePostStatus(post.postId, "COMMENTED", {
+            commentText: commentToPost,
+            verifiedAt: new Date().toISOString()
+          }, post.platform || "threads");
           stateStore.state.stats.total_comments_posted++;
           stateStore.saveState();
-          console.log(`  ✅ Live comment posted successfully on @${post.username}'s post!`);
+          console.log(`  ✅ Live comment verified & posted successfully on @${post.username}'s post!`);
+        } else {
+          const currentRetries = (post.retryCount || 0) + 1;
+          stateStore.updatePostStatus(post.postId, "COMMENT_FAILED", {
+            retryCount: currentRetries,
+            lastFailedAt: new Date().toISOString(),
+            failureReason: (postRes && postRes.reason) || "Submission verification failed",
+            commentText: commentToPost
+          }, post.platform || "threads");
+          stateStore.saveState();
+          console.warn(`  ⚠️ Live comment failed verification for @${post.username} (${(postRes && postRes.reason) || "unknown"}). Marked COMMENT_FAILED (retry ${currentRetries}/3 after cooldown).`);
         }
         await new Promise(r => setTimeout(r, 4000));
       }
@@ -316,25 +330,31 @@ async function commandStatus() {
 
 async function checkAndPublishScheduledPost() {
   const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
-  const latestPost = ourPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+  const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
+  const latestPost = verifiedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
   const lastPostTime = latestPost ? new Date(latestPost.publishedAt).getTime() : 0;
-  const postIntervalMs = (CONFIG.POST_INTERVAL_HOURS || 3) * 60 * 60 * 1000;
+  const postIntervalHours = CONFIG.POST_INTERVAL_HOURS || 6;
+  const postIntervalMs = postIntervalHours * 60 * 60 * 1000;
   const elapsedMs = Date.now() - lastPostTime;
   const isDue = elapsedMs >= postIntervalMs || lastPostTime === 0;
 
   if (isDue && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
     console.log("\n==============================================");
-    console.log(`  📝 PUBLISHING SCHEDULED ${CONFIG.POST_INTERVAL_HOURS}-HOUR POST ON THREADS`);
+    console.log(`  📝 PUBLISHING SCHEDULED ${postIntervalHours}-HOUR POST ON THREADS (4 POSTS / 24H)`);
     console.log("==============================================");
     try {
       const res = await threadsPoster.publishEngagingPost();
-      console.log(`✅ Post published successfully [${res.pillar} - ${res.format}]: "${res.text.slice(0, 70)}..."\n`);
+      if (res && res.verified) {
+        console.log(`✅ Post published & verified [${res.pillar} - ${res.format}]: "${res.text.slice(0, 70)}..."\n`);
+      } else {
+        console.warn(`⚠️ Scheduled post attempt did not verify cleanly: ${res ? res.reason : "unknown"}\n`);
+      }
     } catch (err) {
       console.error("❌ Failed to publish post:", err.message);
     }
   } else if (!isDue) {
     const minutesRemaining = Math.max(1, Math.round((postIntervalMs - elapsedMs) / 60000));
-    console.log(`[SCHEDULED POST] Next post due in ~${minutesRemaining} min (Cadence: every ${CONFIG.POST_INTERVAL_HOURS}h).`);
+    console.log(`[SCHEDULED POST] Next post due in ~${minutesRemaining} min (Cadence: exactly 4 posts / 24h, every ${postIntervalHours}h).`);
   }
 }
 
@@ -380,7 +400,7 @@ async function commandRun() {
       console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING`);
       console.log(`==============================================`);
 
-      // 1. Check & publish engaging discussion post (every 3 hours)
+      // 1. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
       await checkAndPublishScheduledPost();
 
       // 2. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)

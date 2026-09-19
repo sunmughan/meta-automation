@@ -4,6 +4,8 @@
  * Strictly respects DRY_RUN, APPROVAL_MODE, and rate limit guardrails.
  */
 
+const fs = require("fs");
+const path = require("path");
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
@@ -11,6 +13,22 @@ const duplicateGuard = require("../../safety/duplicate-guard");
 const rateLimiter = require("../../safety/rate-limiter");
 const aiDecisionEngine = require("../../ai/ai-decision-engine");
 const logger = require("../../logging/logger");
+
+async function captureDiagnosticScreenshot(page, prefix) {
+  try {
+    const dir = path.join(CONFIG.LOGS_DIR || path.resolve(__dirname, "../../../logs"), "screenshots");
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const file = path.join(dir, `${prefix}_${Date.now()}.png`);
+    await page.screenshot({ path: file });
+    logger.info(`Saved diagnostic screenshot to: ${file}`);
+    return file;
+  } catch (e) {
+    logger.warn(`Failed capturing diagnostic screenshot: ${e.message}`);
+    return null;
+  }
+}
 
 class ThreadsActions {
   /**
@@ -307,26 +325,71 @@ class ThreadsActions {
         }
       });
 
-      // Step 4: Verify submission (poll until textbox is cleared or toast "Posted" appears)
+      // Step 4: Multi-Signal True Submit Verification
+      const textSnippet = commentText.replace(/https?:\/\/[^\s]+/g, "").slice(0, 35).trim();
       let isVerifiedPosted = false;
-      for (let attempt = 0; attempt < 8; attempt++) {
+      let verificationReason = "";
+
+      for (let attempt = 0; attempt < 10; attempt++) {
         await new Promise(r => setTimeout(r, 1000));
-        isVerifiedPosted = await page.evaluate(() => {
+        const check = await page.evaluate((snippet) => {
           const bodyText = document.body.innerText || "";
-          const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView") || bodyText.includes("Posted");
+          
+          // 1. Check for error alerts or rate limit toasts
+          const hasError = /\b(couldn'?t post|something went wrong|try again later|action blocked|rate limit)\b/i.test(bodyText);
+          if (hasError) {
+            return { verified: false, error: "Threads displayed error dialog or rate limit alert" };
+          }
+
+          // 2. Check if snippet rendered inside any article container on thread
+          const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
+          const snippetFound = snippet && snippet.length > 5 && articles.some(a => (a.innerText || "").includes(snippet));
+
+          // 3. Check toast confirmation
+          const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView") || (bodyText.includes("Posted") && bodyText.includes("View"));
+
+          // 4. Check composer state
           const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
           const isCleared = !tb || (tb.innerText || "").trim() === "";
           const noModal = !document.querySelector('div[role="dialog"], [aria-modal="true"]');
-          return (hasPostedToast || isCleared) && noModal;
-        });
-        if (isVerifiedPosted) break;
+
+          if (snippetFound) {
+            return { verified: true, reason: "Comment snippet verified in thread DOM" };
+          }
+          if (hasPostedToast && noModal && isCleared) {
+            return { verified: true, reason: "Threads posted toast and composer dismissed" };
+          }
+
+          return { verified: false, error: "Awaiting confirmed DOM insertion or toast" };
+        }, textSnippet);
+
+        if (check.verified) {
+          isVerifiedPosted = true;
+          verificationReason = check.reason;
+          break;
+        }
+        if (check.error && check.error.includes("error dialog")) {
+          verificationReason = check.error;
+          break;
+        }
       }
 
       if (!isVerifiedPosted) {
-        logger.warn("Waiting an extra 2s for Threads server state update...");
-        await new Promise(r => setTimeout(r, 2000));
+        logger.error(`Comment verification failed on post ${post.postId}: ${verificationReason || "Confirmation timeout"}. Aborting success record.`, {
+          postId: post.postId,
+          username: post.username
+        });
+        await captureDiagnosticScreenshot(page, `comment_failed_${post.postId}`);
+        await page.keyboard.press("Escape").catch(() => {});
+        return {
+          success: false,
+          verified: false,
+          reason: verificationReason || "Comment submit verification failed: comment not found in thread DOM",
+          postId: post.postId
+        };
       }
 
+      // ONLY RECORD SUCCESS IF TRULY VERIFIED
       duplicateGuard.recordExecuted({
         platform: "threads",
         actionType: "COMMENT",
@@ -340,12 +403,14 @@ class ThreadsActions {
         url: post.url,
         comment: commentText,
         status: "POSTED_LIVE",
+        verifiedReason: verificationReason,
         postedAt: new Date().toISOString()
       }, "threads");
 
       logger.audit("COMMENT_POSTED_LIVE", `threads:${post.postId}`, {
         username: post.username,
-        commentText
+        commentText,
+        verificationReason
       });
 
       // Step 5: Clean return to Home feed (smooth back navigation to preserve feed position)
@@ -364,9 +429,12 @@ class ThreadsActions {
       }
       await new Promise(r => setTimeout(r, 2500));
 
-      return { success: true, live: true, postId: post.postId, comment: commentText };
+      return { success: true, live: true, verified: true, postId: post.postId, comment: commentText };
     } catch (err) {
       logger.error(`Live comment failed on Threads post ${post.postId}`, err);
+      if (page) {
+        await captureDiagnosticScreenshot(page, `comment_exception_${post.postId}`).catch(() => {});
+      }
       return { success: false, error: err.message };
     }
   }

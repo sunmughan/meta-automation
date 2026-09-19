@@ -46,10 +46,10 @@ async function runAudit() {
   console.log(`  ✓ PASS: High-intent search discovery configured with ${HIGH_INTENT_SEARCH_QUERIES.length} buyer queries`);
   passed++;
 
-  // 3. Audit 3-Hour Post Cadence & 5 Content Pillars
-  assert.strictEqual(CONFIG.POST_INTERVAL_HOURS, 3, "Expected 3-hour post interval");
+  // 3. Audit 6-Hour Post Cadence (4 Posts / 24 Hours) & 5 Content Pillars
+  assert.strictEqual(CONFIG.POST_INTERVAL_HOURS, 6, "Expected 6-hour post interval (4 posts / 24h)");
   assert.strictEqual(CONFIG.CAROUSEL_INTERVAL_DAYS, 2, "Expected 2-day carousel interval");
-  console.log(`  ✓ PASS: Configured 3-hour publishing interval (POST_INTERVAL_HOURS=3)`);
+  console.log(`  ✓ PASS: Configured 6-hour publishing interval (POST_INTERVAL_HOURS=6, exactly 4 posts / 24h)`);
   passed++;
 
   // 4. Audit Decks for all 5 Pillars

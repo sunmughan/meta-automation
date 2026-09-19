@@ -120,6 +120,19 @@ class StateStore {
     }
   }
 
+  getRetryableFailedPosts(maxRetries = 3, cooldownMinutes = 15, platform = "threads") {
+    const cutoffMs = Date.now() - cooldownMinutes * 60 * 1000;
+    return Object.values(this.state.posts).filter(p => {
+      if ((p.platform || "threads") !== platform) return false;
+      if (p.status !== "COMMENT_FAILED") return false;
+      const retryCount = p.retryCount || 0;
+      if (retryCount >= maxRetries) return false;
+      const failedTimestamp = p.failedAt || p.lastFailedAt;
+      const failedTime = failedTimestamp ? new Date(failedTimestamp).getTime() : Date.now();
+      return failedTime <= cutoffMs;
+    });
+  }
+
   // --- COMMENTS ---
   hasCommented(postId, platform = "threads") {
     const key = this.getPostKey(platform, postId);
