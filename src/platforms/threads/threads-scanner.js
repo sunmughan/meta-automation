@@ -28,17 +28,41 @@ async function extractPostsFromDom(page) {
       const container = link.closest('article, [data-pressable-container="true"], div[style*="border-bottom"]') || link.parentElement;
       let bestText = (container ? container.innerText : "").trim();
 
-      if (!bestText || bestText.length < 20) {
+      if (!bestText) {
         let node = link;
         for (let level = 0; level < 6 && node; level++) {
           const text = (node.innerText || "").trim();
           if (text.length > bestText.length && text.length < 3000) {
             bestText = text;
           }
-          if (text.length >= 40 && text.length <= 2000) {
+          if (text.length >= 20 && text.length <= 2000) {
             break;
           }
           node = node.parentElement;
+        }
+      }
+
+      // Extract timestamp or relative time if present
+      let timestamp = "";
+      if (container) {
+        const timeEl = container.querySelector('time');
+        if (timeEl) {
+          timestamp = timeEl.getAttribute('datetime') || timeEl.innerText || "";
+        }
+      }
+
+      // Extract media/context (image alt descriptions, videos)
+      const mediaContext = [];
+      if (container) {
+        const imgs = container.querySelectorAll('img[alt]');
+        for (const img of imgs) {
+          const alt = (img.getAttribute('alt') || '').trim();
+          if (alt && !alt.toLowerCase().includes('profile picture') && !alt.toLowerCase().includes('avatar')) {
+            mediaContext.push(alt);
+          }
+        }
+        if (container.querySelector('video')) {
+          mediaContext.push('[Video Content]');
         }
       }
 
@@ -46,7 +70,10 @@ async function extractPostsFromDom(page) {
         username,
         postId,
         url: `https://www.threads.com/@${username}/post/${postId}`,
-        text: bestText
+        text: bestText,
+        timestamp: timestamp || null,
+        mediaContext: mediaContext.length > 0 ? mediaContext.join("; ") : null,
+        capturedAt: new Date().toISOString()
       });
     }
 
@@ -140,6 +167,7 @@ async function scanThreadsFeed(options = {}) {
     if (!stateStore.hasPost(post.postId, "threads")) {
       stateStore.addDiscoveredPost(post, "threads");
       newlyDiscovered.push(post);
+      logger.info(`[POST_CAPTURED] @${post.username} (${post.postId}): "${(post.text || '').slice(0, 90).replace(/\s+/g, ' ')}..."`);
     }
   }
 
@@ -281,6 +309,7 @@ async function searchThreadsKeywords(options = {}) {
         if (!stateStore.hasPost(post.postId, "threads")) {
           stateStore.addDiscoveredPost(post, "threads");
           newlyDiscovered.push(post);
+          logger.info(`[POST_CAPTURED] [SEARCH: "${query}"] @${post.username} (${post.postId}): "${(post.text || '').slice(0, 90).replace(/\s+/g, ' ')}..."`);
         }
       }
       logger.info(`[SEARCH DISCOVERY] Query "${query}" yielded ${batch.length} visible posts (${newlyDiscovered.length} new).`);

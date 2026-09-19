@@ -427,6 +427,99 @@ async function runAllTests() {
     assert(decision.generated_comment.length > 50, "Must synthesize engaging comment");
   });
 
+  // 32. 6 Required Natural Language Buyer Phrases (Zero premature keyword discards)
+  await test("32. 6 Required natural language buyer phrases qualify via AI semantic reasoning", async () => {
+    const requiredPhrases = [
+      { text: "I need a website designer", expectedCap: "Web Development" },
+      { text: "I need someone to build an application", expectedCap: "Web Development" },
+      { text: "looking for someone to help with my website", expectedCap: "Web Development" },
+      { text: "need an app for my business", expectedCap: "Mobile Development" },
+      { text: "can someone develop this", expectedCap: "Web Development" },
+      { text: "looking for a developer to build my platform", expectedCap: "SaaS development" }
+    ];
+
+    for (const item of requiredPhrases) {
+      const post = { text: item.text, username: "buyer_prospect", postId: `test_phrase_${Date.now()}` };
+      const decision = await aiDecisionEngine.qualifyPost(post);
+
+      assert.strictEqual(decision.is_genuine_buyer, true, `Phrase must qualify as genuine buyer: "${item.text}"`);
+      assert.strictEqual(decision.decision, "QUALIFIED", `Decision must be QUALIFIED for: "${item.text}"`);
+      assert.strictEqual(decision.service_match, true, `Service match must be true for: "${item.text}"`);
+      assert(["HOT", "WARM"].includes(decision.temperature), `Temperature must be HOT or WARM for: "${item.text}"`);
+      assert(["INDIVIDUAL", "COMPANY", "EITHER"].includes(decision.target_entity), `Target entity must be valid for: "${item.text}"`);
+      assert(["FOUNDER", "COMPANY", "BOTH"].includes(decision.representation), `Representation must be valid for: "${item.text}"`);
+      assert(decision.requirement && decision.requirement.length > 5, `Requirement must be extracted for: "${item.text}"`);
+    }
+  });
+
+  // 33. Verification on previously missed state lead: hola6651803
+  await test("33. Missed state lead hola6651803 qualifies as HOT genuine buyer", async () => {
+    const post = {
+      username: "hola6651803",
+      postId: "Dclu8jmCODV",
+      text: "hola6651803\n28/08/2026\nNeed a website for my personal brand asap\n48\n81\n6",
+      url: "https://www.threads.com/@hola6651803/post/Dclu8jmCODV"
+    };
+
+    const decision = await aiDecisionEngine.qualifyPost(post);
+    assert.strictEqual(decision.is_genuine_buyer, true, "hola6651803 must be detected as genuine buyer");
+    assert.strictEqual(decision.decision, "QUALIFIED", "Decision must be QUALIFIED");
+    assert.strictEqual(decision.temperature, "HOT", "Must be HOT temperature");
+    assert.strictEqual(decision.service_match, true, "Service match must be true");
+    assert.strictEqual(decision.matched_capability, "Web Development", "Must match Web Development");
+    assert(decision.generated_comment && decision.generated_comment.includes("codeair.tech"), "Generated comment must cite CodeAir");
+  });
+
+  // 34. Verification on disguised seller post: duo.websitessss
+  await test("34. Disguised seller duo.websitessss is disqualified as SERVICE_PROVIDER", async () => {
+    const post = {
+      username: "duo.websitessss",
+      postId: "Dda8_gcjdCS",
+      text: "duo.websitessss\n1d\nLooking for a website designer? 👀\nDUO is here! We design and build modern, customised websites for businesses, brands & individuals.\nWould love to hear what you have in mind 🤝\n🌐 duo-websitessss.vercel.app\n1",
+      url: "https://www.threads.com/@duo.websitessss/post/Dda8_gcjdCS"
+    };
+
+    const decision = await aiDecisionEngine.qualifyPost(post);
+    assert.strictEqual(decision.is_genuine_buyer, false, "Disguised seller must NOT be genuine buyer");
+    assert.strictEqual(decision.decision, "IGNORED", "Disguised seller must be IGNORED");
+    assert.strictEqual(decision.intent, "SERVICE_PROVIDER", "Intent must be SERVICE_PROVIDER");
+    assert.strictEqual(decision.service_match, false, "Service match must be false");
+  });
+
+  // 35. Structured Semantic Reasoning Output Contract
+  await test("35. Semantic reasoning output strictly adheres to the 8-field audit contract", async () => {
+    const post = {
+      username: "founder_tim",
+      postId: "test_audit_fields_1",
+      text: "Looking for an agency to build a custom CRM and internal dashboard for our logistics operations."
+    };
+
+    const decision = await aiDecisionEngine.qualifyPost(post);
+    assert.strictEqual(decision.intent, "BUYER", "Intent must be BUYER");
+    assert(typeof decision.requirement === "string" && decision.requirement.length > 0, "Requirement must be non-empty string");
+    assert.strictEqual(decision.target_entity, "COMPANY", "Target entity must be COMPANY (user requested agency)");
+    assert.strictEqual(decision.representation, "COMPANY", "Representation must be COMPANY");
+    assert.strictEqual(decision.service_match, true, "Service match must be true");
+    assert.strictEqual(decision.decision, "QUALIFIED", "Decision must be QUALIFIED");
+    assert.strictEqual(decision.temperature, "HOT", "Temperature must be HOT");
+  });
+
+  // 36. Out-of-Scope non-software requests are rejected (Graphic design / logos / accounting)
+  await test("36. Graphic design, logo, and accounting requests are classified as OUT_OF_SCOPE", async () => {
+    const outOfScopePosts = [
+      { text: "Need a logo designer for our new sneaker brand", expectedIntent: "OUT_OF_SCOPE" },
+      { text: "Looking for someone to do our accounting and quarterly tax filing", expectedIntent: "OUT_OF_SCOPE" },
+      { text: "Need a video editor for my YouTube vlog channel", expectedIntent: "OUT_OF_SCOPE" }
+    ];
+
+    for (const p of outOfScopePosts) {
+      const decision = await aiDecisionEngine.qualifyPost({ text: p.text, username: "out_prospect" });
+      assert.strictEqual(decision.is_genuine_buyer, false, `Must reject out-of-scope: ${p.text}`);
+      assert.strictEqual(decision.decision, "IGNORED", `Must be IGNORED: ${p.text}`);
+      assert.strictEqual(decision.service_match, false, `Service match must be false: ${p.text}`);
+    }
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {

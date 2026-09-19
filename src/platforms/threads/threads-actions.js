@@ -9,7 +9,7 @@ const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const rateLimiter = require("../../safety/rate-limiter");
-const intentClassifier = require("../../leads/intent-classifier");
+const aiDecisionEngine = require("../../ai/ai-decision-engine");
 const logger = require("../../logging/logger");
 
 class ThreadsActions {
@@ -106,12 +106,12 @@ class ThreadsActions {
         return article ? (article.innerText || "").trim() : "";
       }));
 
-      const recheck = intentClassifier.classify({
+      const recheck = await aiDecisionEngine.qualifyPost({
         text: postTextToVerify,
         username: post.username
       });
 
-      if (!recheck.qualified || !recheck.is_genuine_buyer) {
+      if (!recheck.is_genuine_buyer || recheck.decision !== "QUALIFIED") {
         logger.warn(`Post ${post.postId} failed live qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
           action: "COMMENT_GUARD_ABORTED",
           postId: post.postId,
