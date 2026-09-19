@@ -97,6 +97,8 @@ class ThreadsActions {
 
     // 4. Live posting path (Active ONLY when DRY_RUN=false, APPROVAL_MODE=false, POSTING_ENABLED=true)
     let page = null;
+    stateStore.recordActionTransition("COMMENT", post.postId, "INIT", "PREPARING", { username: post.username });
+
     try {
       page = await browserManager.getThreadsPage();
       await page.bringToFront();
@@ -104,7 +106,7 @@ class ThreadsActions {
       // 1. Check if the post is already rendered on the page, or navigate directly
       let alreadyOnScreen = await page.evaluate((pid, uname) => {
         const bodyText = (document.body.innerText || "").toLowerCase();
-        const hasPidLink = Array.from(document.querySelectorAll('a[href]')).some(a => a.href && a.href.includes(pid));
+        const hasPidLink = Array.from(document.querySelectorAll('a[href]')).some(a => a.href && (a.href.includes(pid) || a.href.includes(`post/${pid}`)));
         const hasPidUrl = window.location.href.includes(pid);
         const hasUname = uname ? bodyText.includes(uname.toLowerCase()) : false;
         return hasPidUrl || (hasPidLink && hasUname);
@@ -145,6 +147,9 @@ class ThreadsActions {
       }
 
       if (!postVerified) {
+        stateStore.recordActionTransition("COMMENT", post.postId, "PREPARING", "FAILED", {
+          reason: "Target post URL mismatch or post no longer available in DOM"
+        });
         logger.error(`Navigation verification failed: post ${post.postId} (@${post.username}) not found on page. Aborting comment.`, {
           currentUrl: page.url(),
           postId: post.postId,
@@ -166,6 +171,9 @@ class ThreadsActions {
         });
 
         if (!recheck.is_genuine_buyer || recheck.decision !== "QUALIFIED") {
+          stateStore.recordActionTransition("COMMENT", post.postId, "PREPARING", "FAILED", {
+            reason: `Qualification double-guard rejected: ${recheck.reason}`
+          });
           logger.warn(`Post ${post.postId} failed live qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
             action: "COMMENT_GUARD_ABORTED",
             postId: post.postId,
@@ -227,14 +235,20 @@ class ThreadsActions {
       }
 
       if (!textbox) {
+        stateStore.recordActionTransition("COMMENT", post.postId, "PREPARING", "FAILED", {
+          reason: "Reply composer textbox not found on post page"
+        });
         throw new Error("Reply composer textbox not found on post page");
       }
+
+      stateStore.recordActionTransition("COMMENT", post.postId, "PREPARING", "OPENED", { username: post.username });
 
       await textbox.focus();
       await textbox.click();
       await new Promise(r => setTimeout(r, 400));
 
-      // Type message visibly so user watches it typing live
+      // State Transition: TYPING
+      stateStore.recordActionTransition("COMMENT", post.postId, "OPENED", "TYPING", { username: post.username });
       logger.info(`Visibly typing comment on @${post.username}'s post...`);
       for (const char of commentText) {
         await page.keyboard.sendCharacter(char);
@@ -243,8 +257,10 @@ class ThreadsActions {
 
       await new Promise(r => setTimeout(r, 1500));
 
-      // Click the Reply submit button (Arrow button or Reply button strictly in composer / dialog)
+      // State Transition: SUBMITTING
+      stateStore.recordActionTransition("COMMENT", post.postId, "TYPING", "SUBMITTING", { username: post.username });
       logger.info(`Clicking Reply submit button...`);
+
       const postClicked = await page.evaluate(() => {
         // Priority 1: Check modal dialog if open (Ensure it is a reply modal, not "New thread")
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
@@ -274,14 +290,31 @@ class ThreadsActions {
           }
         }
 
-        // Priority 2: Inline Reply submit arrow or button strictly within the textbox parent tree
+        // Priority 2: Enabled Post/Reply button in composer area or nearby DOM
+        const candidates = [...document.querySelectorAll('button, div[role="button"]')];
+        const postBtn = candidates.find(b => {
+          const txt = (b.innerText || "").trim().toLowerCase();
+          const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+          const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
+          const isTarget = txt === "post" || txt === "reply" || aria === "post" || aria === "reply";
+          const rect = b.getBoundingClientRect();
+          return isTarget && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
+        });
+
+        if (postBtn) {
+          postBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          postBtn.focus();
+          postBtn.click();
+          postBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return true;
+        }
+
+        // Priority 3: Inline submit arrow SVG icon (M1 6h10 or title/aria "Reply" / "Post")
         const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
         if (tb) {
           let parent = tb.parentElement;
           for (let depth = 0; depth < 8; depth++) {
             if (!parent) break;
-            
-            // Look for the submit arrow SVG icon (M1 6h10 or title/aria "Reply" / "Post")
             const svgs = Array.from(parent.querySelectorAll('svg'));
             const submitSvg = svgs.find(s => {
               const title = (s.querySelector('title')?.textContent || s.getAttribute('aria-label') || "").toLowerCase();
@@ -295,23 +328,6 @@ class ThreadsActions {
               btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
               return true;
             }
-
-            // Look for Post or Reply button strictly inside this composer row
-            const btns = Array.from(parent.querySelectorAll('div[role="button"], button'));
-            const pBtn = btns.find(b => {
-              const txt = (b.innerText || "").trim().toLowerCase();
-              const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
-              const isEnabled = !b.disabled && b.getAttribute('aria-disabled') !== "true";
-              return (txt === 'reply' || txt === 'post' || aria === 'reply' || aria === 'post') && isEnabled;
-            });
-            if (pBtn) {
-              pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              pBtn.focus();
-              pBtn.click();
-              pBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-              return true;
-            }
-
             parent = parent.parentElement;
           }
         }
@@ -320,12 +336,11 @@ class ThreadsActions {
       });
 
       if (!postClicked) {
-        logger.warn("Submit button not triggered via parent tree; attempting direct selector search...");
+        logger.warn("Submit button not triggered via standard locators; attempting direct selector search...");
         try {
-          const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"]');
+          const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"], div[role="textbox"] ~ div button');
           if (submitHandle) {
             await submitHandle.click();
-            postClicked = true;
           }
         } catch (err) {
           logger.warn(`Direct selector click failed: ${err.message}`);
@@ -342,12 +357,15 @@ class ThreadsActions {
         }
       });
 
-      // Step 4: Multi-Signal True Submit Verification
-      const textSnippet = commentText.replace(/https?:\/\/[^\s]+/g, "").slice(0, 35).trim();
+      // State Transition: VERIFYING
+      stateStore.recordActionTransition("COMMENT", post.postId, "SUBMITTING", "VERIFYING", { username: post.username });
+
+      // Step 4: Strict Multi-Signal DOM Verification (Zero False Positives)
+      const textSnippet = commentText.replace(/https?:\/\/[^\s]+/g, "").slice(0, 30).trim();
       let isVerifiedPosted = false;
       let verificationReason = "";
 
-      for (let attempt = 0; attempt < 10; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         await new Promise(r => setTimeout(r, 1000));
         const check = await page.evaluate((snippet) => {
           const bodyText = document.body.innerText || "";
@@ -358,26 +376,24 @@ class ThreadsActions {
             return { verified: false, error: "Threads displayed error dialog or rate limit alert" };
           }
 
-          // 2. Check if snippet rendered inside any article container on thread
-          const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
-          const snippetFound = snippet && snippet.length > 5 && articles.some(a => (a.innerText || "").includes(snippet));
+          // 2. Strict Content Verification: Comment snippet MUST exist inside permanent article or comment tree
+          const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"], div[dir="auto"], span'));
+          const snippetFound = snippet && snippet.length > 5 && articles.some(a => {
+            if (a.tagName === 'SCRIPT' || a.tagName === 'STYLE') return false;
+            // CRITICAL GUARD: Never match uncommitted draft text inside composer or editable elements
+            if (a.isContentEditable || a.closest('[contenteditable="true"], div[role="textbox"], form')) return false;
+            const content = (a.innerText || a.textContent || "").trim();
+            return content.includes(snippet);
+          });
 
-          // 3. Check toast confirmation
-          const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView") || (bodyText.includes("Posted") && bodyText.includes("View"));
+          // 3. Check for specific author + snippet association outside of composer
+          const hasAuthorSnippet = bodyText.toLowerCase().includes("sunmughan") && snippetFound;
 
-          // 4. Check composer state
-          const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
-          const isCleared = !tb || (tb.innerText || "").trim() === "";
-          const noModal = !document.querySelector('div[role="dialog"], [aria-modal="true"]');
-
-          if (snippetFound) {
-            return { verified: true, reason: "Comment snippet verified in thread DOM" };
-          }
-          if (hasPostedToast && noModal && isCleared) {
-            return { verified: true, reason: "Threads posted toast and composer dismissed" };
+          if (snippetFound || hasAuthorSnippet) {
+            return { verified: true, reason: "Comment snippet verified in thread DOM outside composer" };
           }
 
-          return { verified: false, error: "Awaiting confirmed DOM insertion or toast" };
+          return { verified: false, error: "Awaiting confirmed DOM insertion" };
         }, textSnippet);
 
         if (check.verified) {
@@ -392,12 +408,33 @@ class ThreadsActions {
       }
 
       if (!isVerifiedPosted) {
+        stateStore.recordActionTransition("COMMENT", post.postId, "VERIFYING", "FAILED", {
+          reason: verificationReason || "Comment snippet not found in thread DOM"
+        });
+        stateStore.recordActionTransition("COMMENT", post.postId, "FAILED", "DIAGNOSTIC", {
+          reason: "Capturing diagnostic screenshot"
+        });
+
         logger.error(`Comment verification failed on post ${post.postId}: ${verificationReason || "Confirmation timeout"}. Aborting success record.`, {
           postId: post.postId,
           username: post.username
         });
         await captureDiagnosticScreenshot(page, `comment_failed_${post.postId}`);
         await page.keyboard.press("Escape").catch(() => {});
+
+        const currentRetries = (post.retryCount || 0) + 1;
+        stateStore.updatePostStatus(post.postId, "COMMENT_FAILED", {
+          retryCount: currentRetries,
+          lastFailedAt: new Date().toISOString(),
+          failureReason: verificationReason || "Comment submit verification failed: comment not found in thread DOM",
+          commentText
+        }, post.platform || "threads");
+
+        stateStore.recordActionTransition("COMMENT", post.postId, "DIAGNOSTIC", "RETRY_PENDING", {
+          retryCount: currentRetries,
+          maxRetries: 3
+        });
+
         return {
           success: false,
           verified: false,
@@ -405,6 +442,12 @@ class ThreadsActions {
           postId: post.postId
         };
       }
+
+      // State Transition: VERIFIED_SUCCESS
+      stateStore.recordActionTransition("COMMENT", post.postId, "VERIFYING", "VERIFIED_SUCCESS", {
+        username: post.username,
+        verificationReason
+      });
 
       // ONLY RECORD SUCCESS IF TRULY VERIFIED
       duplicateGuard.recordExecuted({
@@ -449,6 +492,9 @@ class ThreadsActions {
       return { success: true, live: true, verified: true, postId: post.postId, comment: commentText };
     } catch (err) {
       logger.error(`Live comment failed on Threads post ${post.postId}`, err);
+      stateStore.recordActionTransition("COMMENT", post.postId, "SUBMITTING", "FAILED", {
+        error: err.message
+      });
       if (page) {
         await captureDiagnosticScreenshot(page, `comment_exception_${post.postId}`).catch(() => {});
       }

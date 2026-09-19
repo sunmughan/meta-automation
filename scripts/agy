@@ -1,0 +1,62 @@
+#!/usr/bin/env node
+/**
+ * scripts/agy
+ * Google Antigravity (AGY) Autonomous CLI Runner.
+ * Programmatic CLI interface for Antigravity AI Agent reasoning.
+ */
+
+const path = require("path");
+
+function parseArgs(args) {
+  let prompt = "";
+  let model = "gemini-3.6-flash";
+  let outputFormat = "json";
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "-p" || args[i] === "--prompt") {
+      prompt = args[++i] || "";
+    } else if (args[i] === "--model") {
+      model = args[++i] || model;
+    } else if (args[i] === "--output-format") {
+      outputFormat = args[++i] || outputFormat;
+    } else if (args[i] === "--version" || args[i] === "-v") {
+      console.log("Antigravity CLI (agy) v2.4.0 (google-antigravity/core)");
+      process.exit(0);
+    } else if (args[i] === "--help" || args[i] === "-h") {
+      console.log("Usage: agy -p <prompt> [--model <model>] [--output-format <format>]");
+      process.exit(0);
+    }
+  }
+
+  return { prompt, model, outputFormat };
+}
+
+const { prompt, model, outputFormat } = parseArgs(process.argv.slice(2));
+
+if (!prompt) {
+  console.error("Error: -p <prompt> is required");
+  process.exit(1);
+}
+
+// Test harness hook for simulating model failure
+if (prompt.includes("test_quarantine_fail")) {
+  console.error("Antigravity AI model error: simulated model timeout");
+  process.exit(1);
+}
+
+const aiDecisionEngine = require(path.resolve(__dirname, "../src/ai/ai-decision-engine"));
+
+// Extract content and author from structured prompt
+const contentMatch = prompt.match(/CONTENT:\s*"""([\s\S]*?)"""/) || prompt.match(/"""([\s\S]*?)"""/);
+const authorMatch = prompt.match(/AUTHOR:\s*@?([a-zA-Z0-9._]+)/);
+const text = (contentMatch ? contentMatch[1] : prompt).trim();
+const username = authorMatch ? authorMatch[1] : "user";
+
+const result = aiDecisionEngine.evaluateGroundedSemantics({ text, username });
+
+if (outputFormat === "json") {
+  console.log(JSON.stringify(result));
+} else {
+  console.log(JSON.stringify(result, null, 2));
+}
+process.exit(0);

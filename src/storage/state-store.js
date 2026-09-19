@@ -323,6 +323,38 @@ class StateStore {
     return list[list.length - 1] || null;
   }
 
+  // --- STATE TRANSITION TRACKING ---
+  recordActionTransition(actionType, targetId, fromState, toState, metadata = {}, platform = "threads") {
+    const transitionId = `${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
+    if (!this.state.actionTransitions) {
+      this.state.actionTransitions = [];
+    }
+    const record = {
+      id: transitionId,
+      actionType,
+      platform,
+      targetId,
+      fromState,
+      toState,
+      timestamp: Date.now(),
+      iso: new Date().toISOString(),
+      ...metadata
+    };
+    this.state.actionTransitions.push(record);
+    if (this.state.actionTransitions.length > 200) {
+      this.state.actionTransitions = this.state.actionTransitions.slice(-200);
+    }
+    logger.info(`[STATE_TRANSITION] [${actionType}] ${fromState} → ${toState} (${targetId})`, {
+      action: "STATE_TRANSITION",
+      actionType,
+      fromState,
+      toState,
+      targetId
+    });
+    this.saveState();
+    return record;
+  }
+
   // --- ACTION AUDIT & LOGGING ---
   recordAction(type, targetId, details = {}) {
     const actionId = `${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;

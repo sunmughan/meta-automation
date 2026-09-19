@@ -573,6 +573,7 @@ Excluded Non-Software Capabilities:
 ${excluded.slice(0, 10).map(s => `- ${s}`).join("\n")}
 
 Analyze this social media post with zero bias:
+POST_ID: ${post.postId || "none"}
 AUTHOR: @${post.username || "user"}
 CONTENT:
 """${post.text || ""}"""

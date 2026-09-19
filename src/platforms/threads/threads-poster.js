@@ -126,12 +126,55 @@ class ThreadsPoster {
   }
 
   /**
+   * Strictly verifies that the newly published post appears on the authenticated profile feed.
+   */
+  async verifyPostOnProfile(page, postText, username = "sunmughan") {
+    const profileUrl = `https://www.threads.com/@${username}`;
+    logger.info(`[THREADS POSTER] Navigating to profile feed (${profileUrl}) for multi-signal live post verification...`);
+    try {
+      await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 35000 });
+      await new Promise(r => setTimeout(r, 2500));
+
+      const snippet = postText.replace(/https?:\/\/[^\s]+/g, "").slice(0, 35).trim();
+      for (let attempt = 1; attempt <= 6; attempt++) {
+        const found = await page.evaluate((snip) => {
+          const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
+          return articles.some(a => {
+            if (a.tagName === 'SCRIPT' || a.tagName === 'STYLE') return false;
+            const content = (a.innerText || a.textContent || "").trim();
+            return content.includes(snip);
+          });
+        }, snippet);
+
+        if (found) {
+          logger.info(`[THREADS POSTER] ✅ Post verified present on @${username} profile feed DOM (attempt ${attempt}/6)!`);
+          return { verified: true, reason: `Verified live on @${username} profile feed DOM` };
+        }
+
+        await page.evaluate(() => window.scrollBy({ top: 300, left: 0, behavior: "smooth" }));
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      return { verified: false, reason: `Post not found on @${username} profile feed DOM after submission` };
+    } catch (err) {
+      return { verified: false, reason: `Profile verification navigation failed: ${err.message}` };
+    }
+  }
+
+  /**
    * Publishes an engaging post live on Threads with Stripe-grade visuals.
    */
   async publishEngagingPost(options = {}) {
     const pillar = options.pillar || this.selectNextPillar();
     const format = options.format || this.determinePostFormat(pillar);
     const postText = options.text || this.getCaptionForPillar(pillar);
+    const ourPostId = `our_post_${Date.now()}`;
+
+    stateStore.recordActionTransition("OWN_POST", ourPostId, "INIT", "PREPARING", {
+      pillar,
+      format,
+      textSnippet: postText.slice(0, 60)
+    });
 
     logger.info(`[THREADS POSTER] Preparing to publish post: Pillar=${pillar}, Format=${format}`, {
       pillar,
@@ -176,9 +219,13 @@ class ThreadsPoster {
     });
 
     if (!opened) {
+      stateStore.recordActionTransition("OWN_POST", ourPostId, "PREPARING", "FAILED", {
+        reason: "Could not find New thread button in navigation"
+      });
       throw new Error("Could not find 'New thread' button in Threads navigation");
     }
 
+    stateStore.recordActionTransition("OWN_POST", ourPostId, "PREPARING", "OPENED", { pillar, format });
     await new Promise(r => setTimeout(r, 1500));
 
     // 4. If media assets exist, attach them via file input
@@ -209,9 +256,14 @@ class ThreadsPoster {
     // 5. Locate composer textbox inside the active modal/dialog
     const textbox = await page.waitForSelector('div[role="dialog"] div[role="textbox"][contenteditable="true"], [aria-modal="true"] div[role="textbox"][contenteditable="true"], div[role="textbox"][contenteditable="true"]', { timeout: 8000 });
     if (!textbox) {
+      stateStore.recordActionTransition("OWN_POST", ourPostId, "OPENED", "FAILED", {
+        reason: "Composer textbox did not open after clicking New thread"
+      });
       throw new Error("Composer textbox did not open after clicking New thread");
     }
 
+    // State Transition: TYPING
+    stateStore.recordActionTransition("OWN_POST", ourPostId, "OPENED", "TYPING", { pillar, format });
     await textbox.focus();
     await new Promise(r => setTimeout(r, 500));
 
@@ -224,7 +276,8 @@ class ThreadsPoster {
 
     await new Promise(r => setTimeout(r, 2000));
 
-    // 7. Accurately target the "Post" button specifically inside the active composer modal
+    // State Transition: SUBMITTING
+    stateStore.recordActionTransition("OWN_POST", ourPostId, "TYPING", "SUBMITTING", { pillar, format });
     logger.info("[THREADS POSTER] Submitting post via active composer Post button...");
     let postSubmitted = false;
 
@@ -237,7 +290,8 @@ class ThreadsPoster {
         let postBtn = buttons.find(b => {
           const txt = (b.innerText || "").trim().toLowerCase();
           const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-          return txt === "post" && isEnabled && b.offsetParent !== null;
+          const rect = b.getBoundingClientRect();
+          return txt === "post" && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
         });
 
         // Strategy 2: aria-label matching post
@@ -245,7 +299,8 @@ class ThreadsPoster {
           postBtn = buttons.find(b => {
             const label = (b.getAttribute("aria-label") || "").trim().toLowerCase();
             const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-            return label === "post" && isEnabled && b.offsetParent !== null;
+            const rect = b.getBoundingClientRect();
+            return label === "post" && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
           });
         }
 
@@ -254,7 +309,8 @@ class ThreadsPoster {
           postBtn = buttons.find(b => {
             const svg = b.querySelector('svg[aria-label*="post" i], svg[aria-label*="Post" i]');
             const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-            return !!svg && isEnabled && b.offsetParent !== null;
+            const rect = b.getBoundingClientRect();
+            return !!svg && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
           });
         }
 
@@ -264,7 +320,8 @@ class ThreadsPoster {
             const txt = (b.innerText || "").trim().toLowerCase();
             const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
             const isSecondary = txt.includes("anyone") || txt.includes("cancel") || txt.includes("discard") || txt.includes("draft");
-            return isEnabled && !isSecondary && b.offsetParent !== null;
+            const rect = b.getBoundingClientRect();
+            return isEnabled && !isSecondary && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
           });
           if (candidateButtons.length > 0) {
             candidateButtons.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
@@ -300,82 +357,99 @@ class ThreadsPoster {
       }
     }
 
-    // 8. Strict Verification of Submission
-    let isVerifiedPublished = false;
-    let verificationReason = "";
+    // State Transition: VERIFYING
+    stateStore.recordActionTransition("OWN_POST", ourPostId, "SUBMITTING", "VERIFYING", { pillar, format });
 
+    // 8. Strict Verification of Submission & Profile Presence
+    let isModalDismissed = false;
     for (let check = 0; check < 10; check++) {
       await new Promise(r => setTimeout(r, 1000));
-      const checkResult = await page.evaluate((snippet, wasSubmitted) => {
+      const status = await page.evaluate(() => {
         const bodyText = document.body.innerText || "";
-        
-        // Check for error alert or rate limit toasts
         const hasError = /\b(couldn'?t post|something went wrong|try again later|action blocked|rate limit)\b/i.test(bodyText);
-        if (hasError) {
-          return { verified: false, error: "Threads displayed error toast or alert during post submission" };
-        }
-
-        // Check success toast
-        const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView") || (bodyText.includes("Posted") && bodyText.includes("View"));
-
-        // Check dialog dismissal
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
-        const noDialog = !dialog;
+        return { hasError, noDialog: !dialog };
+      });
 
-        // Check if article with snippet rendered in feed DOM
-        const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
-        const snippetFound = snippet && snippet.length > 10 && articles.some(a => (a.innerText || "").includes(snippet));
-
-        if (snippetFound) {
-          return { verified: true, reason: "New thread snippet verified in feed DOM" };
-        }
-        if (hasPostedToast && noDialog) {
-          return { verified: true, reason: "Confirmed via Threads posted toast and closed dialog" };
-        }
-        if (noDialog && !hasError && (wasSubmitted || hasPostedToast)) {
-          return { verified: true, reason: "Composer modal successfully dismissed without errors" };
-        }
-
-        return { verified: false, error: "Awaiting confirmed publish" };
-      }, postText.slice(0, 40), postSubmitted);
-
-      if (checkResult.verified) {
-        isVerifiedPublished = true;
-        verificationReason = checkResult.reason;
+      if (status.hasError) {
         break;
       }
-      if (checkResult.error && checkResult.error.includes("error")) {
-        verificationReason = checkResult.error;
+      if (status.noDialog) {
+        isModalDismissed = true;
         break;
       }
     }
 
-    if (!isVerifiedPublished) {
-      logger.error(`[THREADS POSTER] Post submission verification failed: ${verificationReason || "Confirmation timeout"}. Aborting state record.`);
-      await captureDiagnosticScreenshot(page, "own_post_failed");
+    if (!isModalDismissed) {
+      stateStore.recordActionTransition("OWN_POST", ourPostId, "VERIFYING", "FAILED", {
+        reason: "Composer modal failed to dismiss after Post click"
+      });
+      stateStore.recordActionTransition("OWN_POST", ourPostId, "FAILED", "DIAGNOSTIC", {
+        reason: "Capturing diagnostic screenshot"
+      });
+      await captureDiagnosticScreenshot(page, "own_post_modal_stuck");
       await page.keyboard.press("Escape").catch(() => {});
-      
+
       stateStore.recordOurPostAttemptFailure({
         pillar,
         format,
-        reason: verificationReason || "Post submission verification failed",
+        reason: "Composer modal failed to dismiss after Post click",
         textSnippet: postText.slice(0, 50)
       });
 
       return {
         success: false,
         verified: false,
-        reason: verificationReason || "Post submission verification failed",
+        reason: "Composer modal failed to dismiss after Post click",
         pillar,
         format
       };
     }
 
-    logger.info(`[THREADS POSTER] Post submission verified: ${verificationReason}`);
-    await new Promise(r => setTimeout(r, 2000));
+    // Secondary Strict Profile Feed Verification (Mandatory User Requirement)
+    // Confirm the post actually rendered live on the authenticated profile feed DOM
+    const profileVerify = await this.verifyPostOnProfile(page, postText, "sunmughan");
+
+    if (!profileVerify.verified) {
+      stateStore.recordActionTransition("OWN_POST", ourPostId, "VERIFYING", "FAILED", {
+        reason: profileVerify.reason
+      });
+      stateStore.recordActionTransition("OWN_POST", ourPostId, "FAILED", "DIAGNOSTIC", {
+        reason: "Capturing diagnostic screenshot"
+      });
+
+      logger.error(`[THREADS POSTER] Profile verification failed: ${profileVerify.reason}. Aborting state record.`);
+      await captureDiagnosticScreenshot(page, "own_post_profile_missing");
+
+      stateStore.recordOurPostAttemptFailure({
+        pillar,
+        format,
+        reason: profileVerify.reason,
+        textSnippet: postText.slice(0, 50)
+      });
+
+      // Smooth return to home feed
+      await page.goto(CONFIG.THREADS_HOME, { waitUntil: "domcontentloaded", timeout: 35000 }).catch(() => {});
+
+      return {
+        success: false,
+        verified: false,
+        reason: profileVerify.reason,
+        pillar,
+        format
+      };
+    }
+
+    // State Transition: VERIFIED_SUCCESS
+    stateStore.recordActionTransition("OWN_POST", ourPostId, "VERIFYING", "VERIFIED_SUCCESS", {
+      pillar,
+      format,
+      verificationReason: profileVerify.reason
+    });
+
+    logger.info(`[THREADS POSTER] Post submission verified on profile: ${profileVerify.reason}`);
 
     // 9. Record verified post into state
-    const ourPostId = `our_post_${Date.now()}`;
     stateStore.recordOurPost({
       id: ourPostId,
       text: postText,
@@ -385,7 +459,7 @@ class ThreadsPoster {
       mediaPaths,
       status: "VERIFIED_PUBLISHED",
       published: true,
-      verifiedReason: verificationReason,
+      verifiedReason: profileVerify.reason,
       publishedAt: new Date().toISOString(),
       repliesTracked: []
     });
@@ -399,11 +473,15 @@ class ThreadsPoster {
       format,
       mediaCount: mediaPaths.length,
       text: postText,
-      verifiedReason: verificationReason
+      verifiedReason: profileVerify.reason
     });
     stateStore.saveState();
 
-    logger.info(`✅ Successfully published ${format} post on Threads [${pillar}]: "${postText.slice(0, 60)}..."`);
+    // Smooth return to home feed
+    await page.goto(CONFIG.THREADS_HOME, { waitUntil: "domcontentloaded", timeout: 35000 }).catch(() => {});
+    await new Promise(r => setTimeout(r, 2000));
+
+    logger.info(`✅ Successfully published & verified ${format} post on Threads [${pillar}]: "${postText.slice(0, 60)}..."`);
     return {
       success: true,
       live: true,
