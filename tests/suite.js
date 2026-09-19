@@ -253,6 +253,77 @@ async function runAllTests() {
     assert.strictEqual(identity.identity, "NEUTRAL", "Must select NEUTRAL identity for general technical discussion");
   });
 
+  // 19. Celebrity / Pop culture / Birthday post (Strict Disqualification)
+  test("19. Celebrity / Birthday post", () => {
+    const post = { text: "HAPPY BIRTHDAY BEY", username: "ckennie4" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, false, "Must be disqualified");
+    assert.strictEqual(res.lead_type, "IRRELEVANT", "Must be classified as IRRELEVANT");
+    assert.strictEqual(res.should_reply, false, "Must never reply to celebrity posts");
+  });
+
+  // 20. Personal travel / Vacation / Beach video (Strict Disqualification)
+  test("20. Vacation / Beach video post", () => {
+    const post = { text: "Walking around the beach enjoying the sunset at Baga", username: "veehans5" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, false, "Must be disqualified");
+    assert.strictEqual(res.should_reply, false, "Must never reply to vacation/lifestyle posts");
+  });
+
+  // 21. Service provider promotional hook (e.g. moazali06)
+  test("21. Service provider promotional hook", () => {
+    const post = {
+      text: "Building something for your business?\nNeed a website, custom software, mobile app or Ai integration?\nI can help turn the idea into something that actually works.\nDM me - Let's talk. 🚀",
+      username: "moazali06"
+    };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, false, "Must be disqualified as service provider");
+    assert.strictEqual(res.lead_type, "SERVICE_PROVIDER", "Must be classified as SERVICE_PROVIDER");
+    assert.strictEqual(res.should_reply, false, "Must never pitch to service providers");
+  });
+
+  // 22. Freelancer portfolio showcase
+  test("22. Freelancer portfolio showcase", () => {
+    const post = { text: "Built this modern dashboard for a client in Next.js and Tailwind. Check out my portfolio in bio! Taking on new clients.", username: "freelancer_dev" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, false, "Must be disqualified");
+    assert.strictEqual(res.lead_type, "SERVICE_PROVIDER", "Must be classified as SERVICE_PROVIDER");
+    assert.strictEqual(res.should_reply, false, "Must never reply to portfolio showcase");
+  });
+
+  // 23. True buyer requesting developer proposals
+  test("23. True buyer requesting developer proposals", () => {
+    const post = { text: "Need an app developer to create a learning app. Please dm me your portfolio and approximate charges.", username: "akashualmarketer" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, true, "Must be qualified");
+    assert.strictEqual(res.is_genuine_buyer, true, "Must be genuine buyer");
+    assert.strictEqual(res.lead_type, "PROJECT_BUYER", "Must be PROJECT_BUYER");
+    assert.strictEqual(res.should_reply, true, "Should reply to genuine buyer");
+  });
+
+  // 24. True buyer with budget requesting website build
+  test("24. True buyer with budget requesting website build", () => {
+    const post = { text: "Urgently in search of a web developer. I need to build a website for my newly opened jewellery business. Budget is $1700-$2000.", username: "aditijain" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, true, "Must be qualified");
+    assert.strictEqual(res.is_genuine_buyer, true, "Must be genuine buyer");
+    assert(res.matchedCategories.includes("Web Development"), "Must match Web Development");
+  });
+
+  // 25. Substring safety: Post mentioning 'paid' does not trigger AI comment
+  test("25. Substring safety for Mobile vs AI", () => {
+    const postText = "Need a mobile app developer for immediate client projects. Paid opportunities available.";
+    const comment = commentGenerator.generateEngagingComment({
+      text: postText,
+      username: "client_lead",
+      matchedCategories: ["Mobile Development"],
+      identity: "COMPANY"
+    });
+    assert(!comment.toLowerCase().includes("multi-agent"), "Comment must NOT mention multi-agent systems");
+    assert(!comment.toLowerCase().includes("document triage"), "Comment must NOT mention document triage");
+    assert(comment.toLowerCase().includes("mobile") || comment.toLowerCase().includes("flutter") || comment.toLowerCase().includes("app"), "Comment must focus on mobile apps");
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {

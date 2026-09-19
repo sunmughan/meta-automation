@@ -1,19 +1,20 @@
 /**
  * src/leads/intent-classifier.js
- * Fast deterministic intent classifier & lead qualification engine.
+ * Strict deterministic intent classifier & lead qualification engine.
  *
  * Enforces lead-rules.md:
- * Genuine CodeAir lead requires:
- *   BUYING / PROJECT INTENT
- *   + CODEAIR SERVICE MATCH
- *   + NOT RECRUITMENT
- *   + NOT SERVICE PROVIDER
- *   + NOT JOB SEEKER
- *   + NOT IRRELEVANT
+ * Genuine CodeAir lead strictly requires:
+ *   1. AUTHENTIC BUYER / PROJECT INTENT (Author is requesting/hiring/needing software development)
+ *   2. CODEAIR SERVICE MATCH (Web, Mobile, AI/Automation, SaaS, Business Systems, Backend/APIs)
+ *   3. NOT RECRUITMENT (9-5 HR hiring, salaried job ads)
+ *   4. NOT SERVICE PROVIDER (Freelancer, agency, or developer advertising or showcasing their own services)
+ *   5. NOT JOB SEEKER (Candidate looking for employment/gigs)
+ *   6. NOT IRRELEVANT (Celebrity, memes, personal lifestyle, birthdays, travel, entertainment)
  */
 
 const serviceMatcher = require("./service-matcher");
 
+// 1. Traditional 9-5 employee recruitment (HR, salaried positions, corporate job openings)
 const RECRUITMENT_PATTERNS = [
   /\bwe'?re\s+hiring\b/i,
   /\bwe\s+are\s+hiring\b/i,
@@ -25,8 +26,6 @@ const RECRUITMENT_PATTERNS = [
   /\b(base\s+)?salary\b/i,
   /\bcompensation\s+package\b/i,
   /\bapply\s+(here|now|via|at|to)\b/i,
-  /\bdm\s+(me\s+)?your\s+(cv|resume)\b/i,
-  /\bsend\s+(me\s+)?your\s+(cv|resume)\b/i,
   /\bsubmit\s+(your\s+)?(cv|resume)\b/i,
   /\b(cv|resume)\s+to\b/i,
   /\bjoin\s+(our|the)\s+team\b/i,
@@ -36,6 +35,7 @@ const RECRUITMENT_PATTERNS = [
   /\blooking\s+for\s+(a\s+)?(senior|junior|lead|intern|full[- ]?time|part[- ]?time)\s+(developer|engineer|designer)\s+to\s+join\b/i
 ];
 
+// 2. Job seekers looking for work / employment
 const JOB_SEEKER_PATTERNS = [
   /\bopen\s+to\s+work\b/i,
   /\bopen\s+for\s+work\b/i,
@@ -50,27 +50,59 @@ const JOB_SEEKER_PATTERNS = [
   /\bseeking\s+(software|web|flutter|react)\s+developer\s+opportunities\b/i
 ];
 
+// 3. Service Providers / Agencies / Freelancers selling their own services
 const PROVIDER_PATTERNS = [
-  /\bi'?m\s+a\s+(freelance\s+)?(web|software|graphic|ui|ux|app|flutter|react)\s+developer\b/i,
-  /\bi\s+am\s+a\s+(freelance\s+)?(web|software|graphic|ui|ux|app|flutter|react)\s+developer\b/i,
-  /\bi'?m\s+a\s+designer\b/i,
+  // Direct self-identification
+  /\bi'?m\s+a\s+(freelance\s+)?(web|software|graphic|ui|ux|app|flutter|react|frontend|backend|full[- ]?stack)\s+developer\b/i,
+  /\bi\s+am\s+a\s+(freelance\s+)?(web|software|graphic|ui|ux|app|flutter|react|frontend|backend|full[- ]?stack)\s+developer\b/i,
+  /\bi'?m\s+a\s+(designer|freelancer|consultant)\b/i,
   /\bfor\s+hire\b/i,
-  /\btaking\s+new\s+(clients|bookings|projects)\b/i,
+  /\btaking\s+(on\s+)?new\s+(clients|bookings|projects)\b/i,
   /\baccepting\s+new\s+clients\b/i,
-  /\bopen\s+for\s+(clients|projects)\b/i,
-  /\blooking\s+for\s+clients\b/i,
-  /\bfor\s+my\s+(development\s+)?agency\b/i,
-  /\bmy\s+services\b/i,
-  /\bour\s+services\b/i,
-  /\bour\s+agency\b/i,
-  /\bmy\s+agency\b/i,
-  /\bi\s+build\s+(websites|apps|software)\b/i,
-  /\bwe\s+build\s+(websites|apps|software)\b/i,
-  /\boffering\s+(web|app|software)\s+development\b/i,
-  /\bbook\s+a\s+call\b/i,
-  /\bdm\s+me\s+if\s+you\s+need\s+(one|a\s+website|an\s+app)\b/i
+  /\bopen\s+for\s+(clients|projects|freelance\s+work)\b/i,
+  /\blooking\s+for\s+(new\s+)?clients\b/i,
+  /\b(my|our)\s+(agency|services|development\s+agency|web\s+agency|software\s+firm)\b/i,
+  /\bi\s+build\s+(websites|apps|software|dashboards|mvps)\b/i,
+  /\bwe\s+build\s+(websites|apps|software|dashboards|mvps)\b/i,
+  /\bi\s+help\s+(businesses|founders|startups|clients|brands|companies)\b/i,
+  /\bwe\s+help\s+(businesses|founders|startups|clients|brands|companies)\b/i,
+  /\boffering\s+(web|app|software|mobile)\s+development\b/i,
+  /\b(book|schedule)\s+(a\s+)?(call|discovery\s+call|strategy\s+call|meeting)\b/i,
+  /\bcalendly\.com\b/i,
+  
+  // Promotional hooks & calls to action by sellers
+  /\b(need|want)\s+(a\s+)?(website|web\s+app|mobile\s+app|software|custom\s+software|developer|dev)\??\s+[-—]?\s*(dm\s+me|message\s+me|let'?s\s+talk|let'?s\s+connect|contact\s+us|contact\s+me|reach\s+out)\b/i,
+  /\b(building|launching)\s+something\s+for\s+your\s+business\??\s+.*(i\s+can\s+help|dm\s+me|let'?s\s+talk)\b/is,
+  /\bi\s+can\s+help\s+(you\s+)?(turn\s+the\s+idea|build|create|launch)\b/i,
+  /\b(dm\s+me|message\s+me|contact\s+us)\s*[-—:]?\s*(let'?s\s+talk|let'?s\s+connect|if\s+you\s+need|to\s+get\s+started|to\s+discuss\s+pricing)\b/i,
+  /\b(dm|message)\s+(for|to)\s+(order|book|collab|rates|pricing|inquiries|quotes?)\b/i,
+  /\b(link|portfolio)\s+in\s+bio\b/i,
+  /\bcheck\s+(out\s+)?(my|our)\s+(portfolio|recent\s+work|latest\s+project|latest\s+build|latest\s+design|agency)\b/i,
+  /\b(built|designed|created|launched)\s+this\s+(for\s+a\s+client|website|app|dashboard|platform|landing\s+page)\b/i,
+  /\bhere('?s|\s+is)\s+(a|the)\s+(website|app|dashboard|project)\s+(i|we)\s+(built|designed|created)\b/i,
+  /\b(my|our)\s+latest\s+(project|design|website|build|client\s+work)\b/i,
+  /\bstarting\s+at\s+[\$₹€£]\d+/i,
+  /\b[\$₹€£]\d+\s+per\s+(website|page|project|hour)\b/i,
+  /\b(web\s+design|web\s+development|app\s+development|software)\s+agency\b/i,
+  /\b(offering|provide|providing)\s+(web|website|app|software|development|design)\s+services\b/i,
+  /\b(5|10|top|best)\s+(tips|tools|reasons|mistakes|rules)\s+(for|to|every)\b/i,
+  /\bhow\s+to\s+(build|code|design|create)\s+(a\s+)?(website|web\s+app|saas|app)\b/i,
+  /\bcomment\s+["'].*?["']\s+(and\s+i'?ll|to\s+get)\b/i
 ];
 
+// 4. Purely irrelevant, lifestyle, celebrity, entertainment content
+const IRRELEVANT_PATTERNS = [
+  /\bhappy\s+birthday\b/i,
+  /\b(rip|rest\s+in\s+peace)\b/i,
+  /\b(beach|vacation|holiday|sunset|sunrise|traveling|ootd|outfit\s+of\s+the\s+day)\b/i,
+  /\b(workout|fitness|gym|recipe|cooking|dinner|lunch|breakfast)\b/i,
+  /\b(concert|album|song|music\s+video|beyonce|taylor\s+swift|drake|movie|cinema)\b/i,
+  /\b(dating|relationship|crush|horoscope|zodiac)\b/i,
+  /\b(meme|memes|lol|lmao|funny\s+video)\b/i,
+  /\b(weather|raining|sunny|snowing)\b/i
+];
+
+// 5. General non-tech networking chatter
 const NETWORKING_PATTERNS = [
   /\bexpand\s+my\s+network\b/i,
   /\bchat\s+and\s+connect\b/i,
@@ -78,54 +110,46 @@ const NETWORKING_PATTERNS = [
   /\bgood\s+morning\s+(threads|everyone|all)\b/i
 ];
 
-const FOUNDER_BUILDER_PATTERNS = [
-  /\b(saas|early[- ]?stage|startup|tech)\s+founders?\b/i,
-  /\bhey\s+founders?\b/i,
-  /\bto\s+all\s+founders?\b/i,
-  /\bco[- ]?founders?\b/i,
-  /\bwhat\s+(are\s+you|are\s+u)\s+building\b/i,
-  /\bwhat\s+you('?re|\s+are)\s+working\s+on\b/i,
-  /\bdrop\s+what\s+you('?re|\s+are)\s+working\s+on\b/i,
-  /\bpitch\s+your\s+(product|startup|saas|project|app)\b/i,
-  /\bshow\s+your\s+(product|startup|saas|project|app)\b/i,
-  /\blooking\s+to\s+connect\s+with\s+(new\s+(&|and)\s+early[- ]?stage\s+)?founders?\b/i,
-  /\bconnect\s+with\s+(other|fellow)?\s*(saas\s+)?founders?\b/i,
-  /\bpassionate\s+engineers?\b/i,
-  /\bbuilders?\s+who\s+are\s+building\b/i,
-  /\bif\s+you('?re|\s+are)\s+building\s+too\b/i,
-  /\bfiguring\s+out\s+distribution\b/i,
-  /\btech\s+stack\s+are\s+you\b/i,
-  /\bsaas\s+builders?\b/i
-];
-
+// 6. Explicit buyer / client demand signals (Author is seeking someone to build for them)
 const BUYING_INTENT_PATTERNS = [
-  /\bi\s+need(\s+someone|\s+somebody)?\s+(to\s+build|to\s+develop|to\s+create|to\s+make|to\s+design)?\b/i,
-  /\bi'?m\s+looking\s+for(\s+someone|\s+somebody|\s+a\s+company|\s+a\s+developer|\s+a\s+designer|\s+a\s+team|\s+an\s+agency)?\s+(to\s+build|to\s+develop|to\s+design|for\s+our)?\b/i,
-  /\bneed\s+someone\s+to\s+(build|design|develop|make)\b/i,
-  /\bneed\s+a\s+(website|web\s+app|mobile\s+app|developer|designer|platform|system|dashboard|crm|erp|landing\s+page|mvp)\b/i,
-  /\blooking\s+for\s+someone\s+to\s+(build|design|develop|make)\b/i,
-  /\blooking\s+for\s+a\s+(developer|designer|team|agency|freelancer)\s+(to\s+build|to\s+design|to\s+develop|to\s+help)?\b/i,
-  /\b(looking\s+for|need|seeking)\s+(a\s+|an?\s+)?(web\s+designer|website\s+designer|web\s+developer|website\s+developer|frontend\s+developer|backend\s+developer|full[- ]?stack\s+developer|ai\s+developer|ai\s+engineer|flutter\s+developer|freelance\s+developer|app\s+developer)\b/i,
+  // First-person requests for developers, agencies, or software creation
+  /\b(i|we)\s+need(\s+someone|\s+somebody)?\s+(to\s+build|to\s+develop|to\s+create|to\s+make|to\s+design|to\s+code)\b/i,
+  /\b(i'?m|we'?re|we\s+are)\s+looking\s+(for|to\s+hire)\s+(someone|somebody|a\s+company|a\s+developer|a\s+designer|a\s+team|an\s+agency|a\s+freelancer)\s+(to\s+build|to\s+develop|to\s+design|for\s+our)?\b/i,
+  /\blooking\s+for\s+someone\s+to\s+(build|design|develop|make|code)\b/i,
+  /\bneed\s+someone\s+to\s+(build|design|develop|make|code)\b/i,
+  /\bneed\s+(a\s+|our\s+|my\s+)?(site|website|app|web\s+app|platform|crm|erp|dashboard|mvp)\s+(built|developed|created|designed|redesigned)\b/i,
+  /\blooking\s+to\s+hire\s+(a\s+|an?\s+)?(web\s+developer|app\s+developer|software\s+developer|agency|freelancer|team)\b/i,
+  /\bhire\s+(a\s+)?(web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|freelancer\s+to\s+build)\b/i,
+  
+  // Specific role or service requests
+  /\b(looking\s+for|need|seeking)\s+(a\s+|an?\s+)?(web\s+designer|website\s+designer|web\s+developer|website\s+developer|frontend\s+developer|backend\s+developer|full[- ]?stack\s+developer|ai\s+developer|ai\s+engineer|flutter\s+developer|freelance\s+developer|app\s+developer|software\s+engineer)\s*(for|to|with)?\b/i,
   /\b(looking\s+for|need|seeking)\s+(someone\s+for\s+)?website\s+(design|development|building|redesign)\b/i,
-  /\b(looking\s+for|need|seeking)\s+(an?\s+)?ai\s+(development|team|agency|engineer|developer|integration)\b/i,
-  /\b(who|anyone)\s+(can|knows?\s+how\s+to|here\s+who\s+can)\s+(build|make|design|develop|create)\b/i,
+  /\b(looking\s+for|need|seeking)\s+(an?\s+)?ai\s+(development(\s+team)?|team|agency|engineer|developer|integration)\b/i,
+  /\bneed\s+(an?\s+)?(app|mobile\s+app)\s+developer\s+to\s+(create|build|develop)\b/i,
+  /\bneed\s+(a\s+|an?\s+)?(website|web\s+app|mobile\s+app|software|ai|ecommerce)\s*(building|development|design)?\s*(service|services|solution|solutions)\b/i,
+  
+  // Community questions seeking recommendations / providers
+  /\b(who|anyone)\s+(can|knows?\s+how\s+to|here\s+who\s+can)\s+(build|make|design|develop|create)\s+(a\s+|our\s+|my\s+)?(website|web\s+app|app|platform|saas|mvp|system)\b/i,
+  /\b(can\s+anyone|anyone(\s+here)?\s+can|does\s+anyone)\s+(recommend|suggest)\s+(a\s+)?(good\s+)?(developer|web\s+dev|software\s+agency|web\s+agency)\b/i,
   /\b(anyone(\s+here)?\s+knows?|recommend|looking\s+for\s+recommendations?\s+for)\s+(a\s+)?(good\s+)?(developer|designer|web\s+dev|agency)\b/i,
-  /\bneed\s+(a\s+|our\s+|my\s+)?(site|website|app|web\s+app)\s+built\b/i,
-  /\bhelp\s+me\s+(build|create|develop|design)\b/i,
-  /\bneed\s+help\s+(building|creating|developing|designing)\b/i,
-  /\bcan\s+someone\s+(build|create|develop|design)\b/i,
-  /\bcan\s+somebody\s+(build|create|develop|design)\b/i,
-  /\b(want|planning|trying)\s+to\s+(build|launch|create|make)\s+(a\s+|an?\s+)?(website|web\s+app|app|platform|saas|mvp|ai\s+bot|chatbot)\b/i,
+  /\bwhere\s+(can\s+i|to)\s+(find|hire)\s+(a\s+good\s+)?(developer|agency|team)\s+to\s+build\b/i,
+  
+  // Calls requesting portfolios / proposals from developers
+  /\b(please\s+)?dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|approximate\s+charges|past\s+work|samples?)\b/i,
+  /\b(send|share)\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|work)\b/i,
+  
+  // Assistance requests for building products
+  /\bhelp\s+me\s+(build|create|develop|design)\s+(a\s+|an?\s+)?(website|app|saas|platform|mvp)\b/i,
+  /\bneed\s+help\s+(building|creating|developing|designing)\s+(a\s+|an?\s+)?(website|app|saas|platform|mvp)\b/i,
+  /\bcan\s+someone\s+(build|create|develop|design)\s+(a\s+|an?\s+)?(website|app|platform|tool)\b/i,
   /\bwe\s+need\s+(an?\s+)?(app|website|crm|erp|dashboard|saas|ai\s+system|automation|landing\s+page)\b/i,
-  /\bwe\s+want\s+to\s+automate\b/i,
-  /\bneed\s+to\s+automate\b/i,
-  /\bseeking\s+someone\s+to\s+(build|develop|implement|design)\b/i,
-  /\bhire\s+(a\s+)?(web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|freelancer\s+to\s+build)\b/i
+  /\b(we\s+need|need|want)\s+to\s+automate\b/i,
+  /\bseeking\s+someone\s+to\s+(build|develop|implement|design)\b/i
 ];
 
 class IntentClassifier {
   /**
-   * Classifies post intent and qualifies lead.
+   * Classifies post intent and qualifies lead with strict buyer-only standard.
    *
    * @param {Object} post - { text, username, url }
    * @returns {Object} Lead decision object
@@ -176,7 +200,7 @@ class IntentClassifier {
       };
     }
 
-    // Rule 1: Recruitment / Hiring posts are strictly ignored
+    // Rule 1: Recruitment / 9-5 Hiring posts are strictly ignored
     for (const pat of RECRUITMENT_PATTERNS) {
       if (pat.test(text)) {
         return {
@@ -210,7 +234,7 @@ class IntentClassifier {
       }
     }
 
-    // Rule 3: Service providers / freelancers selling services are strictly ignored
+    // Rule 3: Service providers / freelancers selling or showcasing services are strictly ignored
     for (const pat of PROVIDER_PATTERNS) {
       if (pat.test(text)) {
         return {
@@ -220,14 +244,31 @@ class IntentClassifier {
           is_genuine_buyer: false,
           lead_type: "SERVICE_PROVIDER",
           intent: "PROVIDER",
-          reason: "Author is advertising their own freelance/agency services.",
+          reason: "Author is advertising or showcasing their own freelance/agency services.",
           matchedServices: [],
           should_reply: false
         };
       }
     }
 
-    // Rule 4: General non-tech networking posts are ignored
+    // Rule 4: Irrelevant lifestyle, celebrity, travel, meme, birthday posts
+    for (const pat of IRRELEVANT_PATTERNS) {
+      if (pat.test(text)) {
+        return {
+          qualified: false,
+          score: 0,
+          temperature: "IGNORE",
+          is_genuine_buyer: false,
+          lead_type: "IRRELEVANT",
+          intent: "IRRELEVANT",
+          reason: "Post is personal lifestyle, celebrity, entertainment, or irrelevant content.",
+          matchedServices: [],
+          should_reply: false
+        };
+      }
+    }
+
+    // Rule 5: General non-tech networking posts
     for (const pat of NETWORKING_PATTERNS) {
       if (pat.test(text)) {
         return {
@@ -244,25 +285,7 @@ class IntentClassifier {
       }
     }
 
-    // Rule 4b: Founder / SaaS Builder / Engineer discussions (Core Engagement Target)
-    for (const pat of FOUNDER_BUILDER_PATTERNS) {
-      if (pat.test(text)) {
-        return {
-          qualified: true,
-          score: 80,
-          temperature: "WARM",
-          is_genuine_buyer: true,
-          lead_type: "FOUNDER_BUILDER",
-          intent: "FOUNDER_BUILDER",
-          reason: "Founder / SaaS builder / passionate engineer discussion matching CodeAir engagement scope.",
-          matchedCategories: ["Web Development", "AI & Automation"],
-          matchedServices: ["SaaS development", "Custom software", "AI automation"],
-          should_reply: true
-        };
-      }
-    }
-
-    // Rule 5: Service matching & exclusion check
+    // Rule 6: Service matching & exclusion check
     const match = serviceMatcher.matchServices(text);
 
     if (match.isExcluded) {
@@ -293,7 +316,7 @@ class IntentClassifier {
       };
     }
 
-    // Rule 6: Check buying/project intent
+    // Rule 7: Check strict buying/project intent
     let hasBuyingIntent = false;
     for (const pat of BUYING_INTENT_PATTERNS) {
       if (pat.test(text)) {
@@ -302,7 +325,7 @@ class IntentClassifier {
       }
     }
 
-    // Ambiguous developer mention check: "looking for a developer" by itself without project is not enough
+    // Ambiguous developer mention check: "looking for a developer" by itself without project context
     if (/^\s*looking\s+for\s+a\s+developer\s*\.?\s*$/i.test(text)) {
       return {
         qualified: false,
@@ -317,6 +340,7 @@ class IntentClassifier {
       };
     }
 
+    // Only qualify if there is clear, unambiguous buyer intent
     if (hasBuyingIntent) {
       return {
         qualified: true,
@@ -332,15 +356,15 @@ class IntentClassifier {
       };
     }
 
-    // If it mentions our tech categories without explicit "I need", it's a general technical discussion
+    // If it mentions tech categories without explicit buyer demand, it's general technical chatter
     return {
       qualified: false,
-      score: 45,
+      score: 40,
       temperature: "IGNORE",
       is_genuine_buyer: false,
       lead_type: "GENERAL_TECH",
       intent: "GENERAL",
-      reason: "Relevant technology discussion but no direct project buying intent detected.",
+      reason: "Relevant technology discussion but author is not actively requesting or hiring for a project.",
       matchedCategories: match.matchedCategories,
       matchedServices: match.matchedServices,
       should_reply: false

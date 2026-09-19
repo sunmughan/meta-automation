@@ -24,21 +24,38 @@ async function extractPostsFromDom(page) {
 
       if (posts.has(key)) continue;
 
-      let node = link;
-      let bestText = "";
+      // Locate container article to isolate post text and prevent bleed from neighbors
+      const container = link.closest('article, [data-pressable-container="true"], div[style*="border-bottom"]') || link.parentElement;
+      let bestText = (container ? container.innerText : "").trim();
 
-      for (let level = 0; level < 15 && node; level++) {
-        const text = (node.innerText || "").trim();
-        if (text.length > bestText.length && text.length < 5000) {
-          bestText = text;
+      if (!bestText || bestText.length < 20) {
+        let node = link;
+        for (let level = 0; level < 6 && node; level++) {
+          const text = (node.innerText || "").trim();
+          if (text.length > bestText.length && text.length < 3000) {
+            bestText = text;
+          }
+          if (text.length >= 40 && text.length <= 2000) {
+            break;
+          }
+          node = node.parentElement;
         }
-        if (text.length >= 40 && text.length <= 2500) {
-          break;
-        }
-        node = node.parentElement;
       }
 
       if (!bestText || bestText.length < 20) continue;
+
+      // Filter out stale posts older than 14 days or from prior years
+      if (/\b\d{1,2}\/\d{1,2}\/(\d{4})\b/.test(bestText)) {
+        const yearMatch = bestText.match(/\b\d{1,2}\/\d{1,2}\/(\d{4})\b/);
+        const year = parseInt(yearMatch[1], 10);
+        if (year < 2026) continue; // Skip posts from 2024, 2025
+      }
+
+      if (/\b(\d+)\s*w\b/i.test(bestText)) {
+        const weekMatch = bestText.match(/\b(\d+)\s*w\b/i);
+        const weeks = parseInt(weekMatch[1], 10);
+        if (weeks > 2) continue; // Skip posts older than 2 weeks
+      }
 
       posts.set(key, {
         username,
@@ -218,7 +235,14 @@ const HIGH_INTENT_SEARCH_QUERIES = [
   "need custom software",
   "looking for flutter developer",
   "ai chatbot for business",
-  "need full stack developer"
+  "need full stack developer",
+  "looking for web development agency",
+  "need someone to build a website",
+  "recommend a web developer",
+  "need an app developer",
+  "looking to hire a developer",
+  "who can build an app",
+  "need software built"
 ];
 
 /**
@@ -241,8 +265,9 @@ async function searchThreadsKeywords(options = {}) {
     stateStore.state.searchIndex = (stateStore.state.searchIndex + 1) % HIGH_INTENT_SEARCH_QUERIES.length;
     const query = HIGH_INTENT_SEARCH_QUERIES[idx];
 
-    logger.info(`[SEARCH DISCOVERY] Searching Threads for high-intent query: "${query}"...`);
-    const searchUrl = `https://www.threads.com/search?q=${encodeURIComponent(query)}&serp_type=default`;
+    logger.info(`[SEARCH DISCOVERY] Searching Threads for high-intent query: "${query}" (Recent Filter)...`);
+    // Crucial: filter=recent ensures we search current real-time requests, not ancient posts from past years
+    const searchUrl = `https://www.threads.com/search?q=${encodeURIComponent(query)}&filter=recent`;
 
     try {
       await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 35000 });
