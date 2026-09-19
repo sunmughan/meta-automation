@@ -1,15 +1,13 @@
 /**
  * src/leads/intent-classifier.js
- * Strict deterministic intent classifier & lead qualification engine.
+ * Auxiliary / Deterministic intent classifier & qualification fixture.
  *
- * Enforces lead-rules.md:
- * Genuine CodeAir lead strictly requires:
- *   1. AUTHENTIC BUYER / PROJECT INTENT (Author is requesting/hiring/needing software development)
- *   2. CODEAIR SERVICE MATCH (Web, Mobile, AI/Automation, SaaS, Business Systems, Hospitality, Backend/APIs)
- *   3. NOT RECRUITMENT (9-5 HR hiring, salaried job ads with resume/cv/careers application)
- *   4. NOT SERVICE PROVIDER (Freelancer, agency, or developer advertising or showcasing their own services)
- *   5. NOT JOB SEEKER (Candidate looking for employment/gigs)
- *   6. NOT IRRELEVANT (Celebrity, memes, personal lifestyle, birthdays, travel, entertainment)
+ * ARCHITECTURAL NOTICE (v1.1.8+):
+ * The authoritative, canonical brain for all live post analysis is
+ * the pure Antigravity AI Decision Engine: src/ai/ai-decision-engine.js.
+ * This file is retained as an auxiliary test fixture, deterministic benchmark
+ * harness, and fallback classifier. For production asynchronous reasoning, use
+ * classifyAsync() or invoke aiDecisionEngine.qualifyPost() directly.
  */
 
 const serviceMatcher = require("./service-matcher");
@@ -379,6 +377,19 @@ class IntentClassifier {
       matchedServices: match.matchedServices,
       should_reply: false
     };
+  }
+
+  /**
+   * Delegates asynchronous qualification directly to the single authoritative
+   * Antigravity AI Decision Engine.
+   *
+   * @param {Object} post
+   * @param {Object} [options]
+   * @returns {Promise<Object>}
+   */
+  async classifyAsync(post, options = {}) {
+    const aiDecisionEngine = require("../ai/ai-decision-engine");
+    return await aiDecisionEngine.qualifyPost(post, options);
   }
 }
 

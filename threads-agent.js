@@ -146,6 +146,9 @@ async function commandAnalyze(options = {}) {
       } else {
         action = "COMMENT_POSTED";
       }
+    } else if (decision.quarantined || decision.lead_type === "QUARANTINED") {
+      ignoredCount++;
+      action = `QUARANTINED (${decision.reason || "AI runtime failure - zero guessing"})`;
     } else {
       ignoredCount++;
       action = `SKIPPED (${decision.reason || "Not qualified"})`;
@@ -201,9 +204,11 @@ async function commandAnalyze(options = {}) {
         await new Promise(r => setTimeout(r, 4000));
       }
     } else {
-      stateStore.updatePostStatus(post.postId, "IGNORED", {
+      const nonQualifiedStatus = (decision.quarantined || decision.lead_type === "QUARANTINED") ? "QUARANTINED" : "IGNORED";
+      stateStore.updatePostStatus(post.postId, nonQualifiedStatus, {
         intent: decision.intent,
         leadType: decision.lead_type,
+        quarantined: Boolean(decision.quarantined),
         qualificationReason: decision.reason
       }, post.platform || "threads");
       stateStore.saveState();

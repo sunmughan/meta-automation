@@ -2,16 +2,116 @@
  * src/ai/ai-runtime.js
  * Primary AI runtime for CodeAir Threads + Instagram System.
  * Pure Antigravity AI Agent runtime (agy / Antigravity SDK).
- * Enforces structured JSON schema parsing and resilient retry execution.
+ * Enforces structured JSON schema parsing, queue-based concurrency governance, and resilient execution.
  */
 
 const { spawn } = require("child_process");
 const CONFIG = require("../../config");
 const logger = require("../logging/logger");
 
+/**
+ * In-memory Asynchronous Queue & Concurrency Worker for Antigravity AI calls.
+ * Prevents process thrashing, enforces priority scheduling, and caches results.
+ */
+class AiQueue {
+  constructor(concurrency = 1) {
+    this.concurrency = concurrency;
+    this.queue = []; // Array of { id, type, priority, prompt, executor, resolve, reject, options }
+    this.activeCount = 0;
+    this.completedCount = 0;
+    this.cache = new Map(); // cacheKey -> { result, expiresAt }
+    this.cacheTtlMs = 120000; // 2-minute deduplication window
+  }
+
+  /**
+   * Enqueues an AI task with priority and task categorization.
+   * Task types: "DM_RESPONSE" | "REPLY_GENERATION" | "COMMENT_SYNTHESIS" | "POST_ANALYSIS"
+   */
+  enqueue(type, prompt, executor, options = {}) {
+    // 1. In-memory Deduplication Cache Check
+    const cacheKey = `${type}:${prompt.trim()}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return Promise.resolve(cached.result);
+    }
+
+    const priorityMap = {
+      DM_RESPONSE: 1,
+      REPLY_GENERATION: 2,
+      COMMENT_SYNTHESIS: 3,
+      POST_ANALYSIS: 4
+    };
+    const priority = options.priority || priorityMap[type] || 5;
+
+    return new Promise((resolve, reject) => {
+      const task = {
+        id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        type,
+        priority,
+        prompt,
+        executor,
+        resolve: (result) => {
+          this.cache.set(cacheKey, { result, expiresAt: Date.now() + this.cacheTtlMs });
+          // Prevent unbounded memory growth
+          if (this.cache.size > 200) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+          }
+          resolve(result);
+        },
+        reject,
+        options
+      };
+
+      this.queue.push(task);
+      this.queue.sort((a, b) => a.priority - b.priority);
+      this.processNext();
+    });
+  }
+
+  /**
+   * Processes the next task in the queue respecting concurrency limits.
+   */
+  async processNext() {
+    if (this.activeCount >= this.concurrency || this.queue.length === 0) {
+      return;
+    }
+
+    const task = this.queue.shift();
+    this.activeCount++;
+
+    try {
+      const res = await task.executor(task.prompt, task.options);
+      this.completedCount++;
+      task.resolve(res);
+    } catch (err) {
+      task.reject(err);
+    } finally {
+      this.activeCount--;
+      this.processNext();
+    }
+  }
+
+  getStatus() {
+    return {
+      pending: this.queue.length,
+      active: this.activeCount,
+      completed: this.completedCount,
+      cacheEntries: this.cache.size
+    };
+  }
+
+  clear() {
+    this.queue = [];
+    this.cache.clear();
+  }
+}
+
 class AiRuntime {
   constructor() {
     this.model = CONFIG.MODEL || "gemini-3.6-flash";
+    const maxConcurrency = Number(process.env.AI_MAX_CONCURRENCY) || 1;
+    this.queue = new AiQueue(maxConcurrency);
   }
 
   cleanAndParseJson(text) {
@@ -91,17 +191,37 @@ class AiRuntime {
 
   /**
    * Primary entry point for AI reasoning.
-   * Exclusively leverages the authenticated Antigravity AI runtime with retry resilience.
+   * Routes all calls through the AiQueue for concurrency control and deduplication.
+   *
+   * @param {string} prompt
+   * @param {Object} [options] - { taskType, priority, timeoutMs, retries }
+   * @returns {Promise<Object>}
    */
-  async callAi(prompt, retries = 2) {
+  async callAi(prompt, options = {}) {
+    const taskType = options.taskType || "POST_ANALYSIS";
+    return this.queue.enqueue(
+      taskType,
+      prompt,
+      (p, opts) => this.executeAiCall(p, opts),
+      options
+    );
+  }
+
+  /**
+   * Internal execution with retry backoff.
+   */
+  async executeAiCall(prompt, options = {}) {
+    const retries = options.retries !== undefined ? options.retries : 2;
+    const timeoutMs = options.timeoutMs || 90000;
     let lastError = null;
+
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        return await this.callAntigravityCli(prompt);
+        return await this.callAntigravityCli(prompt, timeoutMs);
       } catch (err) {
         lastError = err;
         if (err.code === "ENOENT") {
-          // Binary not found on system PATH; immediate fallback without delay
+          // Binary not found on system PATH; abort immediately
           break;
         }
         if (attempt < retries) {
@@ -112,6 +232,13 @@ class AiRuntime {
       }
     }
     throw lastError;
+  }
+
+  /**
+   * Returns current AI Queue status.
+   */
+  getQueueStatus() {
+    return this.queue.getStatus();
   }
 }
 
