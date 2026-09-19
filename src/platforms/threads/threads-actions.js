@@ -9,6 +9,7 @@ const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const rateLimiter = require("../../safety/rate-limiter");
+const intentClassifier = require("../../leads/intent-classifier");
 const logger = require("../../logging/logger");
 
 class ThreadsActions {
@@ -82,40 +83,48 @@ class ThreadsActions {
       page = await browserManager.getThreadsPage();
       await page.bringToFront();
 
-      // Attempt to find the post on the current feed first
-      const foundOnFeed = await page.evaluate((postId, username) => {
-        let link = document.querySelector(`a[href*="${postId}"]`);
-        if (!link && username) {
-          const articles = [...document.querySelectorAll('article, [data-pressable-container="true"]')];
-          const match = articles.find(a => 
-            a.innerText.toLowerCase().includes(`@${username.toLowerCase()}`) || 
-            a.innerText.toLowerCase().includes(username.toLowerCase())
-          );
-          if (match) {
-            link = match.querySelector('a[href*="/post/"]') || match.querySelector('svg path[d*="M12 3a9 9 0"]')?.closest('div[role="button"], button');
-          }
-        }
-        if (link) {
-          link.scrollIntoView({ behavior: "smooth", block: "center" });
-          link.click();
-          return true;
-        }
-        return false;
-      }, post.postId, post.username);
+      // 1. Direct Post URL Navigation (Never navigate to profile and never guess fallback posts)
+      const directPostUrl = post.url || `https://www.threads.com/@${post.username}/post/${post.postId}`;
+      logger.info(`Navigating directly to verified post URL: ${directPostUrl}`, {
+        postId: post.postId,
+        username: post.username
+      });
 
-      if (!foundOnFeed) {
-        await page.goto(`https://www.threads.com/@${post.username}`, { waitUntil: "domcontentloaded", timeout: 30000 });
-        await new Promise(r => setTimeout(r, 2500));
-        await page.evaluate((postId) => {
-          const link = document.querySelector(`a[href*="${postId}"]`) || document.querySelector('a[href*="/post/"]');
-          if (link) {
-            link.scrollIntoView({ behavior: "smooth", block: "center" });
-            link.click();
-          }
-        }, post.postId);
+      await page.goto(directPostUrl, { waitUntil: "domcontentloaded", timeout: 35000 });
+      await new Promise(r => setTimeout(r, 2500));
+
+      // 2. Strict URL Verification Guard
+      const currentUrl = page.url();
+      if (!currentUrl.includes(post.postId)) {
+        logger.error(`Navigation verification failed: current URL (${currentUrl}) does not match expected post ID ${post.postId}. Aborting comment.`);
+        return { success: false, reason: "Target post URL mismatch or post no longer available." };
       }
 
-      await new Promise(r => setTimeout(r, 2500));
+      // 3. Double-Guard: Verify on-page content is genuine buyer requirement before typing
+      const onPageContent = await page.evaluate(() => {
+        const article = document.querySelector('article, [data-pressable-container="true"]');
+        const text = article ? (article.innerText || "").trim() : (document.body.innerText || "").trim();
+        return { text };
+      });
+
+      const recheck = intentClassifier.classify({
+        text: onPageContent.text || post.text,
+        username: post.username
+      });
+
+      if (!recheck.qualified || !recheck.is_genuine_buyer) {
+        logger.warn(`Post ${post.postId} failed live on-page qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
+          action: "COMMENT_GUARD_ABORTED",
+          postId: post.postId,
+          username: post.username,
+          reason: recheck.reason,
+          leadType: recheck.lead_type
+        });
+        return {
+          success: false,
+          reason: `On-page double-guard rejected: ${recheck.reason}`
+        };
+      }
 
       // Wait for or activate reply composer
       let textbox = await page.$('div[role="textbox"][contenteditable="true"]');
