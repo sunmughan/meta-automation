@@ -13,13 +13,17 @@ mkdir -p "$RELEASE_DIR"
 
 cd "$ROOT_DIR"
 
-# 1. Clean temporary and runtime files
+VERSION="$(node -p 'require("./package.json").version')"
+echo "==> Packaging version v${VERSION}..."
+
+# 1. Clean temporary, old release and runtime files
 rm -f threads-agent.pid ./*.log
+rm -f "$RELEASE_DIR"/meta-automation-*.tgz "$RELEASE_DIR"/meta-automation-*.tar.gz "$RELEASE_DIR"/meta-automation-*.zip
 
 # 2. Build npm package
 echo "==> Generating npm tarball..."
 npm pack
-mv meta-automation-*.tgz "$RELEASE_DIR/meta-automation-1.1.0.tgz"
+mv meta-automation-*.tgz "$RELEASE_DIR/meta-automation-${VERSION}.tgz"
 
 # 3. Build tar.gz bundles
 echo "==> Packaging tar.gz distributions..."
@@ -54,7 +58,7 @@ zip -r "$TEMP_ZIP" . \
     -x "*.bak*" > /dev/null
 
 cp "$TEMP_ZIP" "$RELEASE_DIR/meta-automation-windows-x64.zip"
-cp "$TEMP_ZIP" "$RELEASE_DIR/meta-automation-universal-v1.1.0.zip"
+cp "$TEMP_ZIP" "$RELEASE_DIR/meta-automation-universal-v${VERSION}.zip"
 rm -f "$TEMP_ZIP"
 
 # 5. Generate fresh SHA256 checksums

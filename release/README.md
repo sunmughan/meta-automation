@@ -1,6 +1,6 @@
-# Release Builds - Meta Automation v1.1.0 (Multi-Platform)
+# Release Builds - Meta Automation v1.1.1 (Multi-Platform)
 
-This directory contains official pre-built distribution packages for **Meta Automation v1.1.0** supporting **Linux**, **macOS**, **Windows**, and **Android (Termux + Termux:X11)**.
+This directory contains official pre-built distribution packages for **Meta Automation v1.1.1** supporting **Linux**, **macOS**, **Windows**, and **Android (Termux + Termux:X11)**.
 
 ---
 
@@ -12,8 +12,8 @@ This directory contains official pre-built distribution packages for **Meta Auto
 | **`meta-automation-macos-universal.tar.gz`** | macOS | `.tar.gz` | ~186 KB | Universal bundle for Apple Silicon (M1/M2/M3/M4) & Intel Macs. |
 | **`meta-automation-windows-x64.zip`** | Windows | `.zip` | ~223 KB | Complete Windows package with PowerShell & 1-click batch scripts. |
 | **`meta-automation-android-termux.tar.gz`** | Android | `.tar.gz` | ~186 KB | Termux + Termux:X11 pre-configured package with 1-tap launcher. |
-| **`meta-automation-universal-v1.1.0.zip`** | Universal | `.zip` | ~223 KB | All-in-one archive containing all platform scripts & installers. |
-| **`meta-automation-1.1.0.tgz`** | Node/npm | `.tgz` | ~1.2 MB | Standard npm distribution package. |
+| **`meta-automation-universal-v1.1.1.zip`** | Universal | `.zip` | ~223 KB | All-in-one archive containing all platform scripts & installers. |
+| **`meta-automation-1.1.1.tgz`** | Node/npm | `.tgz` | ~1.2 MB | Standard npm distribution package. |
 | **`SHA256SUMS.txt`** | All | Text | ~600 B | Cryptographic SHA-256 verification hashes for all packages. |
 
 ---
@@ -58,4 +58,4 @@ cd meta-automation
 
 ---
 
-*Official release v1.1.0 verified and packaged by [CodeAir Software Solutions](https://www.codeair.tech).*
+*Official release v1.1.1 verified and packaged by [CodeAir Software Solutions](https://www.codeair.tech).*
