@@ -31,11 +31,11 @@ else
     fi
 fi
 
-# 2. Brave CDP Status
-if ss -tulpn | grep -q ":9222 "; then
-    echo "🟢 Brave CDP     : ACTIVE (http://127.0.0.1:9222)"
+# 2. Browser CDP Status
+if ss -tulpn 2>/dev/null | grep -q ":9222 " || curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+    echo "🟢 Browser CDP   : ACTIVE (http://127.0.0.1:9222)"
 else
-    echo "🔴 Brave CDP     : NOT CONNECTED (Run ./scripts/launch-brave-cdp.sh)"
+    echo "🔴 Browser CDP   : NOT CONNECTED (Run node scripts/launch-browser-cdp.js)"
 fi
 
 # 3. State & metrics report

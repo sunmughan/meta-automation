@@ -1,12 +1,21 @@
 /**
  * tests/cross-platform-audit.js
- * Verification suite auditing multi-platform compatibility across Linux, macOS, Windows, and Android Termux.
+ * Verification suite auditing multi-platform & multi-browser compatibility
+ * across Linux, macOS, Windows, and Android Termux.
  */
 
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
-const { getPlatformBrowserConfig, isCdpActive } = require("../scripts/launch-browser-cdp");
+const {
+  getPlatformBrowserConfig,
+  getBrowserCatalog,
+  resolveBrowser,
+  detectSystemDefaultBrowser,
+  detectRunningBrowser,
+  isCdpActive
+} = require("../scripts/launch-browser-cdp");
+const CONFIG = require("../config");
 
 let passed = 0;
 let failed = 0;
@@ -25,17 +34,41 @@ function test(name, fn) {
 
 async function runCrossPlatformAudit() {
   console.log("\n==================================================");
-  console.log("  CROSS-PLATFORM ARCHITECTURE & RUNNER AUDIT");
+  console.log("  CROSS-PLATFORM & MULTI-BROWSER AUDIT");
   console.log("==================================================\n");
 
   const ROOT = path.resolve(__dirname, "..");
 
-  // 1. Universal Browser CDP Config
-  test("Universal CDP: Resolves platform browser config properly", () => {
-    const cfg = getPlatformBrowserConfig();
-    assert(cfg.platform, "Platform must be defined");
-    assert(cfg.binary, "Binary must be resolved");
-    assert(cfg.userDataDir, "User data directory must be resolved");
+  // 1. Multi-Browser Catalog & Auto-Detection
+  test("Browser Catalog: Contains Chrome, Edge, Brave, and Chromium", () => {
+    const catalog = getBrowserCatalog();
+    assert(catalog.chrome, "Catalog must contain Chrome");
+    assert(catalog.edge, "Catalog must contain Edge");
+    assert(catalog.brave, "Catalog must contain Brave");
+    assert(catalog.chromium, "Catalog must contain Chromium");
+  });
+
+  test("Browser Detection: Resolves Auto / Default browser cleanly", () => {
+    const autoBrowser = resolveBrowser("auto");
+    assert(autoBrowser, "Must resolve auto browser");
+    assert(autoBrowser.name, "Resolved browser must have a name");
+    assert(autoBrowser.binary, "Resolved browser must have a binary");
+    assert(autoBrowser.userDataDir, "Resolved browser must have a user data dir");
+  });
+
+  test("Browser Choice: Supports explicit browser resolution (Brave, Edge, Chromium)", () => {
+    const brave = resolveBrowser("brave");
+    assert(brave.type === "brave", "Must resolve Brave");
+
+    const edge = resolveBrowser("edge");
+    assert(edge.type === "edge", "Must resolve Edge");
+
+    const chromium = resolveBrowser("chromium");
+    assert(chromium.type === "chromium", "Must resolve Chromium");
+  });
+
+  test("Config: Exposes BROWSER_TYPE setting", () => {
+    assert(CONFIG.BROWSER_TYPE !== undefined, "CONFIG.BROWSER_TYPE must be defined");
   });
 
   // 2. Installers verification

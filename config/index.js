@@ -59,7 +59,8 @@ const CONFIG = {
   GEMINI_API_KEY: sanitizeApiKey(process.env.GEMINI_API_KEY),
   MODEL: process.env.AI_MODEL || "gemini-3.6-flash",
 
-  // Browser CDP & Display Configuration (Brave Browser on Zorin OS)
+  // Browser CDP & Display Configuration (Chrome, Edge, Brave, Chromium)
+  BROWSER_TYPE: (process.env.BROWSER_TYPE || process.env.BROWSER || "auto").toLowerCase(),
   CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
   THREADS_CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
   DISPLAY: process.env.DISPLAY || ":1",

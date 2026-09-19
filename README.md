@@ -2,6 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
+[![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
 [![Antigravity](https://img.shields.io/badge/Cognitive%20Brain-Antigravity%20AI-9945FF.svg?style=for-the-badge)](ANTIGRAVITY_GUIDE.md)
@@ -14,35 +15,9 @@ Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this e
 
 ---
 
-## 📑 Table of Contents
-
-- [Key Architectural Highlights](#key-architectural-highlights)
-- [System Architecture](#system-architecture)
-- [Core Capabilities](#core-capabilities)
-  - [1. High-Intent Lead Discovery](#1-high-intent-lead-discovery)
-  - [2. Multi-Tier Semantic Filtering](#2-multi-tier-semantic-filtering)
-  - [3. Dual Identity Routing (Founder vs. Company)](#3-dual-identity-routing-founder-vs-company)
-  - [4. High-Fidelity HTML Visual Card & Slide Renderer](#4-high-fidelity-html-visual-card--slide-renderer)
-  - [5. Content Strategy & Automated Publishing](#5-content-strategy--automated-publishing)
-  - [6. Anti-Bot Stealth & Operational Guardrails](#6-anti-bot-stealth--operational-guardrails)
-- [Directory Structure](#directory-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Configuration](#environment-configuration)
-  - [Launching the Browser in CDP Mode](#launching-the-browser-in-cdp-mode)
-- [Operational Commands](#operational-commands)
-  - [Daemon Management (Background Service)](#daemon-management-background-service)
-  - [Direct CLI Usage](#direct-cli-usage)
-- [Verification & Automated Test Suite](#verification--automated-test-suite)
-- [Sponsorship & Enterprise Services](#sponsorship--enterprise-services)
-- [License](#license)
-
----
-
 ## 🌟 Key Architectural Highlights
 
-- **Zero Session Friction**: Connects directly to your already-logged-in desktop browser (Brave / Chromium) over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
+- **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
 - **Autonomous Multi-Agent Brain**: Employs deep contextual LLM analysis (Gemini / Antigravity Agent Runtime) backed by structured business knowledge from `knowledge/`.
 - **Stripe/Linear-Grade Graphic Rendering**: Renders 1080x1080 high-contrast social cards, metric grids, and multi-slide carousel decks directly with headless CSS/HTML rendering and official SVG/WebP branding.
 - **Persistent Background Daemon**: Comes equipped with process management (`start-automation`, `status-automation`, `stop-automation`) that runs 24/7 in the background with auto-restart and telemetry tracking.

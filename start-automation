@@ -15,11 +15,15 @@ echo "=================================================="
 echo "  🚀 CODEAIR THREADS + INSTAGRAM AUTOMATION"
 echo "=================================================="
 
-# 1. Ensure Brave CDP is running on port 9222
-echo "[1/3] Checking Brave Browser CDP..."
-"$SCRIPT_DIR/scripts/launch-brave-cdp.sh"
+# 1. Ensure Browser CDP is running on port 9222 (Chrome, Edge, Brave, Chromium)
+echo "[1/3] Verifying Browser CDP on port 9222 (Chrome, Edge, Brave, Chromium)..."
+if [ -f "$SCRIPT_DIR/scripts/launch-browser-cdp.js" ]; then
+    node "$SCRIPT_DIR/scripts/launch-browser-cdp.js" "$@"
+else
+    "$SCRIPT_DIR/scripts/launch-brave-cdp.sh" "$@"
+fi
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to establish Brave CDP connection on port 9222."
+    echo "❌ Failed to establish Browser CDP connection on port 9222."
     exit 1
 fi
 

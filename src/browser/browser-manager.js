@@ -68,9 +68,10 @@ class BrowserManager {
     const reachable = await this.isCdpReachable();
     if (!reachable) {
       throw new Error(
-        `Brave CDP is not reachable at ${this.cdpUrl}.\n` +
-        `To attach to your logged-in session, launch Brave with CDP:\n` +
-        `  ./scripts/launch-brave-cdp.sh --restart\n` +
+        `Browser CDP is not reachable at ${this.cdpUrl}.\n` +
+        `To attach to your logged-in session, launch your browser (Chrome, Edge, Brave, Chromium) with CDP:\n` +
+        `  node scripts/launch-browser-cdp.js\n` +
+        `  (or ./scripts/launch-brave-cdp.sh)\n` +
         `Your logged-in accounts (Threads, Instagram) and tabs will be fully preserved.`
       );
     }
@@ -96,8 +97,8 @@ class BrowserManager {
     }
 
     throw new Error(
-      `Could not connect to Brave CDP at ${this.cdpUrl}.\n` +
-      `Ensure Brave is running with --remote-debugging-port=9222.\n` +
+      `Could not connect to Browser CDP at ${this.cdpUrl}.\n` +
+      `Ensure your browser (Chrome, Edge, Brave, Chromium) is running with --remote-debugging-port=9222.\n` +
       `Original error: ${lastError?.message}`
     );
   }
@@ -120,7 +121,10 @@ class BrowserManager {
 
     // 2. Look for reusable blank/new tab
     if (!selectedPage) {
-      selectedPage = pages.find(p => p.url() === "about:blank" || p.url().includes("brave://newtab") || p.url().includes("chrome://newtab"));
+      selectedPage = pages.find(p => {
+        const u = p.url();
+        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
+      });
       if (selectedPage) {
         await selectedPage.goto(CONFIG.THREADS_HOME, {
           waitUntil: "domcontentloaded",
@@ -173,7 +177,10 @@ class BrowserManager {
 
     // 2. Look for reusable blank tab
     if (!selectedPage) {
-      selectedPage = pages.find(p => p.url() === "about:blank" || p.url().includes("brave://newtab") || p.url().includes("chrome://newtab"));
+      selectedPage = pages.find(p => {
+        const u = p.url();
+        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
+      });
       if (selectedPage) {
         await selectedPage.goto(CONFIG.INSTAGRAM_HOME, {
           waitUntil: "domcontentloaded",
