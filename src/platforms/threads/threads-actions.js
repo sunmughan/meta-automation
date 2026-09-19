@@ -83,62 +83,127 @@ class ThreadsActions {
       page = await browserManager.getThreadsPage();
       await page.bringToFront();
 
-      // 1. Direct Post URL Navigation (Never navigate to profile and never guess fallback posts)
-      const directPostUrl = post.url || `https://www.threads.com/@${post.username}/post/${post.postId}`;
-      logger.info(`Navigating directly to verified post URL: ${directPostUrl}`, {
-        postId: post.postId,
-        username: post.username
-      });
+      // 1. Check if the post is already rendered on the page, or navigate directly
+      let alreadyOnScreen = await page.evaluate((pid, uname) => {
+        const bodyText = (document.body.innerText || "").toLowerCase();
+        const hasPidLink = Array.from(document.querySelectorAll('a[href]')).some(a => a.href && a.href.includes(pid));
+        const hasPidUrl = window.location.href.includes(pid);
+        const hasUname = uname ? bodyText.includes(uname.toLowerCase()) : false;
+        return hasPidUrl || (hasPidLink && hasUname);
+      }, post.postId, post.username);
 
-      await page.goto(directPostUrl, { waitUntil: "domcontentloaded", timeout: 35000 });
-      await new Promise(r => setTimeout(r, 2500));
+      if (!alreadyOnScreen) {
+        const directPostUrl = post.url || `https://www.threads.com/@${post.username}/post/${post.postId}`;
+        logger.info(`Navigating directly to verified post URL: ${directPostUrl}`, {
+          postId: post.postId,
+          username: post.username
+        });
 
-      // 2. Strict URL Verification Guard
-      const currentUrl = page.url();
-      if (!currentUrl.includes(post.postId)) {
-        logger.error(`Navigation verification failed: current URL (${currentUrl}) does not match expected post ID ${post.postId}. Aborting comment.`);
+        await page.goto(directPostUrl, { waitUntil: "domcontentloaded", timeout: 35000 });
+        await new Promise(r => setTimeout(r, 2500));
+      }
+
+      // 2. Resilient Post Verification Guard (Handles Threads client-side routing & SPAs)
+      let postVerified = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        postVerified = await page.evaluate((pid, uname, ptext) => {
+          const currentUrl = window.location.href || "";
+          if (currentUrl.includes(pid)) return true;
+
+          const hasPostLink = Array.from(document.querySelectorAll('a[href]')).some(a => a.href && a.href.includes(pid));
+          if (hasPostLink) return true;
+
+          const bodyText = (document.body.innerText || "").toLowerCase();
+          const title = (document.title || "").toLowerCase();
+          const hasUsername = uname ? (bodyText.includes(uname.toLowerCase()) || title.includes(uname.toLowerCase())) : false;
+          const cleanSnippet = (ptext || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().slice(0, 30);
+          const hasSnippet = cleanSnippet.length > 5 ? (bodyText.includes(cleanSnippet) || title.includes(cleanSnippet)) : true;
+
+          return hasUsername && hasSnippet;
+        }, post.postId, post.username, post.text);
+
+        if (postVerified) break;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      if (!postVerified) {
+        logger.error(`Navigation verification failed: post ${post.postId} (@${post.username}) not found on page. Aborting comment.`, {
+          currentUrl: page.url(),
+          postId: post.postId,
+          username: post.username
+        });
         return { success: false, reason: "Target post URL mismatch or post no longer available." };
       }
 
-      // 3. Double-Guard: Verify post context is genuine buyer requirement before typing
-      const postTextToVerify = post.text || (await page.evaluate(() => {
-        const article = document.querySelector('article, [data-pressable-container="true"]');
-        return article ? (article.innerText || "").trim() : "";
-      }));
+      // 3. Double-Guard: Verify post context is genuine buyer requirement before typing (if not already qualified)
+      if (!options.skipRecheck && post.decision !== "QUALIFIED" && post.status !== "COMMENT_PENDING") {
+        const postTextToVerify = post.text || (await page.evaluate(() => {
+          const article = document.querySelector('article, [data-pressable-container="true"]');
+          return article ? (article.innerText || "").trim() : "";
+        }));
 
-      const recheck = await aiDecisionEngine.qualifyPost({
-        text: postTextToVerify,
-        username: post.username
-      });
-
-      if (!recheck.is_genuine_buyer || recheck.decision !== "QUALIFIED") {
-        logger.warn(`Post ${post.postId} failed live qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
-          action: "COMMENT_GUARD_ABORTED",
-          postId: post.postId,
-          username: post.username,
-          reason: recheck.reason,
-          leadType: recheck.lead_type
+        const recheck = await aiDecisionEngine.qualifyPost({
+          text: postTextToVerify,
+          username: post.username
         });
-        return {
-          success: false,
-          reason: `Qualification double-guard rejected: ${recheck.reason}`
-        };
+
+        if (!recheck.is_genuine_buyer || recheck.decision !== "QUALIFIED") {
+          logger.warn(`Post ${post.postId} failed live qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
+            action: "COMMENT_GUARD_ABORTED",
+            postId: post.postId,
+            username: post.username,
+            reason: recheck.reason,
+            leadType: recheck.lead_type
+          });
+          return {
+            success: false,
+            reason: `Qualification double-guard rejected: ${recheck.reason}`
+          };
+        }
       }
 
       // Wait for or activate reply composer by clicking Reply SVG or placeholder
       let textbox = await page.$('div[role="textbox"][contenteditable="true"]');
       if (!textbox) {
-        await page.evaluate(() => {
-          const replySvgs = [...document.querySelectorAll('svg[title="Reply"], svg[aria-label="Reply"]')];
-          if (replySvgs.length > 0) {
-            const btn = replySvgs[0].closest('div[role="button"], button') || replySvgs[0];
+        await page.evaluate((targetUsername) => {
+          // 1. Search inside the target post container
+          const containers = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
+          const targetCont = containers.find(c => targetUsername ? (c.innerText || "").toLowerCase().includes(targetUsername.toLowerCase()) : false) || containers[0];
+          
+          if (targetCont) {
+            const svgs = Array.from(targetCont.querySelectorAll('svg'));
+            const replySvg = svgs.find(s => {
+              const title = (s.querySelector('title')?.textContent || s.getAttribute('aria-label') || "").toLowerCase();
+              const d = s.querySelector('path')?.getAttribute('d') || "";
+              return title === 'reply' || d.startsWith('M12 3a9');
+            }) || (svgs.length >= 5 ? svgs[4] : null);
+            
+            if (replySvg) {
+              const btn = replySvg.closest('div[role="button"], button') || replySvg;
+              btn.click();
+              return;
+            }
+          }
+
+          // 2. Global SVG search
+          const allSvgs = Array.from(document.querySelectorAll('svg'));
+          const replySvg = allSvgs.find(s => {
+            const title = (s.querySelector('title')?.textContent || s.getAttribute('aria-label') || "").toLowerCase();
+            const d = s.querySelector('path')?.getAttribute('d') || "";
+            return title === 'reply' || d.startsWith('M12 3a9');
+          });
+          if (replySvg) {
+            const btn = replySvg.closest('div[role="button"], button') || replySvg;
             btn.click();
             return;
           }
+
+          // 3. Fallback: placeholder text
           const allElements = [...document.querySelectorAll('span, p, div')];
           const placeholder = allElements.find(s => (s.innerText || "").toLowerCase().includes('reply to'));
           if (placeholder) placeholder.click();
-        });
+        }, post.username);
+
         await new Promise(r => setTimeout(r, 1500));
         textbox = await page.$('div[role="textbox"][contenteditable="true"]');
       }
@@ -149,58 +214,59 @@ class ThreadsActions {
 
       await textbox.focus();
       await textbox.click();
+      await new Promise(r => setTimeout(r, 400));
 
       // Type message visibly so user watches it typing live
       logger.info(`Visibly typing comment on @${post.username}'s post...`);
       for (const char of commentText) {
         await page.keyboard.sendCharacter(char);
-        await new Promise(r => setTimeout(r, Math.floor(Math.random() * 25) + 20));
+        await new Promise(r => setTimeout(r, Math.floor(Math.random() * 20) + 15));
       }
 
       await new Promise(r => setTimeout(r, 1500));
 
-      // Step 1: Click the Up Arrow / Reply submit button in the composer row
-      logger.info(`Clicking Up Arrow / Reply button in composer...`);
-      const arrowClicked = await page.evaluate(() => {
-        const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
-        if (!tb) return false;
-        let row = tb.parentElement;
-        for (let i = 0; i < 6; i++) {
-          if (row && row.parentElement) {
-            row = row.parentElement;
-            const replySvg = row.querySelector('svg[aria-label="Reply"], svg title, svg path[d*="M1 6h10"]');
-            if (replySvg) {
-              const btn = replySvg.closest('div[role="button"], button');
-              if (btn) {
-                btn.scrollIntoView({ behavior: "smooth", block: "center" });
-                btn.click();
-                return true;
-              }
-            }
-          }
-        }
-        return false;
-      });
-
-      await new Promise(r => setTimeout(r, 1800));
-
-      // Step 2: If Threads opened the confirmation Reply modal dialog, click the "Post" button
-      const modalSubmitted = await page.evaluate(() => {
+      // Click the "Post" button
+      logger.info(`Clicking Post button...`);
+      const postClicked = await page.evaluate(() => {
+        // Priority 1: Check modal dialog if open
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
         if (dialog) {
-          const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
-          const postBtn = buttons.find(b => (b.innerText || "").trim().toLowerCase() === "post");
-          if (postBtn) {
-            postBtn.click();
+          const btns = Array.from(dialog.querySelectorAll('div[role="button"], button'));
+          const pBtn = btns.find(b => (b.innerText || "").trim().toLowerCase() === 'post' && !b.getAttribute('aria-disabled'));
+          if (pBtn) {
+            pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            pBtn.click();
             return true;
           }
         }
+
+        // Priority 2: Inline Post button near textbox
+        const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
+        if (tb) {
+          const container = tb.closest('div[data-pressable-container="true"], article, form') || document.body;
+          const btns = Array.from(container.querySelectorAll('div[role="button"], button'));
+          const pBtn = btns.find(b => (b.innerText || "").trim().toLowerCase() === 'post' && !b.getAttribute('aria-disabled'));
+          if (pBtn) {
+            pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            pBtn.click();
+            return true;
+          }
+        }
+
+        // Priority 3: Any enabled Post button in document
+        const allBtns = Array.from(document.querySelectorAll('div[role="button"], button'));
+        const pBtn = allBtns.find(b => (b.innerText || "").trim().toLowerCase() === 'post' && !b.getAttribute('aria-disabled'));
+        if (pBtn) {
+          pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          pBtn.click();
+          return true;
+        }
+
         return false;
       });
 
-      // Step 3: Fallback keyboard submission if neither button was clicked
-      if (!arrowClicked && !modalSubmitted) {
-        logger.info("Direct submit buttons not triggered; dispatching Control+Enter...");
+      if (!postClicked) {
+        logger.info("Direct submit button not triggered; dispatching Control+Enter...");
         await page.keyboard.down("Control");
         await page.keyboard.press("Enter");
         await page.keyboard.up("Control");
@@ -211,8 +277,8 @@ class ThreadsActions {
       for (let attempt = 0; attempt < 8; attempt++) {
         await new Promise(r => setTimeout(r, 1000));
         isVerifiedPosted = await page.evaluate(() => {
-          const bodyText = document.body.innerText;
-          const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView");
+          const bodyText = document.body.innerText || "";
+          const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView") || bodyText.includes("Posted");
           const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
           const isCleared = !tb || (tb.innerText || "").trim() === "";
           const noModal = !document.querySelector('div[role="dialog"], [aria-modal="true"]');
