@@ -75,6 +75,19 @@ async function commandAnalyze(options = {}) {
   const maxLiveComments = options.maxLiveComments !== undefined ? options.maxLiveComments : 2;
   let liveCommentsPosted = 0;
 
+  let maxPosts = options.maxPosts;
+  if (!maxPosts) {
+    const maxPostsArgIdx = process.argv.findIndex(a => a.startsWith("--max-posts"));
+    if (maxPostsArgIdx !== -1) {
+      const arg = process.argv[maxPostsArgIdx];
+      if (arg.includes("=")) {
+        maxPosts = parseInt(arg.split("=")[1], 10);
+      } else if (process.argv[maxPostsArgIdx + 1]) {
+        maxPosts = parseInt(process.argv[maxPostsArgIdx + 1], 10);
+      }
+    }
+  }
+
   console.log("\n==============================================");
   console.log("       AI LEAD QUALIFICATION & COMMENT SYNTHESIS");
   console.log("==============================================");
@@ -86,83 +99,107 @@ async function commandAnalyze(options = {}) {
     .filter(p => (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING") && !stateStore.hasCommented(p.postId, p.platform))
     .sort((a, b) => new Date(b.discoveredAt || 0) - new Date(a.discoveredAt || 0));
 
-  console.log(`Found ${unanalyzed.length} posts pending qualification/posting...\n`);
+  const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed;
+
+  console.log(`Found ${unanalyzed.length} posts pending qualification/posting (processing ${targetPosts.length})...\n`);
 
   let hotCount = 0;
   let warmCount = 0;
   let ignoredCount = 0;
 
-  for (let i = 0; i < unanalyzed.length; i++) {
-    const post = unanalyzed[i];
-    console.log(`[${i + 1}/${unanalyzed.length}] Evaluating @${post.username} (${post.postId})...`);
+  for (let i = 0; i < targetPosts.length; i++) {
+    const post = targetPosts[i];
 
-    let commentToPost = post.commentText;
-    let isQualified = false;
-    let temperature = post.temperature || "WARM";
-    let relevanceScore = post.relevanceScore || 80;
-    if (post.status === "COMMENT_PENDING") {
-      isQualified = true;
-      // Always regenerate fresh unique variation with author handle to prevent duplicate hash blocking
-      commentToPost = commentGenerator.generateEngagingComment({
-        text: post.text,
-        username: post.username,
-        matchedCategories: post.matchedServices || [],
-        identity: post.identity || "COMPANY"
-      });
-      stateStore.updatePostStatus(post.postId, "ANALYZING", {}, post.platform || "threads");
-      const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: true });
-      console.log(`  🤖 [AI Screening]: ${decision.is_genuine_buyer ? "QUALIFIED BUYER" : "IGNORED"} (${decision.lead_type || "NONE"}) - ${decision.reason}`);
-      if (decision.is_genuine_buyer && (decision.temperature === "HOT" || decision.temperature === "WARM")) {
-        isQualified = true;
-        temperature = decision.temperature;
-        relevanceScore = decision.relevance_score;
-        commentToPost = decision.generated_comment;
-        stateStore.updatePostStatus(post.postId, "COMMENT_PENDING", {
-          leadType: decision.lead_type,
-          matchedServices: decision.matched_services,
-          relevanceScore: decision.relevance_score,
-          temperature: decision.temperature,
-          identity: decision.identity,
-          commentText: decision.generated_comment,
-          qualificationReason: decision.reason
-        }, post.platform || "threads");
-        stateStore.state.stats.total_qualified++;
-        stateStore.saveState();
-      } else {
-        ignoredCount++;
-        console.log(`  ⚪ IGNORED - ${decision.reason}\n`);
-        stateStore.updatePostStatus(post.postId, "IGNORED", {
-          leadType: decision.lead_type,
-          qualificationReason: decision.reason
-        }, post.platform || "threads");
-        continue;
-      }
-    }
+    // 1. Primary Grounded Semantic AI Reasoning (Zero Premature Discards)
+    stateStore.updatePostStatus(post.postId, "ANALYZING", {}, post.platform || "threads");
+    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: true });
 
+    const isQualified = decision.is_genuine_buyer && (decision.decision === "QUALIFIED" || decision.temperature === "HOT" || decision.temperature === "WARM");
+    const temperature = decision.temperature || "WARM";
+    const commentToPost = decision.generated_comment || (isQualified ? commentGenerator.generateEngagingComment({
+      text: post.text,
+      username: post.username,
+      matchedCategories: decision.matched_categories || [decision.matched_capability || "Web Development"],
+      identity: decision.representation || "COMPANY"
+    }) : null);
+
+    // 2. Determine Action (Separating Detection from Safety / Execution Gates)
+    let action = "SKIPPED";
     if (isQualified) {
       if (temperature === "HOT") hotCount++;
       else warmCount++;
 
-      console.log(`  🔥 QUALIFIED (${temperature}) - Score: ${relevanceScore}`);
-      console.log(`  Comment  :\n    "${commentToPost}"\n`);
-
-      // If APPROVAL_MODE is false and LIVE is enabled, post comment live
-      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
-        if (liveCommentsPosted < maxLiveComments) {
-          console.log(`  🚀 Posting live comment on @${post.username}'s post...`);
-          const postRes = await threadsActions.postComment(post, commentToPost);
-          if (postRes.success) {
-            liveCommentsPosted++;
-            stateStore.updatePostStatus(post.postId, "COMMENTED", { commentText: commentToPost }, post.platform || "threads");
-            stateStore.state.stats.total_comments_posted++;
-            stateStore.saveState();
-            console.log(`  ✅ Live comment posted successfully on @${post.username}'s post!`);
-          }
-          await new Promise(r => setTimeout(r, 4000));
-        } else {
-          console.log(`  ⏳ Comment queued for next cycle (Cycle limit of ${maxLiveComments} reached)`);
-        }
+      if (CONFIG.DRY_RUN) {
+        action = "BLOCKED_BY_DRY_RUN (Simulated)";
+      } else if (CONFIG.APPROVAL_MODE) {
+        action = "QUEUED_FOR_APPROVAL";
+      } else if (!CONFIG.POSTING_ENABLED) {
+        action = "BLOCKED_BY_SAFETY_LOCK (Posting disabled)";
+      } else if (liveCommentsPosted >= maxLiveComments) {
+        action = `COMMENT_QUEUED (Cycle limit of ${maxLiveComments} reached)`;
+      } else {
+        action = "COMMENT_POSTED";
       }
+    } else {
+      ignoredCount++;
+      action = `SKIPPED (${decision.reason || "Not qualified"})`;
+    }
+
+    // 3. Structured Audit Log for EVERY Post (Mandatory Format)
+    console.log(`┌──────────────────────────────────────────────────────────`);
+    console.log(`│ [POST_CAPTURED]  @${post.username} (${post.postId})`);
+    console.log(`│ [AI_ANALYSIS]    Analyzing semantic intent & requirements...`);
+    console.log(`│ [INTENT]         ${decision.intent || "IRRELEVANT"}`);
+    console.log(`│ [REQUIREMENT]    ${decision.requirement ? `"${decision.requirement}"` : "None"}`);
+    console.log(`│ [TARGET_ENTITY]  ${decision.target_entity || "EITHER"}`);
+    console.log(`│ [REPRESENTATION] ${decision.representation || "IGNORE"}`);
+    console.log(`│ [SERVICE_MATCH]  ${decision.service_match ? `MATCHED (${decision.matched_capability || "Custom Software"})` : "NO_MATCH"}`);
+    console.log(`│ [DECISION]       ${isQualified ? `QUALIFIED (${temperature})` : "IGNORED"}`);
+    console.log(`│ [ACTION]         ${action}`);
+    if (isQualified && commentToPost) {
+      console.log(`│ [COMMENT]        "${commentToPost}"`);
+    }
+    console.log(`└──────────────────────────────────────────────────────────\n`);
+
+    // 4. Update State Store according to Qualification & Action
+    if (isQualified) {
+      stateStore.updatePostStatus(post.postId, "COMMENT_PENDING", {
+        leadType: decision.lead_type || "PROJECT_BUYER",
+        intent: decision.intent,
+        requirement: decision.requirement,
+        targetEntity: decision.target_entity,
+        representation: decision.representation,
+        matchedServices: decision.matched_services,
+        matchedCategories: decision.matched_categories,
+        relevanceScore: decision.relevance_score,
+        temperature: decision.temperature,
+        identity: decision.representation,
+        commentText: commentToPost,
+        qualificationReason: decision.reason
+      }, post.platform || "threads");
+      stateStore.state.stats.total_qualified++;
+      stateStore.saveState();
+
+      // Post live if conditions permit
+      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && liveCommentsPosted < maxLiveComments) {
+        console.log(`  🚀 Posting live comment on @${post.username}'s post...`);
+        const postRes = await threadsActions.postComment(post, commentToPost);
+        if (postRes.success) {
+          liveCommentsPosted++;
+          stateStore.updatePostStatus(post.postId, "COMMENTED", { commentText: commentToPost }, post.platform || "threads");
+          stateStore.state.stats.total_comments_posted++;
+          stateStore.saveState();
+          console.log(`  ✅ Live comment posted successfully on @${post.username}'s post!`);
+        }
+        await new Promise(r => setTimeout(r, 4000));
+      }
+    } else {
+      stateStore.updatePostStatus(post.postId, "IGNORED", {
+        intent: decision.intent,
+        leadType: decision.lead_type,
+        qualificationReason: decision.reason
+      }, post.platform || "threads");
+      stateStore.saveState();
     }
   }
 

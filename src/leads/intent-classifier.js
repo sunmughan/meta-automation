@@ -80,6 +80,9 @@ const PROVIDER_PATTERNS = [
   /\b[\$₹€£]\d+\s+per\s+(website|page|project|hour)\b/i,
   /\b(web\s+design|web\s+development|app\s+development|software)\s+agency\b/i,
   /\b(offering|provide|providing)\s+(web|website|app|software|development|design)\s+services\b/i,
+  /\bwe\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)\b/i,
+  /\b(we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book))\b/i,
+  /\blooking\s+for\s+a\s+(website|web|app|mobile|software)?\s*(designer|developer|agency)\s*\?.*(we|here|dm|contact|agency|studio)/is,
   /\b(5|10|top|best)\s+(tips|tools|reasons|mistakes|rules)\s+(for|to|every)\b/i,
   /\bhow\s+to\s+(build|code|design|create)\s+(a\s+)?(website|web\s+app|saas|app)\b/i,
   /\bcomment\s+["'].*?["']\s+(and\s+i'?ll|to\s+get)\b/i
@@ -145,7 +148,13 @@ const BUYING_INTENT_PATTERNS = [
   /\bcan\s+someone\s+(build|create|develop|design)\s+(a\s+|an?\s+)?(website|app|platform|tool)\b/i,
   /\bwe\s+need\s+(an?\s+)?(app|website|crm|erp|dashboard|saas|ai\s+system|automation|landing\s+page)\b/i,
   /\b(we\s+need|need|want)\s+to\s+automate\b/i,
-  /\bseeking\s+someone\s+to\s+(build|develop|implement|design)\b/i
+  /\bseeking\s+someone\s+to\s+(build|develop|implement|design)\b/i,
+  /\bneed\s+(a\s+|our\s+|my\s+)?(site|website|app|web\s+app|platform|crm|erp|dashboard|mvp|system)\s+(for\s+|asap|right\s+now|urgent)/i,
+  /\b(i\s+)?need\s+someone\s+to\s+build\s+an?\s+(application|app|website|software|platform)\b/i,
+  /\blooking\s+for\s+someone\s+to\s+help\s+with\s+(my|our|a)?\s*(website|app|software)\b/i,
+  /\bneed\s+an?\s+app\s+for\s+(my|our)?\s*business\b/i,
+  /\bcan\s+someone\s+develop\s+this\b/i,
+  /\blooking\s+for\s+a\s+developer\s+to\s+build\s+(my|our)?\s*(platform|website|app|saas)\b/i
 ];
 
 class IntentClassifier {
