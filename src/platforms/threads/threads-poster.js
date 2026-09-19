@@ -232,15 +232,50 @@ class ThreadsPoster {
       postSubmitted = await page.evaluate(() => {
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
         const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
-        const postBtn = buttons.find(b => {
+
+        // Strategy 1: Visible button with exact text "post"
+        let postBtn = buttons.find(b => {
           const txt = (b.innerText || "").trim().toLowerCase();
           const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
           return txt === "post" && isEnabled && b.offsetParent !== null;
         });
 
+        // Strategy 2: aria-label matching post
+        if (!postBtn) {
+          postBtn = buttons.find(b => {
+            const label = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+            const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
+            return label === "post" && isEnabled && b.offsetParent !== null;
+          });
+        }
+
+        // Strategy 3: Child SVG with aria-label containing post
+        if (!postBtn) {
+          postBtn = buttons.find(b => {
+            const svg = b.querySelector('svg[aria-label*="post" i], svg[aria-label*="Post" i]');
+            const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
+            return !!svg && isEnabled && b.offsetParent !== null;
+          });
+        }
+
+        // Strategy 4: Rightmost primary action in composer footer
+        if (!postBtn) {
+          const candidateButtons = buttons.filter(b => {
+            const txt = (b.innerText || "").trim().toLowerCase();
+            const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
+            const isSecondary = txt.includes("anyone") || txt.includes("cancel") || txt.includes("discard") || txt.includes("draft");
+            return isEnabled && !isSecondary && b.offsetParent !== null;
+          });
+          if (candidateButtons.length > 0) {
+            candidateButtons.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
+            postBtn = candidateButtons[0];
+          }
+        }
+
         if (postBtn) {
           postBtn.focus();
           postBtn.click();
+          postBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
           return true;
         }
         return false;
@@ -253,10 +288,16 @@ class ThreadsPoster {
     }
 
     if (!postSubmitted) {
-      logger.warn("[THREADS POSTER] Composer Post button not clickable directly; sending Ctrl+Enter fallback...");
-      await page.keyboard.down("Control");
-      await page.keyboard.press("Enter");
-      await page.keyboard.up("Control");
+      logger.warn("[THREADS POSTER] Composer Post button not clickable via DOM evaluation; retrying direct selector click...");
+      try {
+        const postButtonHandle = await page.$('div[role="dialog"] div[role="button"]:has(span), div[role="dialog"] button');
+        if (postButtonHandle) {
+          await postButtonHandle.click();
+          postSubmitted = true;
+        }
+      } catch (err) {
+        logger.warn(`[THREADS POSTER] Direct selector click failed: ${err.message}`);
+      }
     }
 
     // 8. Strict Verification of Submission
@@ -313,6 +354,14 @@ class ThreadsPoster {
       logger.error(`[THREADS POSTER] Post submission verification failed: ${verificationReason || "Confirmation timeout"}. Aborting state record.`);
       await captureDiagnosticScreenshot(page, "own_post_failed");
       await page.keyboard.press("Escape").catch(() => {});
+      
+      stateStore.recordOurPostAttemptFailure({
+        pillar,
+        format,
+        reason: verificationReason || "Post submission verification failed",
+        textSnippet: postText.slice(0, 50)
+      });
+
       return {
         success: false,
         verified: false,
@@ -327,10 +376,7 @@ class ThreadsPoster {
 
     // 9. Record verified post into state
     const ourPostId = `our_post_${Date.now()}`;
-    if (!stateStore.state.ourPosts) {
-      stateStore.state.ourPosts = {};
-    }
-    stateStore.state.ourPosts[ourPostId] = {
+    stateStore.recordOurPost({
       id: ourPostId,
       text: postText,
       pillar,
@@ -342,7 +388,7 @@ class ThreadsPoster {
       verifiedReason: verificationReason,
       publishedAt: new Date().toISOString(),
       repliesTracked: []
-    };
+    });
 
     if (format === "CAROUSEL") {
       stateStore.state.lastCarouselDate = new Date().toISOString();

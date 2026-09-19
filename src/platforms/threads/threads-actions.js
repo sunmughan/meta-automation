@@ -259,11 +259,16 @@ class ThreadsActions {
             const btns = Array.from(dialog.querySelectorAll('div[role="button"], button'));
             const pBtn = btns.find(b => {
               const txt = (b.innerText || "").trim().toLowerCase();
-              return (txt === 'post' || txt === 'reply') && !b.getAttribute('aria-disabled');
+              const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+              const hasSvg = b.querySelector('svg[aria-label*="reply" i], svg[aria-label*="post" i]');
+              const isEnabled = !b.disabled && b.getAttribute('aria-disabled') !== "true";
+              return (txt === 'post' || txt === 'reply' || aria === 'post' || aria === 'reply' || !!hasSvg) && isEnabled;
             });
             if (pBtn) {
               pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              pBtn.focus();
               pBtn.click();
+              pBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
               return true;
             }
           }
@@ -276,16 +281,18 @@ class ThreadsActions {
           for (let depth = 0; depth < 8; depth++) {
             if (!parent) break;
             
-            // Look for the submit arrow SVG icon (M1 6h10 or title "Reply")
+            // Look for the submit arrow SVG icon (M1 6h10 or title/aria "Reply" / "Post")
             const svgs = Array.from(parent.querySelectorAll('svg'));
             const submitSvg = svgs.find(s => {
               const title = (s.querySelector('title')?.textContent || s.getAttribute('aria-label') || "").toLowerCase();
               const d = s.querySelector('path')?.getAttribute('d') || "";
-              return title === 'reply' || d.includes('M1 6h10');
+              return title === 'reply' || title === 'post' || d.includes('M1 6h10');
             });
             if (submitSvg) {
               const btn = submitSvg.closest('div[role="button"], button') || submitSvg;
+              btn.focus?.();
               btn.click();
+              btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
               return true;
             }
 
@@ -293,11 +300,15 @@ class ThreadsActions {
             const btns = Array.from(parent.querySelectorAll('div[role="button"], button'));
             const pBtn = btns.find(b => {
               const txt = (b.innerText || "").trim().toLowerCase();
-              return (txt === 'reply' || txt === 'post') && !b.getAttribute('aria-disabled');
+              const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+              const isEnabled = !b.disabled && b.getAttribute('aria-disabled') !== "true";
+              return (txt === 'reply' || txt === 'post' || aria === 'reply' || aria === 'post') && isEnabled;
             });
             if (pBtn) {
               pBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              pBtn.focus();
               pBtn.click();
+              pBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
               return true;
             }
 
@@ -309,10 +320,16 @@ class ThreadsActions {
       });
 
       if (!postClicked) {
-        logger.info("Direct submit button not triggered; dispatching Control+Enter...");
-        await page.keyboard.down("Control");
-        await page.keyboard.press("Enter");
-        await page.keyboard.up("Control");
+        logger.warn("Submit button not triggered via parent tree; attempting direct selector search...");
+        try {
+          const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"]');
+          if (submitHandle) {
+            await submitHandle.click();
+            postClicked = true;
+          }
+        } catch (err) {
+          logger.warn(`Direct selector click failed: ${err.message}`);
+        }
       }
 
       // Safeguard: Ensure no "New thread" profile modal was left open

@@ -33,13 +33,17 @@ const commentGenerator = require("./src/engagement/comment-generator");
 const logger = require("./src/logging/logger");
 
 async function commandAuth() {
+  const target = (CONFIG.PLATFORM_TARGET || "threads").toLowerCase();
   console.log("\n==============================================");
-  console.log("       SESSION AUTHENTICATION INSPECTION");
+  console.log(`       SESSION AUTHENTICATION INSPECTION (${target.toUpperCase()})`);
   console.log("==============================================");
   const threadsAuth = await checkThreadsAuth({ printResult: true });
-  const igAuth = await checkInstagramAuth({ printResult: true });
+  let igAuth = { isAuthenticated: false };
+  if (target === "instagram" || target === "all") {
+    igAuth = await checkInstagramAuth({ printResult: true });
+  }
   browserManager.disconnect();
-  return (threadsAuth.isAuthenticated || igAuth.isAuthenticated) ? 0 : 1;
+  return (threadsAuth.isAuthenticated || (target !== "threads" && igAuth.isAuthenticated)) ? 0 : 1;
 }
 
 async function commandScan(options = {}) {
@@ -201,7 +205,6 @@ async function commandAnalyze(options = {}) {
             commentText: commentToPost,
             verifiedAt: new Date().toISOString()
           }, post.platform || "threads");
-          stateStore.state.stats.total_comments_posted++;
           stateStore.saveState();
           console.log(`  ✅ Live comment verified & posted successfully on @${post.username}'s post!`);
         } else {
@@ -329,6 +332,16 @@ async function commandStatus() {
 }
 
 async function checkAndPublishScheduledPost() {
+  const lastFailure = stateStore.getLastPostAttemptFailure();
+  const failureCooldownMs = 30 * 60 * 1000; // 30 minutes failure cooldown
+  const timeSinceFailure = lastFailure ? (Date.now() - (lastFailure.timestamp || 0)) : Infinity;
+
+  if (timeSinceFailure < failureCooldownMs) {
+    const minWait = Math.ceil((failureCooldownMs - timeSinceFailure) / 60000);
+    console.log(`[SCHEDULED POST] Recent post attempt failure recorded (${lastFailure.reason || "unverified"}). Cooldown active for ~${minWait} min.`);
+    return;
+  }
+
   const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
   const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
   const latestPost = verifiedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
@@ -400,46 +413,34 @@ async function commandRun() {
       console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING`);
       console.log(`==============================================`);
 
-      // 1. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
+      // 1. Prioritize Direct Messages & client inquiries first (highest responsiveness)
+      await commandDms();
+
+      // 2. Prioritize Activity & multi-turn replies second
+      await commandReplies();
+
+      // 3. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
       await checkAndPublishScheduledPost();
 
-      // 2. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
+      // 4. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
       if (cycle % 2 === 1) {
         console.log("\n[SEARCH DISCOVERY] Searching Threads for high-intent client queries (websites, AI dev)...");
         const searchRes = await searchThreadsKeywords({ queryCount: 2 });
         console.log(`Search queries visible posts: ${searchRes.scannedCount}, Newly discovered: ${searchRes.newCount}`);
       }
 
-      // 3. Deep visible feed scan & scrolling (aiming for up to 50 posts) on user's screen
+      // 5. Deep visible feed scan & scrolling (aiming for up to 50 posts) on user's screen
       console.log("\n[FEED DISCOVERY] Scanning and visibly scrolling Threads feed deeply (up to 50 posts)...");
       const scanRes = await scanThreadsFeed({ maxPosts: 50, scrollStep: 550, waitAfterScroll: 1300 });
       console.log(`Feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
 
-      // 4. Lead qualification & live commenting on qualified founder / buyer / tech posts
+      // 6. Lead qualification & live commenting on qualified founder / buyer / tech posts
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
       await commandAnalyze();
 
-      // 5. Smoothly refresh the feed to bring in fresh new posts for next scan
+      // 7. Smoothly refresh the feed to bring in fresh new posts for next scan
       const page = await browserManager.getThreadsPage();
       await refreshThreadsFeed(page);
-
-      // 5. Smart sidebar notification check (Stay on feed! Only open Activity/Messages when a badge is detected)
-      const badges = await checkSidebarBadges(page);
-      if (badges.unreadActivity || cycle % 12 === 0) {
-        console.log(`[NOTIFICATIONS] Activity notification detected (or periodic check). Inspecting replies...`);
-        await commandReplies();
-        await refreshThreadsFeed(page);
-      } else {
-        console.log(`[NOTIFICATIONS] No unread activity badges. Staying on Home feed.`);
-      }
-
-      if (badges.unreadDms || cycle % 15 === 0) {
-        console.log(`[DIRECT MESSAGES] Unread DM badge detected on sidebar (or periodic check). Inspecting messages...`);
-        await commandDms();
-        await refreshThreadsFeed(page);
-      } else {
-        console.log(`[DIRECT MESSAGES] No unread DM badges on sidebar. Staying on Home feed.`);
-      }
 
       console.log(`\n==============================================`);
       console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED`);

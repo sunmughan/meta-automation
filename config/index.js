@@ -70,6 +70,7 @@ const CONFIG = {
   INSTAGRAM_MESSAGES: "https://www.instagram.com/direct/inbox/",
 
   // Operational Modes (Default: DRY_RUN=true, APPROVAL_MODE=true for safety)
+  PLATFORM_TARGET: (process.env.PLATFORM_TARGET || "threads").toLowerCase(),
   APPROVAL_MODE: process.env.APPROVAL_MODE !== "false",
   DRY_RUN: process.env.DRY_RUN !== "false",
   POSTING_ENABLED: process.env.POSTING_ENABLED === "true",

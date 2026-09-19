@@ -69,6 +69,81 @@ class ThreadsDms {
       return [];
     }
   }
+
+  /**
+   * Sends a direct message live in the Threads web browser and verifies delivery.
+   * @param {string} threadIdOrSender - Thread ID (from URL) or username
+   * @param {string} messageText - The message to type and send
+   */
+  async sendDirectMessage(threadIdOrSender, messageText) {
+    logger.info(`Sending live DM to ${threadIdOrSender}...`, { action: "THREADS_DM_SEND" });
+    const page = await browserManager.getThreadsPage();
+    await page.bringToFront();
+
+    try {
+      const currentUrl = page.url();
+      const targetUrl = threadIdOrSender.startsWith("http")
+        ? threadIdOrSender
+        : (threadIdOrSender.length > 15 ? `https://www.threads.com/messages/t/${threadIdOrSender}` : null);
+
+      if (targetUrl && !currentUrl.includes(threadIdOrSender)) {
+        await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+        await new Promise(r => setTimeout(r, 2500));
+      }
+
+      // Locate DM chat textbox
+      const chatInput = await page.waitForSelector('div[role="textbox"][contenteditable="true"]', { timeout: 10000 });
+      if (!chatInput) {
+        throw new Error(`Could not find chat input textbox for DM ${threadIdOrSender}`);
+      }
+
+      await chatInput.focus();
+      await new Promise(r => setTimeout(r, 400));
+
+      // Visibly type response with human-like delays
+      for (const char of messageText) {
+        await page.keyboard.sendCharacter(char);
+        await new Promise(r => setTimeout(r, Math.floor(Math.random() * 25) + 15));
+      }
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Dispatch message via Enter key
+      await page.keyboard.press("Enter");
+
+      // Check if send button / icon exists as fallback
+      await page.evaluate(() => {
+        const sendSvg = document.querySelector('svg[aria-label*="Send" i]');
+        if (sendSvg) {
+          const btn = sendSvg.closest('div[role="button"], button') || sendSvg;
+          btn.click();
+        }
+      });
+
+      // Strict DOM verification: confirm text snippet exists in conversation bubbles
+      const snippet = messageText.slice(0, 30).trim();
+      let isVerified = false;
+
+      for (let check = 0; check < 8; check++) {
+        await new Promise(r => setTimeout(r, 1000));
+        isVerified = await page.evaluate((snip) => {
+          const bubbles = [...document.querySelectorAll('div[dir="auto"], div[role="row"]')];
+          return bubbles.some(b => (b.innerText || "").includes(snip));
+        }, snippet);
+        if (isVerified) break;
+      }
+
+      if (!isVerified) {
+        logger.warn(`DM to ${threadIdOrSender} was dispatched but bubble verification timed out.`);
+        return { success: false, verified: false, reason: "DOM bubble verification timeout" };
+      }
+
+      logger.info(`✅ DM verified sent to ${threadIdOrSender}!`);
+      return { success: true, verified: true };
+    } catch (err) {
+      logger.error(`Failed sending DM to ${threadIdOrSender}: ${err.message}`);
+      return { success: false, verified: false, reason: err.message };
+    }
+  }
 }
 
 const threadsDms = new ThreadsDms();

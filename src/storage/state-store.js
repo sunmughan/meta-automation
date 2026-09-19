@@ -288,6 +288,41 @@ class StateStore {
     this.saveState();
   }
 
+  // --- OWN SCHEDULED POSTS ---
+  recordOurPost(postData) {
+    if (!this.state.ourPosts) {
+      this.state.ourPosts = {};
+    }
+    const id = postData.id || `our_post_${Date.now()}`;
+    this.state.ourPosts[id] = {
+      id,
+      ...postData,
+      recordedAt: new Date().toISOString()
+    };
+    this.saveState();
+    return this.state.ourPosts[id];
+  }
+
+  recordOurPostAttemptFailure(data) {
+    if (!this.state.postFailures) {
+      this.state.postFailures = [];
+    }
+    this.state.postFailures.push({
+      ...data,
+      timestamp: Date.now(),
+      iso: new Date().toISOString()
+    });
+    if (this.state.postFailures.length > 20) {
+      this.state.postFailures = this.state.postFailures.slice(-20);
+    }
+    this.saveState();
+  }
+
+  getLastPostAttemptFailure() {
+    const list = this.state.postFailures || [];
+    return list[list.length - 1] || null;
+  }
+
   // --- ACTION AUDIT & LOGGING ---
   recordAction(type, targetId, details = {}) {
     const actionId = `${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
