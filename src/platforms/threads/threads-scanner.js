@@ -42,21 +42,6 @@ async function extractPostsFromDom(page) {
         }
       }
 
-      if (!bestText || bestText.length < 20) continue;
-
-      // Filter out stale posts older than 14 days or from prior years
-      if (/\b\d{1,2}\/\d{1,2}\/(\d{4})\b/.test(bestText)) {
-        const yearMatch = bestText.match(/\b\d{1,2}\/\d{1,2}\/(\d{4})\b/);
-        const year = parseInt(yearMatch[1], 10);
-        if (year < 2026) continue; // Skip posts from 2024, 2025
-      }
-
-      if (/\b(\d+)\s*w\b/i.test(bestText)) {
-        const weekMatch = bestText.match(/\b(\d+)\s*w\b/i);
-        const weeks = parseInt(weekMatch[1], 10);
-        if (weeks > 2) continue; // Skip posts older than 2 weeks
-      }
-
       posts.set(key, {
         username,
         postId,
@@ -172,19 +157,31 @@ async function scanThreadsFeed(options = {}) {
 }
 
 /**
- * Smoothly scrolls back to top and reloads the Threads feed to load fresh posts.
+ * Smoothly scrolls back to top to load fresh posts without reloading or disrupting the feed view.
  */
 async function refreshThreadsFeed(page) {
-  logger.info("Refreshing Threads feed to load fresh posts...");
+  logger.info("Smoothly checking for fresh posts at top of feed...");
   try {
+    // Smoothly scroll to top
     await page.evaluate(() => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
+    await new Promise(r => setTimeout(r, 1200));
+
+    // If Threads displays a "New posts" / "Show new posts" button at the top, click it
+    await page.evaluate(() => {
+      const allDivs = [...document.querySelectorAll('div[role="button"], button, span')];
+      const newPostsBtn = allDivs.find(d => {
+        const txt = (d.innerText || "").toLowerCase();
+        return (txt.includes("new posts") || txt.includes("show new posts")) && d.offsetParent !== null;
+      });
+      if (newPostsBtn) {
+        newPostsBtn.click();
+      }
+    });
     await new Promise(r => setTimeout(r, 1000));
-    await page.reload({ waitUntil: "domcontentloaded", timeout: 35000 });
-    await new Promise(r => setTimeout(r, 2500));
   } catch (e) {
-    await page.goto(CONFIG.THREADS_HOME, { waitUntil: "domcontentloaded", timeout: 35000 }).catch(() => {});
+    // Non-fatal
   }
 }
 
