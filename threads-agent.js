@@ -109,9 +109,9 @@ async function commandAnalyze(options = {}) {
         matchedCategories: post.matchedServices || [],
         identity: post.identity || "COMPANY"
       });
-    } else {
       stateStore.updatePostStatus(post.postId, "ANALYZING", {}, post.platform || "threads");
-      const decision = await aiDecisionEngine.qualifyPost(post);
+      const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: true });
+      console.log(`  🤖 [AI Screening]: ${decision.is_genuine_buyer ? "QUALIFIED BUYER" : "IGNORED"} (${decision.lead_type || "NONE"}) - ${decision.reason}`);
       if (decision.is_genuine_buyer && (decision.temperature === "HOT" || decision.temperature === "WARM")) {
         isQualified = true;
         temperature = decision.temperature;

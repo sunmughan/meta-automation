@@ -35,9 +35,9 @@ const stateStore = require("../src/storage/state-store");
 let passed = 0;
 let failed = 0;
 
-function test(name, fn) {
+async function test(name, fn) {
   try {
-    fn();
+    await fn();
     console.log(`  \x1b[32m✓ PASS\x1b[0m: ${name}`);
     passed++;
   } catch (err) {
@@ -322,6 +322,109 @@ async function runAllTests() {
     assert(!comment.toLowerCase().includes("multi-agent"), "Comment must NOT mention multi-agent systems");
     assert(!comment.toLowerCase().includes("document triage"), "Comment must NOT mention document triage");
     assert(comment.toLowerCase().includes("mobile") || comment.toLowerCase().includes("flutter") || comment.toLowerCase().includes("app"), "Comment must focus on mobile apps");
+  });
+
+  // 26. Project Hiring Request: "We're hiring a web developer to build our website"
+  test("26. Project hiring request qualifies as PROJECT_BUYER", () => {
+    const post = { text: "We're hiring a web developer to build our new e-commerce store. DM your portfolio!", username: "founder_sam" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, true, "Must be qualified as buyer lead");
+    assert.strictEqual(res.is_genuine_buyer, true, "Must be genuine buyer");
+    assert.strictEqual(res.lead_type, "PROJECT_BUYER", "Lead type must be PROJECT_BUYER");
+    assert(res.matchedCategories.includes("Web Development"), "Must match Web Development");
+  });
+
+  // 27. Corporate Recruitment vs Project Hiring Distinction
+  test("27. Corporate recruitment with CV/resume is strictly disqualified", () => {
+    const post = { text: "We are hiring a backend engineer. Please submit your CV to careers@megacorp.com", username: "hr_recruiter" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, false, "Corporate job ads must be disqualified");
+    assert.strictEqual(res.lead_type, "RECRUITMENT", "Lead type must be RECRUITMENT");
+    assert.strictEqual(res.should_reply, false, "Should not reply to corporate recruitment");
+  });
+
+  // 28. Dedicated Hospitality & Hotel Systems (PixelGo HMS)
+  test("28. Dedicated hospitality & hotel system matching", () => {
+    const post = { text: "Looking for a developer to build a hotel reservation and PMS system for our resort.", username: "resort_manager" };
+    const res = intentClassifier.classify(post);
+    assert.strictEqual(res.qualified, true, "Hospitality lead must be qualified");
+    assert(res.matchedCategories.includes("Hospitality"), "Must match Hospitality category");
+
+    const comment = commentGenerator.generateEngagingComment({
+      text: post.text,
+      username: post.username,
+      matchedCategories: res.matchedCategories,
+      identity: "COMPANY"
+    });
+
+    const pixelGoCount = (comment.match(/pixelgo\.live/g) || []).length;
+    const codeAirCount = (comment.match(/codeair\.tech/g) || []).length;
+    assert.strictEqual(pixelGoCount, 1, "pixelgo.live must appear EXACTLY ONCE for hospitality post");
+    assert.strictEqual(codeAirCount, 1, "codeair.tech must appear EXACTLY ONCE");
+    assert(comment.toLowerCase().includes("pixelgo hms"), "Must mention PixelGo HMS");
+  });
+
+  // 29. Strict PixelGo HMS Isolation (Never leaks into non-hospitality posts)
+  test("29. PixelGo HMS never leaks into non-hospitality posts", () => {
+    const nonHospitalityTexts = [
+      "Need someone to build a website for my business",
+      "Looking for a Flutter mobile app developer",
+      "Need an AI chatbot for customer support",
+      "Building a multi-tenant SaaS platform",
+      "Need a custom CRM and admin dashboard",
+      "Need a clinic management system for patient records"
+    ];
+
+    for (const txt of nonHospitalityTexts) {
+      const comment = commentGenerator.generateEngagingComment({
+        text: txt,
+        username: "client",
+        matchedCategories: ["Web Development", "Business Systems"],
+        identity: "COMPANY"
+      });
+      assert(!comment.includes("pixelgo.live"), `pixelgo.live leaked into non-hospitality post: ${txt}`);
+      assert(!comment.toLowerCase().includes("pixelgo hms"), `PixelGo HMS leaked into non-hospitality post: ${txt}`);
+    }
+  });
+
+  // 30. Single URL Mention Rule across all categories
+  test("30. https://www.codeair.tech appears EXACTLY ONCE across all comment variations", () => {
+    const sampleCategories = [
+      ["Web Development"],
+      ["Mobile Development"],
+      ["AI & Automation"],
+      ["SaaS development"],
+      ["Business Systems"],
+      ["Backend & APIs"],
+      []
+    ];
+
+    for (const cats of sampleCategories) {
+      for (let v = 0; v < 10; v++) {
+        const comment = commentGenerator.generateEngagingComment({
+          text: "Need someone to build our project",
+          username: `lead_${v}`,
+          matchedCategories: cats,
+          identity: "COMPANY"
+        });
+        const count = (comment.match(/codeair\.tech/g) || []).length;
+        assert.strictEqual(count, 1, `codeair.tech appeared ${count} times (expected exactly 1) in: ${comment}`);
+      }
+    }
+  });
+
+  // 31. Agentic AI Screening evaluates ambiguous posts semantically
+  await test("31. Agentic AI Screening qualifies genuine buyer intent on ambiguous posts", async () => {
+    const post = {
+      text: "Can someone help build a responsive mobile app for our local startup? We have designs ready.",
+      username: "tech_founder_99",
+      postId: "test_ambig_1"
+    };
+    const decision = await aiDecisionEngine.qualifyPost(post);
+    assert.strictEqual(decision.is_genuine_buyer, true, "AI screening must detect genuine buyer");
+    assert.strictEqual(decision.should_reply, true, "AI screening must decide to reply");
+    assert.strictEqual(decision.temperature, "HOT", "Must be HOT lead");
+    assert(decision.generated_comment.length > 50, "Must synthesize engaging comment");
   });
 
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter

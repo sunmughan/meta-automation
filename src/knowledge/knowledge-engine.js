@@ -268,6 +268,19 @@ class KnowledgeEngine {
       };
     }
 
+    // Hospitality & Hotel Systems reference request (PixelGo HMS)
+    if (
+      /\b(pixelgo|hms|hotel|hospitality|resort|restaurant)\b/i.test(text) &&
+      /\b(link|website|site|demo|reference|system|app|software|url|portfolio)\b/i.test(text)
+    ) {
+      return {
+        target: "COMPANY",
+        platform: "pixelgo",
+        url: "https://pixelgo.live",
+        text: "PixelGo HMS (Flagship Unified Hotel Management System): https://pixelgo.live"
+      };
+    }
+
     if (text.includes("website") || text.includes("site") || text.includes("portfolio")) {
       return {
         target: "COMPANY",
