@@ -1,7 +1,9 @@
 const path = require("path");
 const fs = require("fs");
+const pkg = require("../package.json");
 
 (async () => {
+  const version = `v${pkg.version}`;
   const puppeteer = await import("puppeteer-core");
   const browser = await puppeteer.connect({ browserURL: "http://127.0.0.1:9222" });
   const pages = await browser.pages();
@@ -11,66 +13,95 @@ const fs = require("fs");
     process.exit(1);
   }
 
-  console.log("Navigating to new release page...");
-  await ghPage.goto("https://github.com/sunmughan/meta-automation/releases/new", { waitUntil: "domcontentloaded", timeout: 30000 });
-  await new Promise(r => setTimeout(r, 2000));
+  console.log(`Navigating to new release page for ${version}...`);
+  await ghPage.goto(`https://github.com/sunmughan/meta-automation/releases/new?tag=${version}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await new Promise(r => setTimeout(r, 2500));
 
-  // 1. Select tag v1.1.6
-  console.log("Selecting tag v1.1.6...");
-  const tagBtn = await ghPage.$("#ref-picker-releases-tag");
-  await tagBtn.click();
-  await new Promise(r => setTimeout(r, 1000));
-
-  await ghPage.evaluate(() => {
-    const items = Array.from(document.querySelectorAll("[role=\"menuitem\"], [role=\"option\"], li, a, button, span"));
-    const v116 = items.find(el => (el.innerText || "").trim() === "v1.1.6");
-    if (v116) v116.click();
+  // 1. Ensure tag is selected
+  console.log(`Checking tag selection for ${version}...`);
+  const currentTagText = await ghPage.evaluate(() => {
+    const tagBtn = document.querySelector("#ref-picker-releases-tag");
+    return tagBtn ? tagBtn.innerText.trim() : "";
   });
+
+  if (!currentTagText.includes(version)) {
+    console.log(`Tag not preselected (current: "${currentTagText}"). Clicking picker...`);
+    const tagBtn = await ghPage.$("#ref-picker-releases-tag");
+    if (tagBtn) {
+      await tagBtn.click();
+      await new Promise(r => setTimeout(r, 1000));
+
+      const filterInput = await ghPage.$("input[placeholder*=\"Find\"], input[placeholder*=\"Filter\"], input[aria-label*=\"Tag\"]");
+      if (filterInput) {
+        await filterInput.type(version, { delay: 50 });
+        await new Promise(r => setTimeout(r, 800));
+        await filterInput.press("Enter");
+      } else {
+        await ghPage.evaluate((targetTag) => {
+          const items = Array.from(document.querySelectorAll("[role=\"menuitem\"], [role=\"option\"], li, a, button, span"));
+          const match = items.find(el => (el.innerText || "").trim() === targetTag);
+          if (match) match.click();
+        }, version);
+      }
+    }
+  }
   await new Promise(r => setTimeout(r, 1500));
 
-  // 2. Fill Title
-  console.log("Setting Release Title...");
-  const titleInput = await ghPage.$("#release_name");
-  await titleInput.click({ clickCount: 3 });
-  await titleInput.type("v1.1.6 - Client SPA Navigation & Reply Submit Arrow Fix", { delay: 10 });
+  // 2. Fill Title & Description
+  console.log(`Setting Release Title and Description for ${version}...`);
+  const titleText = `${version} - Pure Antigravity AI Engine, Dynamic Knowledge Base SSOT & Representation Separation`;
+  const bodyText = `## What's Changed in ${version}
 
-  // 3. Fill Description
-  console.log("Setting Release Description...");
-  const bodyText = `## What's Changed in v1.1.6
+### 🧠 Pure Antigravity AI Engine & Zero-Discard Pipeline
+- **Pure Antigravity Runtime**: Completely eliminated \`callGeminiRest()\`, \`GEMINI_API_KEY\`, and REST fallbacks. Enforces pure authenticated Antigravity AI agent runtime via structured JSON schema prompts.
+- **True AI-First Semantic Screening**: Removed rigid deterministic regex gates in \`ai-decision-engine.js\` that previously caused false-positive discards on genuine buyer posts. Every captured post is evaluated with grounded semantics.
+- **Knowledge Engine Single Source of Truth**: Dynamically parses \`knowledge/*.md\` (\`services.md\`, \`profiles.md\`, \`founder.md\`) on startup and change. Eliminated duplicated hardcoded arrays. Added dedicated Hospitality section for \`PixelGo HMS\`.
 
-### 🎯 Core Fixes & Enhancements
-- **Client SPA Navigation & URL Verification**: Fixed client-side SPA routing bug where \`page.url()\` remained at root domain while posts were rendered. Replaced rigid URL check with deep DOM verification (\`window.location.href\`, \`a[href*="postId"]\`, author username, and snippet matching).
-- **Targeted Reply Submit Arrow**: Updated inline reply submission to strictly target the composer row's Upward/Left Arrow icon (\`svg path[d*="M1 6h10"]\` with \`title="Reply"\`).
-- **Profile Modal Prevention Safeguard**: Eliminated global querying for \`"Post"\` buttons which inadvertently clicked the feed's *"What's new?"* profile creator. Added auto-cancellation for any accidental \`"New thread"\` dialogs.
-- **Double-Guard Optimization**: Streamlined AI qualification double-guard to eliminate redundant API calls for posts already qualified as \`HOT\`.
+### 🎯 Representation Awareness & Single-URL Discipline
+- **Strict Voice Separation**:
+  - \`FOUNDER\`: First-person perspective ("I", "as founder & architect"). Shares Sunmughan's personal LinkedIn profile ONLY. Never includes company website.
+  - \`COMPANY\`: Collective company voice ("We at CodeAir"). Shares company website (\`https://www.codeair.tech\`) or \`https://pixelgo.live\` for hospitality. Never includes personal founder link.
+  - \`NEUTRAL\`: Pure technical value, architectural advice, or diagnostic question with **ZERO** promotional links.
+  - \`BOTH\`: Introduces CodeAir engineering team with founder technical oversight. Max 1 link.
+- **Single-URL Discipline**: Strict \`enforceSingleUrl()\` rule ensuring at most ONE verified URL per comment.
+
+### ⚡ Rate-Limiter-Driven Governance & State Store Lifecycle
+- **Dynamic Throughput**: Replaced hardcoded \`maxLiveComments: 2/3\` cycle limits with dynamic rate limiter governance (\`rateLimiter.canPerformAction("COMMENT")\`) respecting hourly quotas and delays.
+- **Unified State Semantics**: Standardized post/comment status lifecycle to recognize \`COMMENTED\`, \`POSTED_LIVE\`, and \`COMMENT_POSTED\` across all store methods.
 
 ### 📦 Multi-Platform Release Assets & Checksums
 All build distributions are packaged and verified below:
-- \`meta-automation-1.1.6.tgz\` (NPM Tarball)
-- \`meta-automation-universal-v1.1.6.zip\` (Universal ZIP)
+- \`meta-automation-${pkg.version}.tgz\` (NPM Tarball)
+- \`meta-automation-universal-v${pkg.version}.zip\` (Universal ZIP)
 - \`meta-automation-linux-x64.tar.gz\` (Linux x64)
 - \`meta-automation-windows-x64.zip\` (Windows x64)
 - \`meta-automation-macos-universal.tar.gz\` (macOS Universal)
 - \`meta-automation-android-termux.tar.gz\` (Android Termux)
+- \`SHA256SUMS.txt\` (Cryptographic SHA-256 Checksums)
 
-**Full Changelog**: https://github.com/sunmughan/meta-automation/compare/v1.1.1...v1.1.6`;
-
-  const bodyArea = await ghPage.$("#release_body");
-  await bodyArea.click();
-  await ghPage.evaluate((txt) => {
-    const area = document.querySelector("#release_body");
-    area.value = txt;
-    area.dispatchEvent(new Event("input", { bubbles: true }));
-    area.dispatchEvent(new Event("change", { bubbles: true }));
-  }, bodyText);
+**Full Changelog**: https://github.com/sunmughan/meta-automation/compare/v1.1.6...${version}`;
+  await ghPage.evaluate((title, body) => {
+    const titleEl = document.querySelector("#release_name, input[name=\"release[name]\"]");
+    if (titleEl) {
+      titleEl.value = title;
+      titleEl.dispatchEvent(new Event("input", { bubbles: true }));
+      titleEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const bodyEl = document.querySelector("#release_body, textarea[name=\"release[body]\"]");
+    if (bodyEl) {
+      bodyEl.value = body;
+      bodyEl.dispatchEvent(new Event("input", { bubbles: true }));
+      bodyEl.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }, titleText, bodyText);
   await new Promise(r => setTimeout(r, 1000));
 
   // 4. Upload Assets
   console.log("Uploading release assets...");
   const releaseDir = path.resolve(__dirname, "../release");
   const assetFiles = [
-    path.join(releaseDir, "meta-automation-1.1.6.tgz"),
-    path.join(releaseDir, "meta-automation-universal-v1.1.6.zip"),
+    path.join(releaseDir, `meta-automation-${pkg.version}.tgz`),
+    path.join(releaseDir, `meta-automation-universal-v${pkg.version}.zip`),
     path.join(releaseDir, "meta-automation-linux-x64.tar.gz"),
     path.join(releaseDir, "meta-automation-windows-x64.zip"),
     path.join(releaseDir, "meta-automation-macos-universal.tar.gz"),
