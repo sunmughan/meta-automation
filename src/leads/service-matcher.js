@@ -80,6 +80,20 @@ const SERVICE_CATEGORIES = [
     ]
   },
   {
+    category: "Hospitality",
+    services: [
+      "Hotel management software (PixelGo HMS)",
+      "Hospitality booking platforms",
+      "Hotel & resort operations software",
+      "Restaurant & POS systems"
+    ],
+    patterns: [
+      /\b(hotel|resort|restaurant|hospitality|motel|vacation\s+rental|guest\s+house)\b.*\b(management|software|system|app|application|website|site|booking|reservation|pms|platform)\b/i,
+      /\b(hotel\s+management\s+system|pms\s+software|property\s+management\s+system|pms)\b/i,
+      /\b(need|looking\s+for|build)\s+(a\s+)?(hotel|resort|restaurant)\s+(website|app|system|booking|reservation)\b/i
+    ]
+  },
+  {
     category: "Business Systems",
     services: [
       "CRM systems",

@@ -5,8 +5,8 @@
  * Enforces lead-rules.md:
  * Genuine CodeAir lead strictly requires:
  *   1. AUTHENTIC BUYER / PROJECT INTENT (Author is requesting/hiring/needing software development)
- *   2. CODEAIR SERVICE MATCH (Web, Mobile, AI/Automation, SaaS, Business Systems, Backend/APIs)
- *   3. NOT RECRUITMENT (9-5 HR hiring, salaried job ads)
+ *   2. CODEAIR SERVICE MATCH (Web, Mobile, AI/Automation, SaaS, Business Systems, Hospitality, Backend/APIs)
+ *   3. NOT RECRUITMENT (9-5 HR hiring, salaried job ads with resume/cv/careers application)
  *   4. NOT SERVICE PROVIDER (Freelancer, agency, or developer advertising or showcasing their own services)
  *   5. NOT JOB SEEKER (Candidate looking for employment/gigs)
  *   6. NOT IRRELEVANT (Celebrity, memes, personal lifestyle, birthdays, travel, entertainment)
@@ -14,25 +14,20 @@
 
 const serviceMatcher = require("./service-matcher");
 
-// 1. Traditional 9-5 employee recruitment (HR, salaried positions, corporate job openings)
-const RECRUITMENT_PATTERNS = [
-  /\bwe'?re\s+hiring\b/i,
-  /\bwe\s+are\s+hiring\b/i,
-  /\bwere\s+hiring\b/i,
-  /\bhiring\s+(now|for|a|an|developers?|engineers?)\b/i,
-  /\bjob\s+(opening|vacancy|opportunity|vacancies)\b/i,
-  /\bfull[- ]?time(\s+position|\s+role)?\b/i,
-  /\bpart[- ]?time(\s+position|\s+role)?\b/i,
-  /\b(base\s+)?salary\b/i,
+// 1. Traditional corporate 9-5 employee recruitment (HR, salaried employee roles, resume submissions)
+const CORPORATE_RECRUITMENT_PATTERNS = [
+  /\bapply\s+(here|now|via|at|to)\s*[:\s]*(https?:\/\/|careers?|greenhouse|lever|workday|job\s+board)/i,
+  /\b(submit|send)\s+(your\s+)?(cv|resume)\b/i,
+  /\b(cv|resume)\s+(to|at)\s+([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i,
+  /\bcareers?@[a-z0-9.-]+\.[a-z]{2,}/i,
+  /\b(base\s+)?salary\s*[:\s]*[\$€£₹]\s*\d+/i,
+  /\bannual\s+salary\b/i,
   /\bcompensation\s+package\b/i,
-  /\bapply\s+(here|now|via|at|to)\b/i,
-  /\bsubmit\s+(your\s+)?(cv|resume)\b/i,
-  /\b(cv|resume)\s+to\b/i,
-  /\bjoin\s+(our|the)\s+team\b/i,
+  /\bbenefits\s*(package|\(401k|health\s+insurance)\b/i,
+  /\b(full[- ]?time|part[- ]?time)\s+(employee|salaried\s+role|permanent\s+position|w2)\b/i,
+  /\b(job\s+opening|job\s+vacancy|vacancies)\s+(at|in)\b/i,
   /\btalent\s+acquisition\b/i,
-  /\brecruiter\b/i,
-  /\brecruitment\b/i,
-  /\blooking\s+for\s+(a\s+)?(senior|junior|lead|intern|full[- ]?time|part[- ]?time)\s+(developer|engineer|designer)\s+to\s+join\b/i
+  /\brecruitment\s+(agency|team)\b/i
 ];
 
 // 2. Job seekers looking for work / employment
@@ -110,17 +105,23 @@ const NETWORKING_PATTERNS = [
   /\bgood\s+morning\s+(threads|everyone|all)\b/i
 ];
 
-// 6. Explicit buyer / client demand signals (Author is seeking someone to build for them)
+// 6. Explicit buyer / client demand signals (Author is seeking/hiring someone to build for them)
 const BUYING_INTENT_PATTERNS = [
   // First-person requests for developers, agencies, or software creation
   /\b(i|we)\s+need(\s+someone|\s+somebody)?\s+(to\s+build|to\s+develop|to\s+create|to\s+make|to\s+design|to\s+code)\b/i,
-  /\b(i'?m|we'?re|we\s+are)\s+looking\s+(for|to\s+hire)\s+(someone|somebody|a\s+company|a\s+developer|a\s+designer|a\s+team|an\s+agency|a\s+freelancer)\s+(to\s+build|to\s+develop|to\s+design|for\s+our)?\b/i,
+  /\b(i'?m|we'?re|we\s+are)?\s*looking\s+(for|to\s+hire)\s+(someone|somebody|a\s+company|a\s+developer|a\s+designer|a\s+team|an\s+agency|a\s+freelancer)\s*(to\s+build|to\s+develop|to\s+design|for\s+our)?\b/i,
   /\blooking\s+for\s+someone\s+to\s+(build|design|develop|make|code)\b/i,
   /\bneed\s+someone\s+to\s+(build|design|develop|make|code)\b/i,
-  /\bneed\s+(a\s+|our\s+|my\s+)?(site|website|app|web\s+app|platform|crm|erp|dashboard|mvp)\s+(built|developed|created|designed|redesigned)\b/i,
+  /\bneed\s+(a\s+|our\s+|my\s+)?(site|website|app|web\s+app|platform|crm|erp|dashboard|mvp|system)\s+(built|developed|created|designed|redesigned)\b/i,
   /\blooking\s+to\s+hire\s+(a\s+|an?\s+)?(web\s+developer|app\s+developer|software\s+developer|agency|freelancer|team)\b/i,
   /\bhire\s+(a\s+)?(web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|freelancer\s+to\s+build)\b/i,
-  
+
+  // Project Hiring Requests (Author is hiring developers/agencies for a project or build)
+  /\b(we'?re\s+hiring|hiring|looking\s+to\s+hire|need\s+to\s+hire)\s+(a\s+|an?\s+)?(developer|engineer|designer|freelancer|agency|team|someone)\s+(to\s+build|to\s+develop|to\s+create|to\s+design|for\s+(our|a|my)\s+(website|app|mvp|project|saas|platform|system|store))\b/i,
+  /\bhiring\s+(a\s+|an?\s+)?(web\s+dev(eloper)?|app\s+dev(eloper)?|software\s+dev(eloper)?|flutter\s+dev(eloper)?|frontend\s+dev(eloper)?|full[- ]?stack\s+dev(eloper)?|ui\s+designer)\b/i,
+  /\bhiring\s+(for\s+)?(website|web\s+app|mobile\s+app|software|mvp|project|saas|platform|system|hotel\s+software)\b/i,
+  /\b(hiring|looking\s+for)\s+(a\s+|an?\s+)?(freelance|contract)\s+(developer|designer|engineer|agency)\b/i,
+
   // Specific role or service requests
   /\b(looking\s+for|need|seeking)\s+(a\s+|an?\s+)?(web\s+designer|website\s+designer|web\s+developer|website\s+developer|frontend\s+developer|backend\s+developer|full[- ]?stack\s+developer|ai\s+developer|ai\s+engineer|flutter\s+developer|freelance\s+developer|app\s+developer|software\s+engineer)\s*(for|to|with)?\b/i,
   /\b(looking\s+for|need|seeking)\s+(someone\s+for\s+)?website\s+(design|development|building|redesign)\b/i,
@@ -200,8 +201,8 @@ class IntentClassifier {
       };
     }
 
-    // Rule 1: Recruitment / 9-5 Hiring posts are strictly ignored
-    for (const pat of RECRUITMENT_PATTERNS) {
+    // Rule 1: Corporate HR Recruitment posts (salaried, benefits, resume/CV submission) are strictly ignored
+    for (const pat of CORPORATE_RECRUITMENT_PATTERNS) {
       if (pat.test(text)) {
         return {
           qualified: false,
@@ -210,7 +211,7 @@ class IntentClassifier {
           is_genuine_buyer: false,
           lead_type: "RECRUITMENT",
           intent: "RECRUITER",
-          reason: "Recruitment / hiring opportunity, not a software buyer.",
+          reason: "Corporate recruitment / salaried job opening, not a software buyer.",
           matchedServices: [],
           should_reply: false
         };
