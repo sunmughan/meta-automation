@@ -4,6 +4,7 @@
  * Navigates to threads.com/activity, reads incoming replies, and responds continuously.
  */
 
+const crypto = require("crypto");
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
@@ -12,6 +13,15 @@ const duplicateGuard = require("../../safety/duplicate-guard");
 const logger = require("../../logging/logger");
 
 class ThreadsActivityWatcher {
+  /**
+   * Hashes incoming text for unique multi-turn reply tracking.
+   */
+  hashReply(username, text) {
+    const clean = String(text || "").trim().toLowerCase();
+    const hash = crypto.createHash("md5").update(`${username}_${clean}`).digest("hex").slice(0, 10);
+    return `reply_threads_${username}_${hash}`;
+  }
+
   /**
    * Scans Threads Activity/Notifications for incoming replies to our posts or comments.
    */
@@ -29,7 +39,7 @@ class ThreadsActivityWatcher {
       await new Promise(r => setTimeout(r, 2500));
 
       // Extract reply items from notifications
-      const replyItems = await page.evaluate(() => {
+      const rawNotifications = await page.evaluate(() => {
         const results = [];
         const rows = [...document.querySelectorAll('div[role="listitem"], a[href*="/post/"]')];
 
@@ -45,56 +55,123 @@ class ThreadsActivityWatcher {
             results.push({
               username,
               url: href,
-              text,
-              id: href || `reply_${username}_${text.slice(0, 30)}`
+              text
             });
           }
         }
         return results;
       });
 
+      const replyItems = rawNotifications.map(item => ({
+        ...item,
+        id: this.hashReply(item.username, item.text)
+      }));
+
       logger.info(`Found ${replyItems.length} activity notifications`, { count: replyItems.length });
 
       for (const item of replyItems) {
         if (!item.url) continue;
 
-        // Skip if already handled
+        // Skip if this exact message turn was already handled
         if (stateStore.hasHandledReply(item.id, "threads")) {
+          continue;
+        }
+
+        // Duplicate guard check
+        const dupCheck = duplicateGuard.canExecute({
+          platform: "threads",
+          actionType: "REPLY",
+          targetId: item.id,
+          text: item.text
+        });
+        if (!dupCheck.allowed) {
+          logger.warn(`Skipping reply for @${item.username}: ${dupCheck.reason}`);
           continue;
         }
 
         logger.info(`Responding to reply from @${item.username}...`);
 
-        // Generate contextual reply
+        // Load existing conversation state to maintain multi-turn continuity
+        const convId = `threads:${item.username}`;
+        const existingConv = stateStore.getConversation(convId, "threads") || {};
+
+        // Generate contextual reply via AI decision engine
         const replyDecision = await aiDecisionEngine.generateConversationReply({
           platform: "threads",
           username: item.username,
+          originalPost: existingConv.originalPost || "",
+          ourPreviousMessage: existingConv.lastResponse || "",
           incomingMessage: item.text,
-          conversationStage: "DISCOVERY"
+          conversationStage: existingConv.conversationStage || "DISCOVERY",
+          companyMentionedBefore: existingConv.companyIntroduced,
+          founderMentionedBefore: existingConv.founderIntroduced
         });
 
-        // If posting is enabled, type and submit the reply live
-        if (CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
+        // Update persistent conversation state
+        stateStore.saveConversation({
+          platform: "threads",
+          conversationId: convId,
+          user: item.username,
+          username: item.username,
+          postId: item.url,
+          identifiedIntent: replyDecision.intent,
+          identityUsed: replyDecision.identity,
+          companyIntroduced: replyDecision.identity === "COMPANY" || replyDecision.identity === "BOTH" || existingConv.companyIntroduced,
+          founderIntroduced: replyDecision.identity === "FOUNDER" || replyDecision.identity === "BOTH" || existingConv.founderIntroduced,
+          lastResponse: replyDecision.response_message,
+          conversationStage: replyDecision.conversation_stage || "DISCOVERY",
+          previousMessages: [
+            ...(existingConv.previousMessages || []),
+            { sender: item.username, text: item.text, timestamp: new Date().toISOString() },
+            { sender: "CodeAir", text: replyDecision.response_message, timestamp: new Date().toISOString() }
+          ],
+          newAction: "REPLY_PROCESSED",
+          newActionDetails: { replyId: item.id, identity: replyDecision.identity }
+        });
+
+        // If dry run or posting disabled or approval mode
+        if (CONFIG.APPROVAL_MODE) {
+          stateStore.recordHandledReply(item.id, {
+            username: item.username,
+            incomingText: item.text,
+            responseText: replyDecision.response_message,
+            status: "PENDING_APPROVAL"
+          }, "threads");
+          logger.info(`[REPLY] Reply to @${item.username} queued for approval.`);
+          continue;
+        }
+
+        if (CONFIG.DRY_RUN || !CONFIG.POSTING_ENABLED) {
+          stateStore.recordHandledReply(item.id, {
+            username: item.username,
+            incomingText: item.text,
+            responseText: replyDecision.response_message,
+            status: "SIMULATED"
+          }, "threads");
+          duplicateGuard.recordExecuted({
+            platform: "threads",
+            actionType: "REPLY",
+            targetId: item.id,
+            text: item.text
+          });
+          logger.info(`[SIMULATED REPLY] Replied to @${item.username}: "${replyDecision.response_message.slice(0, 50)}..."`);
+          continue;
+        }
+
+        // Live execution in Threads browser
+        try {
           await page.goto(item.url, { waitUntil: "domcontentloaded", timeout: 45000 });
           await new Promise(r => setTimeout(r, 2500));
 
-          // Look for reply input
-          const replyInput = await page.$('div[role="textbox"][contenteditable="true"]');
-          if (replyInput) {
-            await replyInput.focus();
-            for (const char of replyDecision.response_message) {
-              await page.keyboard.sendCharacter(char);
-              await new Promise(res => setTimeout(res, 20));
-            }
-            await new Promise(res => setTimeout(res, 1200));
-
-            // Two-step submission: Click reply up-arrow icon then confirm in modal
-            const clickedUpArrow = await page.evaluate(() => {
+          // Ensure reply input is open; if not, click Reply action on the article
+          let replyInput = await page.$('div[role="textbox"][contenteditable="true"]');
+          if (!replyInput) {
+            const opened = await page.evaluate(() => {
               const svgs = [...document.querySelectorAll('svg')];
               const replySvg = svgs.find(s => {
-                const p = s.querySelector('path');
-                const d = p ? p.getAttribute('d') || '' : '';
-                return d.includes('M1 6h10') || (s.getAttribute('aria-label') || '').toLowerCase().includes('reply');
+                const d = s.querySelector('path')?.getAttribute('d') || '';
+                const aria = (s.getAttribute('aria-label') || '').toLowerCase();
+                return aria.includes('reply') || d.startsWith('M12 3a9 9 0 0 0 0 18c1.414 0 2');
               });
               if (replySvg) {
                 const btn = replySvg.closest('div[role="button"], button');
@@ -105,30 +182,131 @@ class ThreadsActivityWatcher {
               }
               return false;
             });
-
-            if (clickedUpArrow) {
-              await new Promise(res => setTimeout(res, 1500));
-              await page.evaluate(() => {
-                const buttons = [...document.querySelectorAll('div[role="button"], button')];
-                const postBtn = buttons.find(b => (b.innerText || '').trim().toLowerCase() === 'post');
-                if (postBtn) postBtn.click();
-              });
-            } else {
-              await page.keyboard.press("Enter");
+            if (opened) {
+              await new Promise(r => setTimeout(r, 1500));
+              replyInput = await page.$('div[role="textbox"][contenteditable="true"]');
             }
-            await new Promise(res => setTimeout(res, 3000));
           }
+
+          if (!replyInput) {
+            throw new Error(`Could not open reply input for @${item.username} on ${item.url}`);
+          }
+
+          await replyInput.focus();
+          await new Promise(r => setTimeout(r, 400));
+
+          // Visibly type response
+          for (const char of replyDecision.response_message) {
+            await page.keyboard.sendCharacter(char);
+            await new Promise(res => setTimeout(res, Math.floor(Math.random() * 20) + 15));
+          }
+          await new Promise(res => setTimeout(res, 1500));
+
+          // Submit reply via multi-strategy locator
+          const postClicked = await page.evaluate(() => {
+            const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
+            if (dialog) {
+              const btns = Array.from(dialog.querySelectorAll('div[role="button"], button'));
+              const pBtn = btns.find(b => {
+                const txt = (b.innerText || "").trim().toLowerCase();
+                const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+                const isEnabled = !b.disabled && b.getAttribute('aria-disabled') !== "true";
+                return (txt === 'post' || txt === 'reply' || aria === 'post' || aria === 'reply') && isEnabled;
+              });
+              if (pBtn) {
+                pBtn.focus();
+                pBtn.click();
+                pBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                return true;
+              }
+            }
+
+            const tb = document.querySelector('div[role="textbox"][contenteditable="true"]');
+            if (tb) {
+              let parent = tb.parentElement;
+              for (let depth = 0; depth < 8; depth++) {
+                if (!parent) break;
+                const svgs = Array.from(parent.querySelectorAll('svg'));
+                const submitSvg = svgs.find(s => {
+                  const title = (s.querySelector('title')?.textContent || s.getAttribute('aria-label') || "").toLowerCase();
+                  const d = s.querySelector('path')?.getAttribute('d') || "";
+                  return title === 'reply' || title === 'post' || d.includes('M1 6h10');
+                });
+                if (submitSvg) {
+                  const btn = submitSvg.closest('div[role="button"], button') || submitSvg;
+                  btn.focus?.();
+                  btn.click();
+                  btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                  return true;
+                }
+
+                const btns = Array.from(parent.querySelectorAll('div[role="button"], button'));
+                const pBtn = btns.find(b => {
+                  const txt = (b.innerText || "").trim().toLowerCase();
+                  const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+                  const isEnabled = !b.disabled && b.getAttribute('aria-disabled') !== "true";
+                  return (txt === 'reply' || txt === 'post' || aria === 'reply' || aria === 'post') && isEnabled;
+                });
+                if (pBtn) {
+                  pBtn.focus();
+                  pBtn.click();
+                  pBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                  return true;
+                }
+                parent = parent.parentElement;
+              }
+            }
+            return false;
+          });
+
+          if (!postClicked) {
+            try {
+              const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"]');
+              if (submitHandle) {
+                await submitHandle.click();
+              }
+            } catch (_) {}
+          }
+
+          // Strict verification in DOM
+          const textSnippet = replyDecision.response_message.replace(/https?:\/\/[^\s]+/g, "").slice(0, 30).trim();
+          let isVerified = false;
+          for (let attempt = 0; attempt < 8; attempt++) {
+            await new Promise(r => setTimeout(r, 1000));
+            isVerified = await page.evaluate((snippet) => {
+              const bodyText = document.body.innerText || "";
+              const hasError = /\b(couldn'?t post|something went wrong|action blocked|rate limit)\b/i.test(bodyText);
+              if (hasError) return false;
+              const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
+              return snippet && snippet.length > 5 && articles.some(a => (a.innerText || "").includes(snippet));
+            }, textSnippet);
+            if (isVerified) break;
+          }
+
+          if (!isVerified) {
+            logger.warn(`Live reply to @${item.username} could not be verified in DOM. Skipping state recording.`);
+            continue;
+          }
+
+          // Record verified handled reply
+          stateStore.recordHandledReply(item.id, {
+            username: item.username,
+            incomingText: item.text,
+            responseText: replyDecision.response_message,
+            status: "REPLIED"
+          }, "threads");
+
+          duplicateGuard.recordExecuted({
+            platform: "threads",
+            actionType: "REPLY",
+            targetId: item.id,
+            text: item.text
+          });
+
+          logger.info(`✅ Verified live reply to @${item.username}: "${replyDecision.response_message.slice(0, 50)}..."`);
+        } catch (err) {
+          logger.error(`Error executing live reply for @${item.username}: ${err.message}`);
         }
-
-        // Record handled reply
-        stateStore.recordHandledReply(item.id, {
-          username: item.username,
-          incomingText: item.text,
-          responseText: replyDecision.response_message,
-          status: "REPLIED"
-        }, "threads");
-
-        logger.info(`✅ Replied to @${item.username}: "${replyDecision.response_message.slice(0, 50)}..."`);
       }
 
       return replyItems;

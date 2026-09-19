@@ -841,26 +841,105 @@ async function runAllTests() {
       published: true
     };
 
-    // Store in ourPosts
-    stateStore.state.ourPosts = stateStore.state.ourPosts || {};
-    stateStore.state.ourPosts[fakeUnverifiedPost.id] = fakeUnverifiedPost;
-    stateStore.state.ourPosts[fakeVerifiedOldPost.id] = fakeVerifiedOldPost;
+    // Store in isolated ourPosts
+    const originalOurPosts = stateStore.state.ourPosts;
+    stateStore.state.ourPosts = {
+      [fakeUnverifiedPost.id]: fakeUnverifiedPost,
+      [fakeVerifiedOldPost.id]: fakeVerifiedOldPost
+    };
 
-    // Evaluate using scheduler logic
-    const ourPosts = Object.values(stateStore.state.ourPosts);
-    const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
-    const latestPost = verifiedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
-    const lastPostTime = latestPost ? new Date(latestPost.publishedAt).getTime() : 0;
-    const postIntervalMs = 6 * 60 * 60 * 1000;
-    const elapsedMs = Date.now() - lastPostTime;
-    const isDue = elapsedMs >= postIntervalMs || lastPostTime === 0;
+    try {
+      // Evaluate using scheduler logic
+      const ourPosts = Object.values(stateStore.state.ourPosts);
+      const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
+      const latestPost = verifiedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+      const lastPostTime = latestPost ? new Date(latestPost.publishedAt).getTime() : 0;
+      const postIntervalMs = 6 * 60 * 60 * 1000;
+      const elapsedMs = Date.now() - lastPostTime;
+      const isDue = elapsedMs >= postIntervalMs || lastPostTime === 0;
 
-    assert.strictEqual(latestPost.id, "verified_old_1", "Scheduler must pick the verified post, completely ignoring unverified ones");
-    assert.strictEqual(isDue, true, "Post must be due because the last VERIFIED post was 7 hours ago (> 6 hours)");
+      assert.strictEqual(latestPost.id, "verified_old_1", "Scheduler must pick the verified post, completely ignoring unverified ones");
+      assert.strictEqual(isDue, true, "Post must be due because the last VERIFIED post was 7 hours ago (> 6 hours)");
+    } finally {
+      stateStore.state.ourPosts = originalOurPosts;
+    }
+  });
 
-    // Cleanup fake posts
-    delete stateStore.state.ourPosts[fakeUnverifiedPost.id];
-    delete stateStore.state.ourPosts[fakeVerifiedOldPost.id];
+  // 51. Scheduled Post Failure Cooldown Enforced
+  await test("51. Scheduled post failure cooldown blocks loop retries for 30 minutes", () => {
+    stateStore.recordOurPostAttemptFailure({
+      pillar: "TEST_PILLAR",
+      format: "SINGLE_CARD",
+      reason: "Verification timeout test"
+    });
+
+    const lastFailure = stateStore.getLastPostAttemptFailure();
+    assert(lastFailure, "Last post attempt failure must be retrievable");
+    assert.strictEqual(lastFailure.reason, "Verification timeout test");
+
+    const failureCooldownMs = 30 * 60 * 1000;
+    const timeSinceFailure = Date.now() - lastFailure.timestamp;
+    const isCooldownActive = timeSinceFailure < failureCooldownMs;
+    assert.strictEqual(isCooldownActive, true, "Failure cooldown must be active immediately after recorded failure");
+
+    // Clean up failure record
+    stateStore.state.postFailures.pop();
+    stateStore.saveState();
+  });
+
+  // 52. Threads-Only Platform Target Runtime Isolation
+  await test("52. Threads-only platform target configuration isolates from Instagram execution", () => {
+    const config = require("../config");
+    const target = (config.PLATFORM_TARGET || "threads").toLowerCase();
+    assert.strictEqual(target, "threads", "PLATFORM_TARGET must default to 'threads'");
+
+    const shouldScanInstagram = target === "instagram" || target === "all";
+    assert.strictEqual(shouldScanInstagram, false, "Instagram scanning must be bypassed when target is threads");
+  });
+
+  // 53. Multi-Turn Turn ID Distinct Hash Generation
+  await test("53. Multi-turn replies and DMs produce unique hash turn IDs for subsequent user messages", () => {
+    const threadsActivityWatcher = require("../src/platforms/threads/threads-activity");
+    const threadsDms = require("../src/platforms/threads/threads-dms");
+
+    const user = "founder_test_user";
+    const msg1 = "Can you build an MVP for our AI startup?";
+    const msg2 = "That sounds great! What are your rates and timeline?";
+
+    const replyTurn1 = threadsActivityWatcher.hashReply(user, msg1);
+    const replyTurn2 = threadsActivityWatcher.hashReply(user, msg2);
+
+    assert(replyTurn1.startsWith("reply_threads_founder_test_user_"));
+    assert(replyTurn2.startsWith("reply_threads_founder_test_user_"));
+    assert.notStrictEqual(replyTurn1, replyTurn2, "Different incoming messages on the same conversation must generate distinct turn IDs");
+
+    const dmTurn1 = threadsDms.hashMessage(user, msg1);
+    const dmTurn2 = threadsDms.hashMessage(user, msg2);
+    assert.notStrictEqual(dmTurn1, dmTurn2, "Different DMs must generate distinct turn IDs for continuous conversation");
+  });
+
+  // 54. Direct Message Verification & Approval Mode Enforcement
+  await test("54. DM Monitor respects approval mode and does not mark SENT_VERIFIED without browser delivery", async () => {
+    const dmMonitor = require("../src/engagement/dm-monitor");
+
+    const testItem = {
+      sender: "test_client_999",
+      lastMessage: "Need a landing page by next week. Can you help?",
+      threadId: "test_thread_999"
+    };
+
+    const res = await dmMonitor.processDmItem(testItem, "threads", { approvalMode: true });
+    assert.strictEqual(res.success, true);
+    assert.strictEqual(res.approvalRequired, true);
+
+    const dmTurnId = require("../src/platforms/threads/threads-dms").hashMessage(testItem.sender, testItem.lastMessage);
+    const handled = stateStore.state.dms[`threads:${dmTurnId}`];
+    assert(handled, "Handled DM record must exist in state");
+    assert.strictEqual(handled.status, "PENDING_APPROVAL", "Status must be PENDING_APPROVAL in approval mode");
+
+    // Cleanup test DM state
+    delete stateStore.state.dms[`threads:${dmTurnId}`];
+    stateStore.saveState();
   });
 
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter

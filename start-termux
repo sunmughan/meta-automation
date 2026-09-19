@@ -48,7 +48,7 @@ else
 fi
 
 # 3. Check Authentication
-echo "[3/4] Checking Threads & Instagram session status..."
+echo "[3/4] Checking platform authentication status..."
 node threads-agent.js auth > /dev/null 2>&1 || true
 
 # 4. Check if already running

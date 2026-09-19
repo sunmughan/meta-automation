@@ -18,13 +18,19 @@ class DmMonitor {
    * Processes a single DM conversation item.
    */
   async processDmItem(dmItem, platform = "threads", options = {}) {
-    const dmId = dmItem.threadId || `${platform}_${dmItem.sender}_${Date.now()}`;
+    // 1. Generate unique turn ID keyed by sender and message content for true multi-turn tracking
+    const dmTurnId = threadsDms.hashMessage(dmItem.sender, dmItem.lastMessage);
 
-    // 1. Check duplicate
+    // Skip if this exact message turn was already handled
+    if (stateStore.hasHandledDm(dmTurnId, platform)) {
+      return { success: false, reason: "Already handled this message turn" };
+    }
+
+    // Check duplicate guard
     const dupCheck = duplicateGuard.canExecute({
       platform,
       actionType: "DM",
-      targetId: dmId,
+      targetId: dmTurnId,
       text: dmItem.lastMessage
     });
 
@@ -67,36 +73,104 @@ class DmMonitor {
         { sender: "CodeAir", text: decision.response_message, timestamp: new Date().toISOString() }
       ],
       newAction: "DM_PROCESSED",
-      newActionDetails: { dmId, identity: decision.identity, humanReview: decision.human_review_required }
+      newActionDetails: { dmTurnId, identity: decision.identity, humanReview: decision.human_review_required }
     });
 
-    // 5. Apply Approval Mode / Dry Run
+    // 5. Apply Execution / Dry Run / Approval
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
     const isApprovalMode = options.approvalMode !== undefined ? options.approvalMode : CONFIG.APPROVAL_MODE;
+    const isPostingEnabled = CONFIG.POSTING_ENABLED;
 
-    logger.audit("DM_RESPONSE_SIMULATED", `${platform}:${dmId}`, {
-      platform,
-      sender: dmItem.sender,
-      identity: decision.identity,
-      response: decision.response_message,
-      humanReview: decision.human_review_required
-    });
+    if (isApprovalMode) {
+      logger.info(`[DM MONITOR] DM response for @${dmItem.sender} pending approval.`);
+      stateStore.recordHandledDm(dmTurnId, {
+        username: dmItem.sender,
+        messageText: dmItem.lastMessage,
+        responseText: decision.response_message,
+        status: "PENDING_APPROVAL"
+      }, platform);
+      return {
+        success: true,
+        approvalRequired: true,
+        response: decision.response_message,
+        identity: decision.identity
+      };
+    }
 
-    stateStore.recordHandledDm(dmId, {
-      username: dmItem.sender,
-      messageText: dmItem.lastMessage,
-      responseText: decision.response_message,
-      status: isApprovalMode ? "PENDING_APPROVAL" : "SIMULATED"
-    }, platform);
+    if (isDryRun || !isPostingEnabled) {
+      logger.audit("DM_RESPONSE_SIMULATED", `${platform}:${dmTurnId}`, {
+        platform,
+        sender: dmItem.sender,
+        identity: decision.identity,
+        response: decision.response_message,
+        humanReview: decision.human_review_required
+      });
 
-    return {
-      success: true,
-      dryRun: true,
-      approvalRequired: isApprovalMode,
-      humanReview: decision.human_review_required,
-      response: decision.response_message,
-      identity: decision.identity
-    };
+      stateStore.recordHandledDm(dmTurnId, {
+        username: dmItem.sender,
+        messageText: dmItem.lastMessage,
+        responseText: decision.response_message,
+        status: "SIMULATED"
+      }, platform);
+
+      duplicateGuard.recordExecuted({
+        platform,
+        actionType: "DM",
+        targetId: dmTurnId,
+        text: dmItem.lastMessage
+      });
+
+      return {
+        success: true,
+        dryRun: true,
+        response: decision.response_message,
+        identity: decision.identity
+      };
+    }
+
+    // 6. Live Execution in Browser
+    if (platform === "threads") {
+      logger.info(`[DM MONITOR] Executing live Threads DM send to @${dmItem.sender}...`);
+      const sendRes = await threadsDms.sendDirectMessage(dmItem.threadId || dmItem.sender, decision.response_message);
+      if (sendRes && sendRes.verified) {
+        stateStore.recordHandledDm(dmTurnId, {
+          username: dmItem.sender,
+          messageText: dmItem.lastMessage,
+          responseText: decision.response_message,
+          status: "SENT_VERIFIED"
+        }, platform);
+
+        duplicateGuard.recordExecuted({
+          platform,
+          actionType: "DM",
+          targetId: dmTurnId,
+          text: dmItem.lastMessage
+        });
+
+        logger.audit("DM_RESPONSE_SENT_VERIFIED", `${platform}:${dmTurnId}`, {
+          platform,
+          sender: dmItem.sender,
+          response: decision.response_message
+        });
+
+        return {
+          success: true,
+          live: true,
+          verified: true,
+          response: decision.response_message,
+          identity: decision.identity
+        };
+      } else {
+        logger.warn(`[DM MONITOR] Live DM send unverified for @${dmItem.sender}: ${sendRes ? sendRes.reason : "unknown"}`);
+        return {
+          success: false,
+          verified: false,
+          reason: sendRes ? sendRes.reason : "verification failed"
+        };
+      }
+    }
+
+    return { success: false, reason: `Platform ${platform} not supported for live DM execution` };
   }
 
   /**
@@ -116,15 +190,18 @@ class DmMonitor {
       logger.warn("Threads DM scan skipped or failed", { error: err.message });
     }
 
-    // Instagram DMs
-    try {
-      const igItems = await instagramDms.scanDms();
-      for (const item of igItems) {
-        const res = await this.processDmItem(item, "instagram", options);
-        results.instagram.push({ item, res });
+    // Instagram DMs (Only if platform target explicitly enables Instagram)
+    const target = (CONFIG.PLATFORM_TARGET || "threads").toLowerCase();
+    if (target === "instagram" || target === "all") {
+      try {
+        const igItems = await instagramDms.scanDms();
+        for (const item of igItems) {
+          const res = await this.processDmItem(item, "instagram", options);
+          results.instagram.push({ item, res });
+        }
+      } catch (err) {
+        logger.warn("Instagram DM scan skipped or failed", { error: err.message });
       }
-    } catch (err) {
-      logger.warn("Instagram DM scan skipped or failed", { error: err.message });
     }
 
     return results;

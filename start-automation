@@ -12,7 +12,7 @@ LOG_FILE="$SCRIPT_DIR/logs/daemon.log"
 mkdir -p "$SCRIPT_DIR/logs"
 
 echo "=================================================="
-echo "  🚀 CODEAIR THREADS + INSTAGRAM AUTOMATION"
+echo "  🚀 CODEAIR META AUTOMATION (THREADS FOCUSED)"
 echo "=================================================="
 
 # 1. Ensure Browser CDP is running on port 9222 (Chrome, Edge, Brave, Chromium)
@@ -28,10 +28,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # 2. Check Authentication
-echo "[2/3] Checking Threads & Instagram sessions..."
+echo "[2/3] Checking platform authentication sessions..."
 node threads-agent.js auth > /dev/null 2>&1
 if [ $? -eq 0 ]; then
-    echo "✅ Authenticated sessions verified on Threads & Instagram."
+    echo "✅ Authenticated sessions verified for configured platform."
 else
     echo "⚠️  Authentication check completed (check 'node threads-agent.js auth' for details)."
 fi

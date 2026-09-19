@@ -49,24 +49,30 @@ const pkg = require("../package.json");
 
   // 2. Fill Title & Description
   console.log(`Setting Release Title and Description for ${version}...`);
-  const titleText = `${version} - Transaction-Verified Action Execution, Safe Retry Quarantine & 6-Hour Cadence`;
+  const titleText = `${version} - Multi-Strategy Post & Reply Submissions, Cooldown Recovery, Live DMs, & Threads Isolation`;
   const bodyText = `## What's Changed in ${version}
 
-### 🛡️ Transaction-Verified Comment & Post Execution
-- **Multi-Signal Verification in \`threads-actions.js\`**: Modal closure and textbox clearing are no longer naively treated as posting success. Submissions now undergo multi-signal DOM verification (comment text snippet inserted into thread \`article\`, Threads \`"Posted"\` / \`"View"\` confirmation toast, and absence of error banners).
-- **False-Positive State Guard**: If verification fails or is cancelled, \`duplicateGuard.recordExecuted()\` is strictly omitted and state is NOT recorded as \`POSTED_LIVE\`, preventing qualified leads from being permanently locked out.
-- **Diagnostic Failure Capture**: Failed comments and unverified posts automatically capture timestamped diagnostic screenshots in \`logs/screenshots/\` for rapid browser triage.
+### 🎯 Multi-Strategy Composer & Post Submissions
+- **Robust Locator in \`threads-poster.js\` & \`threads-actions.js\`**: Implemented 4-layer fallback strategy (exact text match, \`aria-label\`, child SVG labels, rightmost enabled action).
+- **Eliminated Destructive \`Ctrl+Enter\`**: Removed blind keyboard shortcuts that previously dismissed/closed modals on Threads. Both native \`.click()\` and synthetic \`MouseEvent('click')\` are now dispatched.
+- **Strict DOM Receipt Verification**: Confirmation checks require either verified snippet DOM insertion or posted confirmation toasts accompanied by clean dialog dismissal.
 
-### 🔁 Safe Retry Quarantine State Machine (\`COMMENT_FAILED\`)
-- **Transient Error Quarantine**: Unverified comments transition to \`status: "COMMENT_FAILED"\` with failure reason and retry tracking.
-- **Cooldown Governance**: Posts in \`COMMENT_FAILED\` are safely retryable after a 15-minute cooldown (up to 3 maximum retries), ensuring network hiccups or transient browser latency do not result in dropped client leads.
+### ⏱️ Scheduler Failure Cooldown (\`postFailures\`)
+- **30-Minute Failure Cooldown**: Failed post attempts are recorded into \`state.postFailures\` with reason and timestamp. The orchestrator loop enforces a 30-minute cooldown, breaking the continuous 5-minute retry failure loop.
+- **Verified-Only Cadence**: Cadence strictly checks verified published posts, maintaining the exact 6-hour interval (4 posts / 24 hours).
 
-### ⏱️ Strict 6-Hour Scheduled Content Cadence (4 Posts / 24 Hours)
-- **Posting Interval Update**: Standardized \`POST_INTERVAL_HOURS=6\` in \`config/index.js\`, \`.env\`, and documentation, enforcing exactly 4 strategic discussion posts / carousels every 24 hours.
-- **Verified-Only Scheduler Audit**: The scheduler exclusively evaluates posts with \`status: "VERIFIED_PUBLISHED"\` or \`published === true\` when calculating elapsed time, ensuring failed or cancelled drafts never disrupt the publishing cadence.
+### 💬 Live Browser Direct Messaging & Verification
+- **Live DM Dispatch in \`threads-dms.js\`**: Added \`sendDirectMessage()\` to navigate directly to conversation threads, visibly type responses with human delays, dispatch via \`Enter\`, and verify chat bubble DOM presence.
+- **Transaction-Verified DM State in \`dm-monitor.js\`**: Replaced blind \`SIMULATED\` markers with live execution; status is only recorded as \`SENT_VERIFIED\` upon confirmed delivery.
 
-### ⚖️ Single Canonical Rate Governor
-- **Removed Duplicate Session Cap**: Replaced arbitrary per-session comment counters with canonical \`rateLimiter.canPerformAction("COMMENT")\` governance.
+### 🔄 Multi-Turn Conversation Continuity
+- **Message-Level Hash IDs**: Replaced static URL/user keys with \`reply_threads_{user}_{hash}\` and \`dm_threads_{user}_{hash}\`. Multiple subsequent inquiries in the same thread or conversation now trigger fresh, context-aware AI replies rather than being blocked as duplicates.
+- **Integrated Conversation Stage Tracking**: Continuous updates between \`DISCOVERY\`, \`QUALIFICATION\`, and \`VALUE_OFFER\`.
+
+### 🛡️ Threads-Only Isolation & Loop Priority
+- **Platform Isolation (\`PLATFORM_TARGET=threads\`)**: Completely skips Instagram launches during startup, auth checks, and DM inbox scans.
+- **Priority Loop Scheduling**: Orchestrator loop prioritizes incoming DMs and activity replies at the top of each cycle before executing heavy feed scans, ensuring immediate lead response times.
+- **Metrics Accuracy**: Fixed duplicate increment of \`total_comments_posted\`.
 
 ### 📦 Multi-Platform Release Assets & Checksums
 All build distributions are packaged and verified below:
