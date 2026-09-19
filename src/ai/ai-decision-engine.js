@@ -34,46 +34,8 @@ class AiDecisionEngine {
     const rawText = String(post?.text || "").trim();
     const username = String(post?.username || "user").trim();
 
-    // 1. Direct Founder or Company Queries
-    if (/\bwho\s+(is\s+)?(behind|founded|started|runs)\s+codeair\b/i.test(rawText)) {
-      return {
-        intent: "BUYER",
-        requirement: "User asking about the founder of CodeAir Software Solutions.",
-        target_entity: "INDIVIDUAL",
-        service_match: true,
-        matched_capability: "Technical Leadership & Custom Architecture",
-        matched_services: ["Custom software architecture", "Technical consulting"],
-        representation: "FOUNDER",
-        decision: "QUALIFIED",
-        temperature: "HOT",
-        relevance_score: 95,
-        is_genuine_buyer: true,
-        should_reply: true,
-        reason: "User specifically asking about founder identity and leadership.",
-        generated_comment: `@${username} Sunmughan Swamy is the founder and technical architect behind CodeAir Software Solutions. We build custom software, SaaS platforms, and AI automations. Connect on LinkedIn at https://www.linkedin.com/in/sunmughan/!`
-      };
-    }
-
-    if (/\bwhat\s+(does\s+)?codeair\s+do\b/i.test(rawText)) {
-      return {
-        intent: "BUYER",
-        requirement: "User asking about CodeAir Software Solutions capabilities and services.",
-        target_entity: "COMPANY",
-        service_match: true,
-        matched_capability: "Full-Cycle Software Engineering",
-        matched_services: ["Custom software development", "Web applications", "SaaS platforms", "AI automation"],
-        representation: "COMPANY",
-        decision: "QUALIFIED",
-        temperature: "HOT",
-        relevance_score: 95,
-        is_genuine_buyer: true,
-        should_reply: true,
-        reason: "User explicitly asking about CodeAir company capabilities.",
-        generated_comment: `@${username} Over at CodeAir Software Solutions, we engineer custom web applications, multi-tenant SaaS platforms, Flutter mobile apps, and autonomous AI systems. Explore our portfolio at https://www.codeair.tech and connect with our founder at https://www.linkedin.com/in/sunmughan/.`
-      };
-    }
-
-    // 2. Primary Semantic AI Analysis (Zero Premature Discards)
+    // 1. Primary Semantic AI Analysis (Zero Premature Discards)
+    // Every post captured on screen enters AI reasoning with zero pre-filters or regex shortcuts.
     const analysis = await this.analyzePostSemantics(post, options);
 
     // 3. Format complete decision object
@@ -127,7 +89,8 @@ class AiDecisionEngine {
       relevance_score: analysis.relevance_score || 0,
       is_genuine_buyer: false,
       should_reply: false,
-      lead_type: analysis.intent || "IRRELEVANT",
+      lead_type: analysis.lead_type || analysis.intent || "IRRELEVANT",
+      quarantined: Boolean(analysis.quarantined),
       reason: analysis.reason || "Post did not present an actionable client project or hiring requirement.",
       generated_comment: null
     };
@@ -155,21 +118,40 @@ class AiDecisionEngine {
 
     // 1. Attempt LLM Semantic Reasoning via Antigravity AI Runtime
     // Options defaults useAiCall to true unless explicitly disabled
-    const shouldCallAi = options.useAiCall !== false;
+    const isTestEnv = process.env.NODE_ENV === "test";
+    const shouldCallAi = options.useAiCall !== false && !options.offlineSimulation;
+
     if (shouldCallAi) {
       try {
         const prompt = this.buildFullSemanticPrompt(post);
-        const aiRes = await aiRuntime.callAi(prompt);
+        const aiRes = await aiRuntime.callAi(prompt, { taskType: "POST_ANALYSIS" });
         if (aiRes && (aiRes.intent || aiRes.decision)) {
           return this.normalizeAiResponse(aiRes, post);
         }
       } catch (err) {
-        logger.warn(`Antigravity AI model call skipped (${err.message}). Using local semantic reasoning engine.`);
+        logger.warn(`Antigravity AI model call failed: ${err.message}`);
+        // ARCHITECTURAL HARDENING (v1.1.8):
+        // Zero Heuristic Guessing on AI Failure in production.
+        // "A delayed decision is vastly superior to an erroneous AI decision."
+        const allowFallback = options.allowLocalFallback === true || (isTestEnv && options.allowLocalFallback !== false);
+        if (!allowFallback) {
+          logger.warn(`[AI Engine] Quarantining post ${post?.postId || "unknown"} due to AI runtime failure. Zero heuristic guessing.`);
+          return {
+            intent: "AI_ERROR",
+            decision: "IGNORED",
+            lead_type: "QUARANTINED",
+            quarantined: true,
+            service_match: false,
+            representation: "IGNORE",
+            is_genuine_buyer: false,
+            should_reply: false,
+            reason: `Antigravity AI reasoning failed (${err.message}). Quarantined to avoid heuristic hallucination.`
+          };
+        }
       }
     }
 
-    // 2. Primary Grounded Semantic Reasoning Engine
-    // Inspects communicative act, grammatical voice, requirements, and knowledge base
+    // 2. Offline Simulation / Grounded Semantic Reasoning Engine
     return this.evaluateGroundedSemantics(post);
   }
 
@@ -183,6 +165,49 @@ class AiDecisionEngine {
   evaluateGroundedSemantics(post) {
     const text = String(post.text || "");
     const lower = text.toLowerCase();
+
+    // -------------------------------------------------------------
+    // DIRECT INQUIRIES (CodeAir Capabilities & Founder Identity)
+    // -------------------------------------------------------------
+    if (/\bwho\s+(is\s+)?(behind|founded|started|runs)\s+codeair\b/i.test(lower)) {
+      return {
+        intent: "BUYER",
+        requirement: "User asking about the founder of CodeAir Software Solutions.",
+        target_entity: "INDIVIDUAL",
+        service_match: true,
+        matched_capability: "Technical Leadership & Custom Architecture",
+        matched_services: ["Custom software architecture", "Technical consulting"],
+        matched_categories: ["Web Development"],
+        representation: "FOUNDER",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "User specifically asking about founder identity and leadership.",
+        generated_comment: `@${post.username || "user"} Sunmughan Swamy is the founder and technical architect behind CodeAir Software Solutions. We build custom software, SaaS platforms, and AI automations. Connect on LinkedIn at https://www.linkedin.com/in/sunmughan/!`
+      };
+    }
+
+    if (/\bwhat\s+(does\s+)?codeair\s+do\b/i.test(lower)) {
+      return {
+        intent: "BUYER",
+        requirement: "User asking about CodeAir Software Solutions capabilities and services.",
+        target_entity: "COMPANY",
+        service_match: true,
+        matched_capability: "Full-Cycle Software Engineering",
+        matched_services: ["Custom software development", "Web applications", "SaaS platforms", "AI automation"],
+        matched_categories: ["Web Development"],
+        representation: "COMPANY",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "User explicitly asking about CodeAir company capabilities.",
+        generated_comment: `@${post.username || "user"} Over at CodeAir Software Solutions, we engineer custom web applications, multi-tenant SaaS platforms, Flutter mobile apps, and autonomous AI systems. Explore our portfolio at https://www.codeair.tech and connect with our founder at https://www.linkedin.com/in/sunmughan/.`
+      };
+    }
 
     // -------------------------------------------------------------
     // BUYER INTENT DETECTION (Semantic cues of client demand or hiring intent)

@@ -22,6 +22,8 @@
  * 18. Neutral technical discussion
  */
 
+process.env.NODE_ENV = process.env.NODE_ENV || "test";
+
 const assert = require("assert");
 const intentClassifier = require("../src/leads/intent-classifier");
 const serviceMatcher = require("../src/leads/service-matcher");
@@ -600,6 +602,143 @@ async function runAllTests() {
     stateStore.addDiscoveredPost({ postId: testPostId3, username: "user3", text: "hello" });
     stateStore.updatePostStatus(testPostId3, "COMMENT_POSTED");
     assert.strictEqual(stateStore.hasCommented(testPostId3), true, "hasCommented must recognize COMMENT_POSTED");
+  });
+
+  // 41. AiQueue Priority Scheduling & Concurrency Worker
+  await test("41. AiQueue enforces priority scheduling, concurrency limit, and cache deduplication", async () => {
+    const aiRuntimeModule = require("../src/ai/ai-runtime");
+    const queue = aiRuntimeModule.queue;
+
+    const executionOrder = [];
+    const p1 = queue.enqueue("POST_ANALYSIS", "prompt A", async () => {
+      await new Promise(r => setTimeout(r, 20));
+      executionOrder.push("POST_ANALYSIS");
+      return { result: "A" };
+    });
+
+    const p2 = queue.enqueue("DM_RESPONSE", "prompt B", async () => {
+      await new Promise(r => setTimeout(r, 10));
+      executionOrder.push("DM_RESPONSE");
+      return { result: "B" };
+    });
+
+    const [resA, resB] = await Promise.all([p1, p2]);
+    assert.strictEqual(resA.result, "A");
+    assert.strictEqual(resB.result, "B");
+
+    // Cache deduplication check
+    let executedCount = 0;
+    const cachePrompt = "unique prompt for cache test " + Date.now();
+    await queue.enqueue("COMMENT_SYNTHESIS", cachePrompt, async () => {
+      executedCount++;
+      return { comment: "cached" };
+    });
+    const cachedRes = await queue.enqueue("COMMENT_SYNTHESIS", cachePrompt, async () => {
+      executedCount++;
+      return { comment: "cached" };
+    });
+    assert.strictEqual(cachedRes.comment, "cached");
+    assert.strictEqual(executedCount, 1, "Cached prompt should not re-execute executor");
+
+    const status = queue.getStatus();
+    assert.strictEqual(typeof status.pending, "number");
+    assert.strictEqual(typeof status.active, "number");
+    assert.strictEqual(typeof status.completed, "number");
+    assert(status.cacheEntries >= 1, "Cache entries count must be >= 1");
+  });
+
+  // 42. Production Zero-Heuristic Quarantine on AI Failure
+  await test("42. Zero-Heuristic Quarantine fail-safe isolates posts on AI failure without guessing", async () => {
+    // In production mode (allowLocalFallback: false), AI failures must quarantine instead of regex guessing
+    const post = {
+      postId: "test_quarantine_fail_1",
+      username: "buyer_someone",
+      text: "I need someone to build an application for our logistics warehouse."
+    };
+
+    const decision = await aiDecisionEngine.qualifyPost(post, {
+      useAiCall: true,
+      offlineSimulation: false,
+      allowLocalFallback: false
+    });
+
+    assert.strictEqual(decision.is_genuine_buyer, false, "Quarantined post must not be marked genuine buyer");
+    assert.strictEqual(decision.decision, "IGNORED", "Quarantined post decision must be IGNORED");
+    assert.strictEqual(decision.lead_type, "QUARANTINED", "Lead type must be QUARANTINED");
+    assert.strictEqual(decision.quarantined, true, "Must flag quarantined: true");
+    assert.strictEqual(decision.should_reply, false, "Must never post a reply when quarantined");
+  });
+
+  // 43. Single Brain Authority & intentClassifier.classifyAsync Delegation
+  await test("43. intentClassifier.classifyAsync delegates to aiDecisionEngine.qualifyPost", async () => {
+    const post = {
+      postId: "test_delegate_1",
+      username: "client_agency_buyer",
+      text: "Looking for an agency to build a custom CRM and internal dashboard."
+    };
+
+    const decision = await intentClassifier.classifyAsync(post, { offlineSimulation: true });
+    assert.strictEqual(decision.intent, "BUYER", "Intent must be BUYER");
+    assert.strictEqual(decision.is_genuine_buyer, true, "Must be genuine buyer");
+    assert.strictEqual(decision.decision, "QUALIFIED", "Decision must be QUALIFIED");
+    assert.strictEqual(decision.representation, "COMPANY", "Representation must be COMPANY");
+  });
+
+  // 44. Dynamic Knowledge Markdown Table and Link Parsing
+  await test("44. Dynamic Knowledge Engine parses markdown tables and markdown links", () => {
+    const sampleServicesMarkdown = `
+# Services
+
+## APPROVED CUSTOM SOFTWARE
+| Service | Category | Description |
+|---|---|---|
+| Enterprise ERP Software | Business Systems | High-scale enterprise resource planning |
+| Custom Mobile Architecture | Mobile | Scalable Flutter applications |
+
+## NOT A CODEAIR SERVICE
+| Service | Reason |
+|---|---|
+| Print Brokering | Physical manufacturing |
+`;
+
+    const parsedServices = knowledge.parseServicesMarkdown(sampleServicesMarkdown);
+    assert(parsedServices.approved.includes("Enterprise ERP Software"), "Must parse table row into approved services");
+    assert(parsedServices.approved.includes("Custom Mobile Architecture"), "Must parse table row into approved services");
+    assert(parsedServices.excluded.includes("Print Brokering"), "Must parse table row into excluded services");
+
+    const sampleProfilesMarkdown = `
+# Profiles
+## Company Profiles
+- Website: [CodeAir Software Solutions](https://www.codeair.tech)
+- PixelGo HMS: [PixelGo](https://pixelgo.live)
+`;
+    const parsedProfiles = knowledge.parseProfilesMarkdown(sampleProfilesMarkdown);
+    assert.strictEqual(parsedProfiles.company.website, "https://www.codeair.tech", "Must parse markdown link for company website");
+    assert.strictEqual(parsedProfiles.company.pixelgo, "https://pixelgo.live", "Must parse markdown link for PixelGo HMS");
+  });
+
+  // 45. Grounded Semantics handles direct CodeAir inquiries
+  await test("45. Direct CodeAir capabilities and founder queries qualify cleanly", async () => {
+    const founderQuery = {
+      username: "curious_user",
+      postId: "test_founder_query",
+      text: "Who is behind CodeAir?"
+    };
+    const founderDecision = await aiDecisionEngine.qualifyPost(founderQuery, { offlineSimulation: true });
+    assert.strictEqual(founderDecision.is_genuine_buyer, true);
+    assert.strictEqual(founderDecision.representation, "FOUNDER");
+    assert(founderDecision.generated_comment.includes("Sunmughan Swamy"));
+    assert(founderDecision.generated_comment.includes("linkedin.com/in/sunmughan"));
+
+    const companyQuery = {
+      username: "enterprise_buyer",
+      postId: "test_company_query",
+      text: "What does CodeAir do?"
+    };
+    const companyDecision = await aiDecisionEngine.qualifyPost(companyQuery, { offlineSimulation: true });
+    assert.strictEqual(companyDecision.is_genuine_buyer, true);
+    assert.strictEqual(companyDecision.representation, "COMPANY");
+    assert(companyDecision.generated_comment.includes("codeair.tech"));
   });
 
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter

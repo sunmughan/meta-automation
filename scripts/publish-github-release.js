@@ -49,25 +49,18 @@ const pkg = require("../package.json");
 
   // 2. Fill Title & Description
   console.log(`Setting Release Title and Description for ${version}...`);
-  const titleText = `${version} - Pure Antigravity AI Engine, Dynamic Knowledge Base SSOT & Representation Separation`;
+  const titleText = `${version} - Pure AI-First Entry, Zero Heuristic Guessing, AiQueue Worker & SSOT Markdown Schema`;
   const bodyText = `## What's Changed in ${version}
 
-### 🧠 Pure Antigravity AI Engine & Zero-Discard Pipeline
-- **Pure Antigravity Runtime**: Completely eliminated \`callGeminiRest()\`, \`GEMINI_API_KEY\`, and REST fallbacks. Enforces pure authenticated Antigravity AI agent runtime via structured JSON schema prompts.
-- **True AI-First Semantic Screening**: Removed rigid deterministic regex gates in \`ai-decision-engine.js\` that previously caused false-positive discards on genuine buyer posts. Every captured post is evaluated with grounded semantics.
-- **Knowledge Engine Single Source of Truth**: Dynamically parses \`knowledge/*.md\` (\`services.md\`, \`profiles.md\`, \`founder.md\`) on startup and change. Eliminated duplicated hardcoded arrays. Added dedicated Hospitality section for \`PixelGo HMS\`.
+### 🧠 Pure AI-First Entrypoint & Zero-Discard Pipeline
+- **Removed Hardcoded CodeAir Regex Gates**: Stripped direct regex shortcuts from \`qualifyPost()\` in \`ai-decision-engine.js\`. Every post captured on screen enters AI semantic reasoning directly with zero premature gates.
+- **Zero Heuristic Guessing on AI Failure**: When the Antigravity AI runtime fails after retries in production, posts are quarantined (\`status: "QUARANTINED"\`, \`lead_type: "QUARANTINED"\`, \`decision: "IGNORED"\`) rather than guessed via local regex heuristics. *"A delayed decision is vastly superior to an erroneous AI decision."*
+- **Asynchronous AI Concurrency Queue (\`AiQueue\`)**: Implemented priority scheduling (\`DM_RESPONSE\` > \`REPLY_GENERATION\` > \`COMMENT_SYNTHESIS\` > \`POST_ANALYSIS\`), concurrency governance (default: 1), and an in-memory 120-second deduplication cache in \`ai-runtime.js\` to prevent process thrashing.
+- **Single Brain Authority**: Unified \`intent-classifier.js\` with \`ai-decision-engine.js\`. Marked deterministic classifier as an auxiliary test fixture and added \`classifyAsync()\` delegation.
 
-### 🎯 Representation Awareness & Single-URL Discipline
-- **Strict Voice Separation**:
-  - \`FOUNDER\`: First-person perspective ("I", "as founder & architect"). Shares Sunmughan's personal LinkedIn profile ONLY. Never includes company website.
-  - \`COMPANY\`: Collective company voice ("We at CodeAir"). Shares company website (\`https://www.codeair.tech\`) or \`https://pixelgo.live\` for hospitality. Never includes personal founder link.
-  - \`NEUTRAL\`: Pure technical value, architectural advice, or diagnostic question with **ZERO** promotional links.
-  - \`BOTH\`: Introduces CodeAir engineering team with founder technical oversight. Max 1 link.
-- **Single-URL Discipline**: Strict \`enforceSingleUrl()\` rule ensuring at most ONE verified URL per comment.
-
-### ⚡ Rate-Limiter-Driven Governance & State Store Lifecycle
-- **Dynamic Throughput**: Replaced hardcoded \`maxLiveComments: 2/3\` cycle limits with dynamic rate limiter governance (\`rateLimiter.canPerformAction("COMMENT")\`) respecting hourly quotas and delays.
-- **Unified State Semantics**: Standardized post/comment status lifecycle to recognize \`COMMENTED\`, \`POSTED_LIVE\`, and \`COMMENT_POSTED\` across all store methods.
+### 📚 Dynamic Knowledge Markdown Schema Contract
+- **Markdown Tables & Markdown Link Support**: Enhanced \`parseServicesMarkdown()\` in \`knowledge-engine.js\` to parse both bullet items and table rows (\`| Service | Description |\`), ignoring dividers and headers. Enhanced \`parseProfilesMarkdown()\` to parse bare URLs, inline links, and markdown brackets \`[Text](URL)\`.
+- **Single-URL Discipline & 4-Mode Representation**: Strict enforcement of maximum 1 link per comment tailored to representation (\`FOUNDER\`, \`COMPANY\`, \`BOTH\`, or \`NEUTRAL\`).
 
 ### 📦 Multi-Platform Release Assets & Checksums
 All build distributions are packaged and verified below:
@@ -79,7 +72,7 @@ All build distributions are packaged and verified below:
 - \`meta-automation-android-termux.tar.gz\` (Android Termux)
 - \`SHA256SUMS.txt\` (Cryptographic SHA-256 Checksums)
 
-**Full Changelog**: https://github.com/sunmughan/meta-automation/compare/v1.1.6...${version}`;
+**Full Changelog**: https://github.com/sunmughan/meta-automation/compare/v1.1.7...${version}`;
   await ghPage.evaluate((title, body) => {
     const titleEl = document.querySelector("#release_name, input[name=\"release[name]\"]");
     if (titleEl) {

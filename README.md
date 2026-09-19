@@ -1,6 +1,6 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.1.8-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -11,14 +11,18 @@
 
 **Meta Automation** is an enterprise-grade autonomous social discovery, AI lead generation, and conversational engagement engine designed for **Threads** and **Instagram**.
 
-Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds and search queries, extracts prospective client inquiries, filters out noise (recruiters, job seekers, generic sellers), generates hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages multi-turn sales conversations — all while running stealthily on your authenticated browser session.
+Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds and search queries, passes every discovered post directly to the **Antigravity AI Cognitive Brain** for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages multi-turn sales conversations — all while running stealthily on your authenticated browser session.
 
 ---
 
 ## 🌟 Key Architectural Highlights
 
 - **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
-- **Autonomous Multi-Agent Brain**: Employs deep contextual LLM analysis (Gemini / Antigravity Agent Runtime) backed by structured business knowledge from `knowledge/`.
+- **Pure Antigravity AI-First Brain**: Every post discovered on screen is evaluated directly by the authenticated Antigravity AI Cognitive Brain (`src/ai/ai-decision-engine.js`). **Zero keyword filters, regex pre-filters, or heuristic gatekeepers.**
+- **Asynchronous AI Concurrency Queue (`AiQueue`)**: Prioritizes interactive tasks (`DM_RESPONSE` > `REPLY_GENERATION` > `COMMENT_SYNTHESIS` > `POST_ANALYSIS`) with concurrency governance and an in-memory 120-second deduplication cache to prevent process thrashing.
+- **Zero-Heuristic Guessing Fail-Safe**: In production, if the AI runtime call fails after retries, posts are quarantined (`QUARANTINED`) rather than evaluated by local regex guessing. *"A delayed decision is vastly superior to an erroneous AI decision."*
+- **Dynamic Knowledge Single Source of Truth**: All capabilities, services, exclusions, and official profile links are dynamically parsed directly from `knowledge/*.md` supporting bullet lists, markdown tables, and markdown links without hardcoded arrays.
+- **Contextual 4-Mode Representation & Single-URL Discipline**: Dynamically adopts `FOUNDER`, `COMPANY`, `BOTH`, or `NEUTRAL` identity with strict single-URL discipline (Founder LinkedIn for individual/dev requests; CodeAir / PixelGo HMS for agency/product requests; maximum 1 link).
 - **Stripe/Linear-Grade Graphic Rendering**: Renders 1080x1080 high-contrast social cards, metric grids, and multi-slide carousel decks directly with headless CSS/HTML rendering and official SVG/WebP branding.
 - **Persistent Background Daemon**: Comes equipped with process management (`start-automation`, `status-automation`, `stop-automation`) that runs 24/7 in the background with auto-restart and telemetry tracking.
 
@@ -35,14 +39,15 @@ flowchart TB
     end
 
     subgraph CoreEngine ["⚡ Meta Automation Engine"]
-        Scanner["Scanner & Search Dispatcher<br/>(13+ High-Intent Query Channels)"]
-        Filter["Intent Classifier & Negative Guard<br/>(Exclude Recruiters/Sellers/Spam)"]
-        Knowledge["Knowledge Base Engine<br/>(CodeAir Tech, PixelGo HMS, Pricing, Voice)"]
-        Identity["Identity Resolver<br/>(Founder vs. Company Entity)"]
-        Composer["Conversational Engagement Composer<br/>(Contextual Value Responses)"]
+        Scanner["Scanner & Search Dispatcher<br/>(Feed Capture & Discovery Channels)"]
+        AiQueue["Antigravity AI Queue & Worker<br/>(Priority Scheduling & Concurrency)"]
+        AIBrain["Antigravity AI Cognitive Brain<br/>(Semantic Intent, Requirements & Entity)"]
+        Knowledge["Dynamic Knowledge Engine (SSOT)<br/>(services.md, company.md, profiles.md)"]
+        Identity["Representation & Identity Resolver<br/>(FOUNDER, COMPANY, BOTH, NEUTRAL)"]
+        Composer["Conversational Engagement Composer<br/>(Contextual Value & Single-URL Rule)"]
         Renderer["HTML Graphic Renderer<br/>(1080x1080 Cards & 5-Slide Carousels)"]
         Scheduler["Cadence Engine<br/>(3h Interval across 5 Pillars)"]
-        Safety["Rate Limiter & Human Typing Simulator<br/>(Jitter Delays & Duplicate Guards)"]
+        Safety["Rate Limiter & Duplicate Guard<br/>(Jitter Delays & Dynamic Limits)"]
     end
 
     subgraph StateStorage ["💾 Local JSON State & Telemetry"]
@@ -52,10 +57,11 @@ flowchart TB
     end
 
     CDP <--> Scanner
-    Scanner --> Filter
-    Filter --> Identity
-    Identity --> Knowledge
-    Knowledge --> Composer
+    Scanner --> AiQueue
+    AiQueue --> AIBrain
+    AIBrain <--> Knowledge
+    AIBrain --> Identity
+    Identity --> Composer
     Composer --> Safety
     Scheduler --> Renderer
     Renderer --> Safety
@@ -68,22 +74,24 @@ flowchart TB
 ## 🎯 Core Capabilities
 
 ### 1. High-Intent Lead Discovery
-The engine scans both organic home feeds and 13 dedicated search discovery channels covering direct purchase inquiries:
+The engine captures posts from organic home feeds and 13 dedicated search discovery channels covering direct purchase inquiries:
 - `"need a website"` / `"looking for a web designer"` / `"need someone to build a website"`
 - `"looking for a developer to build our SaaS"` / `"need a full stack developer"`
 - `"looking for AI development team"` / `"automate customer support using AI"`
 - `"need a custom CRM"` / `"looking for hospital management system"`
 
-### 2. Multi-Tier Semantic Filtering
-Rejects 100% of unqualified noise through strict negative pattern matching:
-- **Recruiters & HR Announcements**: Ignored (`"we are hiring"`, `"job vacancy"`).
-- **Job Seekers**: Ignored (`"hire me"`, `"looking for job"`).
-- **Generic Service Pitches**: Ignored (`"check my bio"`, `"DM for cheap logos"`).
-- **Graphic Design/Unrelated Solicitations**: Ignored.
+### 2. Pure Antigravity AI Semantic Reasoning
+Every captured post enters the Antigravity AI Cognitive Brain directly:
+- **Client Demand Analysis**: Distinguishes genuine buyers with project budgets from service providers selling their own services, job seekers seeking employment, and corporate HR recruitment ads.
+- **Natural Language Requirement Extraction**: Synthesizes the prospect's exact project needs in natural language.
+- **Knowledge Base Matching**: Grounds requirements against CodeAir's approved services catalogue (`knowledge/services.md`).
+- **Zero Heuristic Guessing**: Posts with AI runtime failures are quarantined (`QUARANTINED`) rather than guessed by regex heuristics.
 
-### 3. Dual Identity Routing (Founder vs. Company)
-- **Founder Identity (`Sunmughan Swamy`)**: Triggered when users ask personal questions, discuss technical architecture/philosophy, or request founder connections. Writes in a direct, sharp, technical builder tone.
-- **Company Identity (`CodeAir Software Solutions`)**: Triggered for commercial proposals, service quotations, pricing inquiries, and product demonstrations for **[PixelGo HMS](https://pixelgo.live)**.
+### 3. Representation-Aware Engagement (Single-URL Discipline)
+- **Founder Identity (`FOUNDER`)**: Triggered when users request a freelancer, solo developer, technical architect, or ask founder questions. Includes Founder LinkedIn (`https://www.linkedin.com/in/sunmughan/`).
+- **Company Identity (`COMPANY`)**: Triggered when users request an agency, company, software firm, or product demonstrations for **[PixelGo HMS](https://pixelgo.live)**. Includes Company Website (`https://www.codeair.tech`).
+- **Dual Representation (`BOTH`)**: Deployed when prospects are open to either agency or lead engineer.
+- **Single-URL Rule**: Maximum of 1 contextually verified link per comment; never dumps multiple links.
 
 ### 4. High-Fidelity HTML Visual Card & Slide Renderer
 Say goodbye to tacky, cheap social graphics. The built-in renderer produces aesthetic, executive-level visual assets:
@@ -102,10 +110,7 @@ Every **3 hours**, the scheduler selects the next content pillar in rotation, re
 ### 6. Anti-Bot Stealth & Operational Guardrails
 - **Human Typing Simulation**: Key strokes are typed with human-like variable cadence and random jitter.
 - **Duplicate Prevention**: Multi-hash lookup prevents ever commenting on the same thread twice or sending duplicate direct messages.
-- **Hourly Ceilings**: Strict enforcement of safe action quotas:
-  - Max 25 New Post Comments / hour
-  - Max 60 Total Replies / hour
-  - Max 30 Direct Messages / hour
+- **Dynamic Rate Limiter Governance**: Action velocity governed by rate limiter quotas and exponential backoff rather than hardcoded cycle caps.
 - **Dry-Run & Approval Modes**: Test all actions safely in simulation mode before enabling autonomous live execution.
 
 ---

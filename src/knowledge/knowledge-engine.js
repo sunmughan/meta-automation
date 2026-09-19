@@ -73,6 +73,7 @@ class KnowledgeEngine {
 
   /**
    * Dynamically parses services.md into approved services and excluded services.
+   * Supports both bullet lists (- / *) and markdown table rows (| Service | Description |).
    */
   parseServicesMarkdown(content) {
     const approved = new Set();
@@ -89,11 +90,42 @@ class KnowledgeEngine {
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
+        if (!line) continue;
+
+        // 1. Bullet list items: "- Item" or "* Item"
         if (line.startsWith("- ") || line.startsWith("* ")) {
-          const item = line.slice(2).trim();
+          let item = line.slice(2).trim();
+          // Strip any markdown link formatting: [Name](URL) -> Name
+          item = item.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").trim();
           if (item) {
             if (isExcluded) excluded.add(item);
             else approved.add(item);
+          }
+        }
+        // 2. Markdown Table Rows: "| Service | Description |"
+        else if (line.startsWith("|") && line.endsWith("|")) {
+          // Skip divider rows (e.g. |---|---| or |:---|:---|)
+          if (/^\|[\s\-:|]+\|$/.test(line)) continue;
+
+          const cells = line.split("|").map(c => c.trim()).filter(Boolean);
+          if (cells.length === 0) continue;
+
+          // Skip header row if all cells are standard column headers
+          const headerPattern = /^(service|services|category|capability|capabilities|feature|features|description|scope|status|type)$/i;
+          if (cells.some(c => headerPattern.test(c)) && cells.every(c => c.length < 35)) {
+            continue;
+          }
+
+          // Non-header row: find substantive service name
+          const serviceCell = cells.find(c => c.length > 2 && !headerPattern.test(c));
+          if (serviceCell) {
+            let item = serviceCell.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").trim();
+            // Remove bold/italics
+            item = item.replace(/[*_~`]/g, "").trim();
+            if (item) {
+              if (isExcluded) excluded.add(item);
+              else approved.add(item);
+            }
           }
         }
       }
@@ -107,6 +139,7 @@ class KnowledgeEngine {
 
   /**
    * Dynamically parses profiles.md into official founder and company profile URLs.
+   * Supports bare URLs, markdown links [Label](URL), and markdown tables.
    */
   parseProfilesMarkdown(content) {
     const profiles = {
@@ -128,15 +161,13 @@ class KnowledgeEngine {
       }
     };
 
-    // Regex match markdown sections like:
-    // ### GitHub\nhttps://github.com/sunmughan
-    // ### Website\nhttps://www.codeair.tech
     const lines = content.split("\n");
     let currentScope = "FOUNDER"; // FOUNDER or COMPANY
     let currentSubHeading = "";
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      if (!line) continue;
 
       if (line.startsWith("# ") || line.startsWith("## ")) {
         const hUpper = line.toUpperCase();
@@ -144,35 +175,48 @@ class KnowledgeEngine {
         else if (hUpper.includes("FOUNDER")) currentScope = "FOUNDER";
       } else if (line.startsWith("### ")) {
         currentSubHeading = line.slice(4).trim().toLowerCase();
-      } else if (line.startsWith("http://") || line.startsWith("https://")) {
-        const url = line.split(" ")[0].trim();
+      }
+
+      // Check if line contains a URL (bare URL, markdown link [Text](URL), bullet item, or table cell)
+      const urlMatch = line.match(/https?:\/\/[^\s)\],|]+/i);
+      if (urlMatch) {
+        const url = urlMatch[0].trim();
+        const contextLine = `${currentSubHeading} ${line}`.toLowerCase();
+
         if (currentScope === "FOUNDER") {
-          if (currentSubHeading.includes("github") && !profiles.founder.github) profiles.founder.github = url;
-          else if (currentSubHeading.includes("linkedin") && !profiles.founder.linkedin) profiles.founder.linkedin = url;
-          else if (currentSubHeading.includes("instagram") && !profiles.founder.instagram) profiles.founder.instagram = url;
-          else if (currentSubHeading.includes("facebook") && !profiles.founder.facebook) profiles.founder.facebook = url;
+          if (contextLine.includes("github") && !profiles.founder.github) profiles.founder.github = url;
+          else if (contextLine.includes("linkedin") && !profiles.founder.linkedin) profiles.founder.linkedin = url;
+          else if (contextLine.includes("instagram") && !profiles.founder.instagram) profiles.founder.instagram = url;
+          else if (contextLine.includes("facebook") && !profiles.founder.facebook) profiles.founder.facebook = url;
         } else if (currentScope === "COMPANY") {
-          if (currentSubHeading.includes("pixelgo") && !profiles.company.pixelgo) profiles.company.pixelgo = url;
-          else if ((currentSubHeading.includes("website") || currentSubHeading.includes("site")) && !profiles.company.website) profiles.company.website = url;
-          else if (currentSubHeading.includes("linkedin") && !profiles.company.linkedin) profiles.company.linkedin = url;
-          else if (currentSubHeading.includes("instagram") && !profiles.company.instagram) profiles.company.instagram = url;
-          else if (currentSubHeading.includes("facebook") && !profiles.company.facebook) profiles.company.facebook = url;
+          if (contextLine.includes("pixelgo") && !profiles.company.pixelgo) profiles.company.pixelgo = url;
+          else if ((contextLine.includes("website") || contextLine.includes("site") || contextLine.includes("codeair.tech")) && !profiles.company.website) {
+            profiles.company.website = url.includes("codeair.tech") && !url.includes("www.")
+              ? url.replace("codeair.tech", "www.codeair.tech")
+              : url;
+          }
+          else if (contextLine.includes("linkedin") && !profiles.company.linkedin) profiles.company.linkedin = url;
+          else if (contextLine.includes("instagram") && !profiles.company.instagram) profiles.company.instagram = url;
+          else if (contextLine.includes("facebook") && !profiles.company.facebook) profiles.company.facebook = url;
         }
         currentSubHeading = "";
       }
     }
 
-    // Default fallback normalization if explicit subheadings had slight naming difference
-    if (!profiles.company.website) {
-      const m = content.match(/https?:\/\/(www\.)?codeair\.tech[^\s)]*/i);
+    // Canonical normalization if www was omitted or heading had slight naming difference
+    if (!profiles.company.website || !profiles.company.website.includes("www.")) {
+      const m = content.match(/https?:\/\/(www\.)codeair\.tech[^\s)\],|]*/i);
       if (m) profiles.company.website = m[0];
+      else if (profiles.company.website) {
+        profiles.company.website = profiles.company.website.replace("codeair.tech", "www.codeair.tech");
+      }
     }
     if (!profiles.company.pixelgo) {
-      const m = content.match(/https?:\/\/(www\.)?pixelgo\.live[^\s)]*/i);
+      const m = content.match(/https?:\/\/(www\.)?pixelgo\.live[^\s)\],|]*/i);
       if (m) profiles.company.pixelgo = m[0];
     }
     if (!profiles.founder.linkedin) {
-      const m = content.match(/https?:\/\/(www\.)?linkedin\.com\/in\/sunmughan[^\s)]*/i);
+      const m = content.match(/https?:\/\/(www\.)?linkedin\.com\/in\/sunmughan[^\s)\],|]*/i);
       if (m) profiles.founder.linkedin = m[0];
     }
 
