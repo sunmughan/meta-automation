@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# stop-threads: Stop CodeAir Threads + Instagram Agent daemon
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/scripts/stop-agent.sh" "$@"

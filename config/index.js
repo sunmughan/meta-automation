@@ -1,0 +1,114 @@
+/**
+ * config/index.js
+ * Central configuration module for CodeAir Threads + Instagram AI Lead Generation & Engagement System.
+ * Enforces safety constraints, default DRY_RUN=true, APPROVAL_MODE=true, rate limits, and paths.
+ */
+
+const fs = require("fs");
+const path = require("path");
+
+const ROOT_DIR = path.resolve(__dirname, "..");
+
+// Environment loader without external dependencies
+function loadEnvFile() {
+  const envPath = path.resolve(ROOT_DIR, ".env");
+  if (fs.existsSync(envPath)) {
+    try {
+      const content = fs.readFileSync(envPath, "utf8");
+      const lines = content.split("\n");
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx !== -1) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (process.env[key] === undefined) {
+            process.env[key] = val;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Notice: Unable to parse .env file:", e.message);
+    }
+  }
+}
+
+loadEnvFile();
+
+function sanitizeApiKey(key) {
+  if (!key) return "";
+  const firstLine = String(key).split("\n")[0].trim();
+  return firstLine.replace(/^["']|["']$/g, "").trim();
+}
+
+const CONFIG = {
+  ROOT_DIR,
+  KNOWLEDGE_DIR: path.resolve(ROOT_DIR, "knowledge"),
+  STATE_FILE: path.resolve(ROOT_DIR, "threads-engagement-state.json"),
+  LEADS_FILE: path.resolve(ROOT_DIR, "threads-leads.json"),
+  LEADS_AI_FILE: path.resolve(ROOT_DIR, "threads-leads-ai.json"),
+  LOGS_DIR: path.resolve(ROOT_DIR, "logs"),
+  BACKUPS_DIR: path.resolve(ROOT_DIR, "backups"),
+
+  // AI Settings
+  AI_RUNTIME: process.env.AI_RUNTIME || "antigravity", // "antigravity" (primary) or "direct" (REST API fallback)
+  GEMINI_API_KEY: sanitizeApiKey(process.env.GEMINI_API_KEY),
+  MODEL: process.env.AI_MODEL || "gemini-3.6-flash",
+
+  // Browser CDP & Display Configuration (Brave Browser on Zorin OS)
+  CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
+  THREADS_CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
+  DISPLAY: process.env.DISPLAY || ":1",
+  BRAVE_BIN: process.env.BRAVE_BIN || "/usr/bin/brave-browser-stable",
+  BRAVE_USER_DATA_DIR: process.env.BRAVE_USER_DATA_DIR || "/home/sunmughan/.config/BraveSoftware/Brave-Browser",
+  VIEWPORT_WIDTH: 1440,
+  VIEWPORT_HEIGHT: 1080,
+
+  // URLs
+  THREADS_HOME: "https://www.threads.com/",
+  THREADS_MESSAGES: "https://www.threads.com/messages",
+  THREADS_ACTIVITY: "https://www.threads.com/activity",
+  INSTAGRAM_HOME: "https://www.instagram.com/",
+  INSTAGRAM_MESSAGES: "https://www.instagram.com/direct/inbox/",
+
+  // Operational Modes (Default: DRY_RUN=true, APPROVAL_MODE=true for safety)
+  APPROVAL_MODE: process.env.APPROVAL_MODE !== "false",
+  DRY_RUN: process.env.DRY_RUN !== "false",
+  POSTING_ENABLED: process.env.POSTING_ENABLED === "true",
+
+  // Rate Limits (per hour)
+  MAX_NEW_POST_REPLIES_PER_HOUR: Number(process.env.MAX_NEW_POST_REPLIES_PER_HOUR) || 5,
+  MAX_TOTAL_REPLIES_PER_HOUR: Number(process.env.MAX_TOTAL_REPLIES_PER_HOUR) || 15,
+  MAX_DM_REPLIES_PER_HOUR: Number(process.env.MAX_DM_REPLIES_PER_HOUR) || 10,
+
+  // Action Delays (ms)
+  MIN_ACTION_DELAY_MS: Number(process.env.MIN_ACTION_DELAY_MS) || 15000,
+  MAX_ACTION_DELAY_MS: Number(process.env.MAX_ACTION_DELAY_MS) || 45000,
+
+  // Scanner Settings
+  SCAN_INTERVAL_SECONDS: Number(process.env.SCAN_INTERVAL_SECONDS) || 300,
+  MAX_POSTS_PER_SCAN: Number(process.env.MAX_POSTS_PER_SCAN) || 50,
+
+  // Publishing Cadence
+  POST_INTERVAL_HOURS: Number(process.env.POST_INTERVAL_HOURS) || 3,
+  CAROUSEL_INTERVAL_DAYS: Number(process.env.CAROUSEL_INTERVAL_DAYS) || 2,
+
+  // Dynamic reference to knowledge engine
+  get knowledge() {
+    return require("../src/knowledge/knowledge-engine");
+  },
+
+  validateApiKey() {
+    if (!this.GEMINI_API_KEY || !this.GEMINI_API_KEY.trim()) {
+      throw new Error(
+        "❌ Missing GEMINI_API_KEY.\nPlease set the environment variable: export GEMINI_API_KEY=\"YOUR_KEY\" or configure .env"
+      );
+    }
+  }
+};
+
+module.exports = CONFIG;

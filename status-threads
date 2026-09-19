@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# status-threads: View CodeAir Threads + Instagram Agent status
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/scripts/status-agent.sh" "$@"

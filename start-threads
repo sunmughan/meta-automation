@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# start-threads: Start Threads + Instagram AI Engagement Agent as a persistent background daemon
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/scripts/start-agent.sh" "$@"

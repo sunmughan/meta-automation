@@ -1,0 +1,78 @@
+/**
+ * tests/pillar-and-search-audit.js
+ * Verification of 3-hour cadence, 5 pillars, search discovery, and website/AI lead qualification.
+ */
+
+const assert = require("assert");
+const intentClassifier = require("../src/leads/intent-classifier");
+const serviceMatcher = require("../src/leads/service-matcher");
+const threadsPoster = require("../src/platforms/threads/threads-poster");
+const threadsMedia = require("../src/platforms/threads/threads-media");
+const { HIGH_INTENT_SEARCH_QUERIES } = require("../src/platforms/threads/threads-scanner");
+const CONFIG = require("../config");
+
+async function runAudit() {
+  console.log("\n==================================================");
+  console.log("  PILLAR, SEARCH & LEAD AUDIT (USER FEEDBACK FIXES)");
+  console.log("==================================================\n");
+
+  let passed = 0;
+
+  // 1. Audit Website & AI Buyer Qualification (fixing missed deals)
+  const clientLeads = [
+    { text: "Looking for a web designer to create a landing page for our startup", expectedCat: "Web Development" },
+    { text: "Need a website building service for my new business", expectedCat: "Web Development" },
+    { text: "Who can build a website for me? Any recommendations?", expectedCat: "Web Development" },
+    { text: "Looking for AI development team to build an automated chatbot", expectedCat: "AI & Automation" },
+    { text: "Anyone here know a good web developer? Need a site built this week", expectedCat: "Web Development" },
+    { text: "Looking for a freelance developer to help build our web app MVP", expectedCat: "Web Development" },
+    { text: "Need someone for website design and development", expectedCat: "Web Development" },
+    { text: "Looking for an AI engineer to integrate LLMs into our SaaS", expectedCat: "AI & Automation" }
+  ];
+
+  for (const lead of clientLeads) {
+    const res = intentClassifier.classify({ text: lead.text });
+    assert.strictEqual(res.qualified, true, `Expected qualified lead for: "${lead.text}"`);
+    assert.strictEqual(res.temperature, "HOT");
+    console.log(`  ✓ PASS: Qualified lead "${lead.text.slice(0, 45)}..." -> [${res.matchedCategories.join(", ")}]`);
+    passed++;
+  }
+
+  // 2. Audit High-Intent Search Queries
+  assert(HIGH_INTENT_SEARCH_QUERIES.length >= 10, "Expected at least 10 search queries");
+  assert(HIGH_INTENT_SEARCH_QUERIES.includes("need a website"), "Missing query 'need a website'");
+  assert(HIGH_INTENT_SEARCH_QUERIES.includes("looking for web developer"), "Missing query 'looking for web developer'");
+  assert(HIGH_INTENT_SEARCH_QUERIES.includes("looking for ai developer"), "Missing query 'looking for ai developer'");
+  console.log(`  ✓ PASS: High-intent search discovery configured with ${HIGH_INTENT_SEARCH_QUERIES.length} buyer queries`);
+  passed++;
+
+  // 3. Audit 3-Hour Post Cadence & 5 Content Pillars
+  assert.strictEqual(CONFIG.POST_INTERVAL_HOURS, 3, "Expected 3-hour post interval");
+  assert.strictEqual(CONFIG.CAROUSEL_INTERVAL_DAYS, 2, "Expected 2-day carousel interval");
+  console.log(`  ✓ PASS: Configured 3-hour publishing interval (POST_INTERVAL_HOURS=3)`);
+  passed++;
+
+  // 4. Audit Decks for all 5 Pillars
+  const pillars = ["pixelgo_hms", "builder_network", "founders_revolution", "tech_mentorship", "agentic_ai"];
+  for (const pil of pillars) {
+    const specs = threadsMedia.getDeckSpecs(pil);
+    assert.strictEqual(specs.length, 5, `Expected 5 slides for pillar ${pil}`);
+    const quoteSpec = threadsMedia.getPillarQuoteSpec(pil);
+    assert(quoteSpec.quote && quoteSpec.quote.length > 20, `Expected quote for pillar ${pil}`);
+    console.log(`  ✓ PASS: Verified 5-slide deck & quote card for pillar: [${pil}]`);
+    passed++;
+  }
+
+  console.log("\n--------------------------------------------------");
+  console.log(`Audit Summary: ${passed} Passed, 0 Failed`);
+  console.log("--------------------------------------------------\n");
+}
+
+if (require.main === module) {
+  runAudit().catch(err => {
+    console.error("Audit failed:", err);
+    process.exit(1);
+  });
+}
+
+module.exports = { runAudit };

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# status-automation
+# Checks the real-time status of the CodeAir Threads + Instagram Automation daemon
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
+
+PID_FILE="$SCRIPT_DIR/threads-agent.pid"
+LOG_FILE="$SCRIPT_DIR/logs/daemon.log"
+
+echo "=================================================="
+echo "  CODEAIR AUTOMATION SYSTEM STATUS"
+echo "=================================================="
+
+# 1. Daemon process status
+if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        echo "🟢 Daemon Status : RUNNING (PID: $PID)"
+        ps -p "$PID" -o pid,vsz,rss,comm,etime 2>/dev/null | tail -n +2 | awk '{print "   Memory/Time  : RSS=" $3 "KB, Elapsed=" $5}'
+    else
+        echo "🔴 Daemon Status : NOT RUNNING (Stale PID file cleaned)"
+        rm -f "$PID_FILE"
+    fi
+else
+    PIDS=$(pgrep -f "node threads-agent\.js run" | grep -v "$$" || true)
+    if [ -n "$PIDS" ]; then
+        echo "🟢 Daemon Status : RUNNING (PID: $PIDS)"
+    else
+        echo "⚪ Daemon Status : NOT RUNNING"
+    fi
+fi
+
+# 2. Brave CDP Status
+if ss -tulpn | grep -q ":9222 "; then
+    echo "🟢 Brave CDP     : ACTIVE (http://127.0.0.1:9222)"
+else
+    echo "🔴 Brave CDP     : NOT CONNECTED (Run ./scripts/launch-brave-cdp.sh)"
+fi
+
+# 3. State & metrics report
+node threads-agent.js status
+
+# 4. Recent Daemon Log Activity
+if [ -f "$LOG_FILE" ]; then
+    echo "Recent Activity (last 10 lines):"
+    echo "--------------------------------------------------"
+    tail -n 10 "$LOG_FILE"
+    echo "--------------------------------------------------"
+    echo "To follow logs continuously: tail -f $LOG_FILE"
+fi

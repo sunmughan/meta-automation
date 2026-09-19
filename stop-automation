@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# stop-automation
+# Safely stops the CodeAir Threads + Instagram background automation daemon
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
+
+PID_FILE="$SCRIPT_DIR/threads-agent.pid"
+
+echo "=================================================="
+echo "  STOPPING CODEAIR AUTOMATION"
+echo "=================================================="
+
+STOPPED=false
+
+if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        echo "Stopping daemon process (PID: $PID)..."
+        kill -TERM "$PID" 2>/dev/null
+        sleep 2
+        if kill -0 "$PID" 2>/dev/null; then
+            kill -9 "$PID" 2>/dev/null
+        fi
+        STOPPED=true
+    fi
+    rm -f "$PID_FILE"
+fi
+
+# Fallback check for any dangling run process
+PIDS=$(pgrep -f "node threads-agent\.js run" | grep -v "$$" || true)
+if [ -n "$PIDS" ]; then
+    echo "Stopping remaining instances: $PIDS..."
+    kill -TERM $PIDS 2>/dev/null || true
+    sleep 1
+    kill -9 $PIDS 2>/dev/null || true
+    STOPPED=true
+fi
+
+if [ "$STOPPED" = true ]; then
+    echo "✅ Automation daemon stopped successfully."
+else
+    echo "⚪ Automation daemon was not running."
+fi

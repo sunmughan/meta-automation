@@ -1,0 +1,48 @@
+{
+  "name": "meta-automation",
+  "version": "1.0.0",
+  "description": "Enterprise-grade AI Lead Generation, Social Discovery, and Autonomous Conversational Engagement Engine for Threads & Instagram.",
+  "main": "threads-agent.js",
+  "bin": {
+    "meta-automation": "./threads-agent.js"
+  },
+  "scripts": {
+    "test": "node tests/suite.js",
+    "start": "node threads-agent.js run",
+    "auth": "node threads-agent.js auth",
+    "scan": "node threads-agent.js scan",
+    "analyze": "node threads-agent.js analyze",
+    "approve": "node threads-agent.js approve",
+    "status": "node threads-agent.js status"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunmughan/meta-automation.git"
+  },
+  "keywords": [
+    "threads",
+    "instagram",
+    "ai",
+    "lead-generation",
+    "automation",
+    "meta",
+    "puppeteer",
+    "growth-agent",
+    "cdp",
+    "codeair",
+    "pixelgo"
+  ],
+  "author": "Sunmughan Swamy <contact@codeair.tech> (https://www.codeair.tech)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sunmughan/meta-automation/issues"
+  },
+  "homepage": "https://github.com/sunmughan/meta-automation#readme",
+  "type": "commonjs",
+  "dependencies": {
+    "puppeteer-core": "^25.11.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
