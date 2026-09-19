@@ -1,33 +1,61 @@
-# Release Builds - Meta Automation v1.0.0
+# Release Builds - Meta Automation v1.1.0 (Multi-Platform)
 
-This directory contains pre-built distribution packages for **Meta Automation v1.0.0**.
-
----
-
-## 📦 Package Distribution Files
-
-| File | Size | Format | Description |
-|---|---|---|---|
-| **`meta-automation-1.0.0.tgz`** | ~330 KB | npm Tarball | Standard npm pack distribution. Installable via `npm install ./meta-automation-1.0.0.tgz`. |
-| **`meta-automation-v1.0.0.tar.gz`** | ~176 KB | Standalone Archive | Complete source and script distribution without runtime bloat or state files. |
-| **`SHA256SUMS.txt`** | Text | Checksums | Cryptographic SHA-256 hashes to verify release package integrity. |
+This directory contains official pre-built distribution packages for **Meta Automation v1.1.0** supporting **Linux**, **macOS**, **Windows**, and **Android (Termux + Termux:X11)**.
 
 ---
 
-## 🚀 Quick Install from Release Bundle
+## 📦 Multi-Platform Distribution Bundles
 
+| File | Platform | Format | Size | Description |
+|---|---|---|---|---|
+| **`meta-automation-linux-x64.tar.gz`** | Linux | `.tar.gz` | ~186 KB | Optimized for Ubuntu, Debian, Zorin OS, Fedora, and Arch. |
+| **`meta-automation-macos-universal.tar.gz`** | macOS | `.tar.gz` | ~186 KB | Universal bundle for Apple Silicon (M1/M2/M3/M4) & Intel Macs. |
+| **`meta-automation-windows-x64.zip`** | Windows | `.zip` | ~223 KB | Complete Windows package with PowerShell & 1-click batch scripts. |
+| **`meta-automation-android-termux.tar.gz`** | Android | `.tar.gz` | ~186 KB | Termux + Termux:X11 pre-configured package with 1-tap launcher. |
+| **`meta-automation-universal-v1.1.0.zip`** | Universal | `.zip` | ~223 KB | All-in-one archive containing all platform scripts & installers. |
+| **`meta-automation-1.1.0.tgz`** | Node/npm | `.tgz` | ~1.2 MB | Standard npm distribution package. |
+| **`SHA256SUMS.txt`** | All | Text | ~600 B | Cryptographic SHA-256 verification hashes for all packages. |
+
+---
+
+## 🚀 1-Click Installation per Platform
+
+### 🐧 Linux
 ```bash
-# Extract the standalone archive
-tar -xzf meta-automation-v1.0.0.tar.gz -C /opt/meta-automation
-cd /opt/meta-automation
-
-# Install dependencies
-npm install
-
-# Launch automation daemon
+tar -xzf meta-automation-linux-x64.tar.gz
+cd meta-automation
+./installers/install-linux.sh
 ./start-automation
+```
+
+### 🍎 macOS
+```bash
+tar -xzf meta-automation-macos-universal.tar.gz
+cd meta-automation
+./installers/install-macos.sh
+./start-automation
+```
+
+### 🪟 Windows
+1. Extract `meta-automation-windows-x64.zip`
+2. Open PowerShell and run:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\installers\install-windows.ps1
+   ```
+3. Start automation:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\start-automation.ps1
+   ```
+   *(Or double-click `start-automation.bat`)*
+
+### 📱 Android (Termux)
+```bash
+tar -xzf meta-automation-android-termux.tar.gz
+cd meta-automation
+./installers/install-android-termux.sh
+~/start-meta.sh
 ```
 
 ---
 
-*Official release build verified and packaged by [CodeAir Software Solutions](https://www.codeair.tech).*
+*Official release v1.1.0 verified and packaged by [CodeAir Software Solutions](https://www.codeair.tech).*

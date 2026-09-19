@@ -266,6 +266,7 @@ async function runAllTests() {
   console.log("--------------------------------------------------\n");
 
   await (require("./pillar-and-search-audit").runAudit());
+  await (require("./cross-platform-audit").runCrossPlatformAudit());
 
   if (failed > 0) {
     process.exit(1);

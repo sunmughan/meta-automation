@@ -1,9 +1,10 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
-[![Brave/Chrome CDP](https://img.shields.io/badge/Browser-CDP%20Stealth-orange.svg?style=for-the-badge&logo=brave)](https://brave.com)
+[![Antigravity](https://img.shields.io/badge/Cognitive%20Brain-Antigravity%20AI-9945FF.svg?style=for-the-badge)](ANTIGRAVITY_GUIDE.md)
 [![CodeAir](https://img.shields.io/badge/Engineered%20By-CodeAir-00F0FF.svg?style=for-the-badge)](https://www.codeair.tech)
 [![PixelGo](https://img.shields.io/badge/Product-PixelGo%20HMS-00E599.svg?style=for-the-badge)](https://pixelgo.live)
 
@@ -167,27 +168,95 @@ meta-automation/
 │   ├── safety/                      # Rate limiters, duplicate guards, approval gates
 │   └── storage/                     # Atomic state store & leads persistence
 ├── tests/                           # Verification suite
-│   └── suite.js                     # 33 comprehensive end-to-end scenario tests
+├── installers/                      # Native 1-click platform installers
+│   ├── install-linux.sh             # Linux installer (Debian, Ubuntu, Fedora, Arch)
+│   ├── install-macos.sh             # macOS installer (Intel & Apple Silicon)
+│   ├── install-windows.ps1          # Windows 10/11 PowerShell installer
+│   ├── install-windows.bat          # Windows 1-click batch installer wrapper
+│   └── install-android-termux.sh    # Android Termux:X11 1-click installer
+├── release/                         # Distribution archives & release builds
+├── scripts/                         # Operational helper scripts
+│   ├── launch-browser-cdp.js        # Universal cross-platform browser CDP launcher
+│   ├── launch-brave-cdp.sh          # Shell CDP launcher (Linux / macOS / Termux)
+│   ├── launch-brave-cdp.ps1         # Windows PowerShell CDP launcher
+│   ├── launch-brave-cdp.bat         # Windows Batch CDP launcher
+│   ├── start-agent.sh               # Background daemon launcher
+│   ├── status-agent.sh              # Telemetry reporting script
+│   └── stop-agent.sh                # Graceful process termination script
+├── src/                             # Core modular architecture
+├── tests/                           # Verification suite
+│   ├── suite.js                     # 47 comprehensive end-to-end scenario tests
+│   ├── pillar-and-search-audit.js   # Pillar & search verification
+│   └── cross-platform-audit.js      # Cross-platform runner & installer audit
+├── ANTIGRAVITY_GUIDE.md             # Master Antigravity setup, prompts & orchestration
 ├── .env.example                     # Environment template
 ├── .gitignore                       # Git ignore rules for state, secrets, and logs
 ├── LICENSE                          # MIT License
 ├── package.json                     # Project manifest & CLI entrypoints
 ├── README.md                        # Master documentation
 ├── SPONSORS.md                      # Sponsorship information
-├── start-automation                 # 1-Click launcher (starts CDP + background agent)
-├── status-automation                # 1-Click status inspector (shows health & stats)
-├── stop-automation                  # 1-Click graceful shutdown
+├── start-automation                 # Linux/macOS 1-Click daemon launcher
+├── status-automation                # Linux/macOS 1-Click status inspector
+├── stop-automation                  # Linux/macOS 1-Click graceful shutdown
+├── start-automation.ps1             # Windows 1-Click daemon launcher (PowerShell)
+├── start-automation.bat             # Windows 1-Click daemon launcher (Batch)
+├── status-automation.ps1            # Windows status inspector
+├── stop-automation.ps1              # Windows graceful shutdown
+├── start-termux                     # Android Termux:X11 master runner
 └── threads-agent.js                 # Primary CLI entry point
 ```
 
 ---
 
-## 🚀 Getting Started
+## ⚡ 1-Click Native Installers
+
+Install and configure all dependencies in under 60 seconds on your target platform:
+
+### 🐧 Linux (Ubuntu, Debian, Zorin, Fedora, Arch)
+```bash
+./installers/install-linux.sh
+```
+
+### 🍎 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
+```bash
+./installers/install-macos.sh
+```
+
+### 🪟 Windows (Windows 10 / 11)
+Open PowerShell or double-click:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\installers\install-windows.ps1
+```
+*(Or simply double-click `installers\install-windows.bat`)*
+
+### 📱 Android (Termux + Termux:X11)
+Inside the Termux terminal on Android:
+```bash
+pkg update -y && pkg install -y git
+git clone https://github.com/sunmughan/meta-automation.git
+cd meta-automation
+./installers/install-android-termux.sh
+```
+> **Tip:** The installer automatically configures `Termux:X11` on `DISPLAY=:1`, enables port 9222 CDP, and creates a 1-tap Android home screen widget: `~/start-meta.sh`.
+
+---
+
+## 🪐 Antigravity AI Orchestration & Prompts
+
+Meta Automation is designed to run with **Google Antigravity** as its cognitive engine.
+Read the **[ANTIGRAVITY_GUIDE.md](ANTIGRAVITY_GUIDE.md)** for:
+- Full setup instructions on Linux, macOS, Windows, and Termux.
+- Ready-to-copy Master Prompts (Autonomous Growth Mode, Lead Discovery Scan, Human Approval Mode, Carousel Deck Generation).
+- Running inside Antigravity vs. running as a 24/7 background headless daemon.
+
+---
+
+## 🚀 Getting Started (Manual Setup)
 
 ### Prerequisites
 - **Node.js**: `v18.0.0` or higher.
-- **Operating System**: Linux (Ubuntu, Debian, Zorin, Fedora), macOS, or Windows (WSL2).
-- **Browser**: Brave Browser or Google Chrome installed.
+- **Operating System**: Linux, macOS, Windows 10/11, or Android (Termux).
+- **Browser**: Brave Browser, Google Chrome, or Chromium.
 
 ### Installation
 Clone the repository:
@@ -220,9 +289,14 @@ AI_MODEL=gemini-3.6-flash
 
 ### Launching the Browser in CDP Mode
 The engine communicates with your existing logged-in browser session via CDP.
-Launch Brave with remote debugging enabled:
+Launch the browser with remote debugging enabled:
 ```bash
-./scripts/launch-brave-cdp.sh
+# Universal (All Platforms):
+node scripts/launch-browser-cdp.js
+
+# Or native wrappers:
+./scripts/launch-brave-cdp.sh          # Linux / macOS / Termux
+powershell .\scripts\launch-brave-cdp.ps1 # Windows
 ```
 > **Tip:** You can log into Threads (`threads.net`) and Instagram (`instagram.com`) normally in this window. Your session, cookies, and tabs will remain completely intact.
 
