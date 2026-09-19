@@ -169,15 +169,27 @@ class ThreadsPoster {
       const fileInput = await page.$('input[type="file"]');
       if (fileInput) {
         await fileInput.uploadFile(...mediaPaths);
-        // Wait for image thumbnails to mount
-        await new Promise(r => setTimeout(r, 3500));
+        // Wait for image upload and thumbnail rendering to complete
+        logger.info("[THREADS POSTER] Waiting for image upload processing...");
+        for (let waitSec = 0; waitSec < 10; waitSec++) {
+          await new Promise(r => setTimeout(r, 1000));
+          const isUploaded = await page.evaluate(() => {
+            const hasImg = !!document.querySelector('div[role="dialog"] img, [aria-modal="true"] img');
+            const isUploading = !!document.querySelector('[data-upload-state="uploading"], [aria-label*="loading" i]');
+            return hasImg && !isUploading;
+          });
+          if (isUploaded) {
+            logger.info("[THREADS POSTER] Media successfully mounted into composer.");
+            break;
+          }
+        }
       } else {
         logger.warn("[THREADS POSTER] Could not find file input in composer; proceeding with text.");
       }
     }
 
-    // 5. Locate composer textbox
-    const textbox = await page.waitForSelector('div[role="textbox"][contenteditable="true"]', { timeout: 8000 });
+    // 5. Locate composer textbox inside the active modal/dialog
+    const textbox = await page.waitForSelector('div[role="dialog"] div[role="textbox"][contenteditable="true"], [aria-modal="true"] div[role="textbox"][contenteditable="true"], div[role="textbox"][contenteditable="true"]', { timeout: 8000 });
     if (!textbox) {
       throw new Error("Composer textbox did not open after clicking New thread");
     }
@@ -192,24 +204,56 @@ class ThreadsPoster {
       await new Promise(r => setTimeout(r, Math.floor(Math.random() * 20) + 15));
     }
 
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 2000));
 
-    // 7. Click the "Post" button
-    const postSubmitted = await page.evaluate(() => {
-      const buttons = [...document.querySelectorAll('div[role="button"], button')];
-      const postBtn = buttons.find(b => (b.innerText || "").trim().toLowerCase() === "post");
-      if (postBtn) {
-        postBtn.click();
-        return true;
+    // 7. Accurately target the "Post" button specifically inside the active composer modal
+    logger.info("[THREADS POSTER] Submitting post via active composer Post button...");
+    let postSubmitted = false;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      postSubmitted = await page.evaluate(() => {
+        const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
+        const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
+        const postBtn = buttons.find(b => {
+          const txt = (b.innerText || "").trim().toLowerCase();
+          const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
+          return txt === "post" && isEnabled && b.offsetParent !== null;
+        });
+
+        if (postBtn) {
+          postBtn.focus();
+          postBtn.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (postSubmitted) {
+        break;
       }
-      return false;
-    });
-
-    if (!postSubmitted) {
-      await page.keyboard.press("Enter");
+      await new Promise(r => setTimeout(r, 1500));
     }
 
-    await new Promise(r => setTimeout(r, 4500));
+    if (!postSubmitted) {
+      logger.warn("[THREADS POSTER] Composer Post button not clickable directly; sending Ctrl+Enter fallback...");
+      await page.keyboard.down("Control");
+      await page.keyboard.press("Enter");
+      await page.keyboard.up("Control");
+    }
+
+    // Wait and verify dialog has closed
+    let dialogClosed = false;
+    for (let check = 0; check < 8; check++) {
+      await new Promise(r => setTimeout(r, 1000));
+      dialogClosed = await page.evaluate(() => {
+        const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
+        return !dialog;
+      });
+      if (dialogClosed) break;
+    }
+
+    logger.info(`[THREADS POSTER] Post submission verification: dialog closed = ${dialogClosed}`);
+    await new Promise(r => setTimeout(r, 2500));
 
     // 8. Record into state
     const ourPostId = `our_post_${Date.now()}`;

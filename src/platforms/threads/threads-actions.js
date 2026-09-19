@@ -100,20 +100,19 @@ class ThreadsActions {
         return { success: false, reason: "Target post URL mismatch or post no longer available." };
       }
 
-      // 3. Double-Guard: Verify on-page content is genuine buyer requirement before typing
-      const onPageContent = await page.evaluate(() => {
+      // 3. Double-Guard: Verify post context is genuine buyer requirement before typing
+      const postTextToVerify = post.text || (await page.evaluate(() => {
         const article = document.querySelector('article, [data-pressable-container="true"]');
-        const text = article ? (article.innerText || "").trim() : (document.body.innerText || "").trim();
-        return { text };
-      });
+        return article ? (article.innerText || "").trim() : "";
+      }));
 
       const recheck = intentClassifier.classify({
-        text: onPageContent.text || post.text,
+        text: postTextToVerify,
         username: post.username
       });
 
       if (!recheck.qualified || !recheck.is_genuine_buyer) {
-        logger.warn(`Post ${post.postId} failed live on-page qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
+        logger.warn(`Post ${post.postId} failed live qualification double-guard: ${recheck.reason}. Aborting live comment.`, {
           action: "COMMENT_GUARD_ABORTED",
           postId: post.postId,
           username: post.username,
@@ -122,19 +121,25 @@ class ThreadsActions {
         });
         return {
           success: false,
-          reason: `On-page double-guard rejected: ${recheck.reason}`
+          reason: `Qualification double-guard rejected: ${recheck.reason}`
         };
       }
 
-      // Wait for or activate reply composer
+      // Wait for or activate reply composer by clicking Reply SVG or placeholder
       let textbox = await page.$('div[role="textbox"][contenteditable="true"]');
       if (!textbox) {
         await page.evaluate(() => {
+          const replySvgs = [...document.querySelectorAll('svg[title="Reply"], svg[aria-label="Reply"]')];
+          if (replySvgs.length > 0) {
+            const btn = replySvgs[0].closest('div[role="button"], button') || replySvgs[0];
+            btn.click();
+            return;
+          }
           const allElements = [...document.querySelectorAll('span, p, div')];
-          const placeholder = allElements.find(s => s.innerText && s.innerText.toLowerCase().includes('reply to'));
+          const placeholder = allElements.find(s => (s.innerText || "").toLowerCase().includes('reply to'));
           if (placeholder) placeholder.click();
         });
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, 1500));
         textbox = await page.$('div[role="textbox"][contenteditable="true"]');
       }
 
