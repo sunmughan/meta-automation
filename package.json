@@ -13,7 +13,8 @@
     "scan": "node threads-agent.js scan",
     "analyze": "node threads-agent.js analyze",
     "approve": "node threads-agent.js approve",
-    "status": "node threads-agent.js status"
+    "status": "node threads-agent.js status",
+    "build:release": "./scripts/package-release.sh"
   },
   "repository": {
     "type": "git",
