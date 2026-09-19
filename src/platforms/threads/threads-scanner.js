@@ -15,7 +15,7 @@ async function extractPostsFromDom(page) {
     const links = [...document.querySelectorAll('a[href*="/post/"]')];
 
     for (const link of links) {
-      const match = link.href.match(/https:\/\/www\.threads\.com\/@([^/]+)\/post\/([^/?#]+)/);
+      const match = link.href.match(/https?:\/\/(?:www\.)?threads\.(?:com|net)\/@([^/]+)\/post\/([^/?#]+)/);
       if (!match) continue;
 
       const username = match[1];

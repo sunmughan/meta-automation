@@ -386,14 +386,13 @@ async function commandReplies() {
 
 async function commandDms() {
   console.log("\n==============================================");
-  console.log("         DIRECT MESSAGES MONITOR");
+  console.log("         THREADS DIRECT MESSAGES MONITOR");
   console.log("==============================================");
   try {
-    const results = await dmMonitor.scanAndProcessAll();
-    console.log(`Threads DMs processed: ${results.threads.length}`);
-    console.log(`Instagram DMs processed: ${results.instagram.length}\n`);
+    const results = await dmMonitor.scanAndProcessThreadsOnly();
+    console.log(`Threads DMs processed: ${results.threads.length}\n`);
   } catch (err) {
-    console.error("Failed processing DMs:", err.message);
+    console.error("Failed processing Threads DMs:", err.message);
   }
   return 0;
 }

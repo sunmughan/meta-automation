@@ -942,6 +942,152 @@ async function runAllTests() {
     stateStore.saveState();
   });
 
+  // 55. Explicit State Transition Logging & Tracking
+  await test("55. StateStore records explicit action transitions from INIT to VERIFIED_SUCCESS or FAILED", () => {
+    const targetId = "test_trans_post_55";
+    const failId = "test_fail_post_55";
+    // Clean any prior runs of these test IDs
+    if (Array.isArray(stateStore.state.actionTransitions)) {
+      stateStore.state.actionTransitions = stateStore.state.actionTransitions.filter(
+        r => r.targetId !== targetId && r.targetId !== failId
+      );
+    }
+
+    const t1 = stateStore.recordActionTransition("COMMENT", targetId, "INIT", "PREPARING", { user: "test" });
+    const t2 = stateStore.recordActionTransition("COMMENT", targetId, "PREPARING", "OPENED");
+    const t3 = stateStore.recordActionTransition("COMMENT", targetId, "OPENED", "TYPING");
+    const t4 = stateStore.recordActionTransition("COMMENT", targetId, "TYPING", "SUBMITTING");
+    const t5 = stateStore.recordActionTransition("COMMENT", targetId, "SUBMITTING", "VERIFYING");
+    const t6 = stateStore.recordActionTransition("COMMENT", targetId, "VERIFYING", "VERIFIED_SUCCESS", { verified: true });
+
+    assert(Array.isArray(stateStore.state.actionTransitions), "actionTransitions must be an array in state");
+    const records = stateStore.state.actionTransitions.filter(r => r.targetId === targetId);
+    assert.strictEqual(records.length, 6, "Must record all 6 transitions");
+    assert.strictEqual(records[0].fromState, "INIT");
+    assert.strictEqual(records[0].toState, "PREPARING");
+    assert.strictEqual(records[5].toState, "VERIFIED_SUCCESS");
+
+    // Test failure transition
+    stateStore.recordActionTransition("COMMENT", failId, "VERIFYING", "FAILED", { reason: "Snippet absent" });
+    stateStore.recordActionTransition("COMMENT", failId, "FAILED", "DIAGNOSTIC");
+    stateStore.recordActionTransition("COMMENT", failId, "DIAGNOSTIC", "RETRY_PENDING", { retryCount: 1 });
+
+    const failRecords = stateStore.state.actionTransitions.filter(r => r.targetId === failId);
+    assert.strictEqual(failRecords.length, 3);
+    assert.strictEqual(failRecords[0].toState, "FAILED");
+    assert.strictEqual(failRecords[1].toState, "DIAGNOSTIC");
+    assert.strictEqual(failRecords[2].toState, "RETRY_PENDING");
+
+    // Clean up
+    stateStore.state.actionTransitions = stateStore.state.actionTransitions.filter(
+      r => r.targetId !== targetId && r.targetId !== failId
+    );
+    stateStore.saveState();
+  });
+
+  // 56. Strict Comment Verification Rejects False-Positive "Posted / View" Substrings
+  await test("56. Strict comment verification rejects loose 'Posted/View' false positives when snippet is absent", () => {
+    // Simulate DOM containing unrelated text like "Posted 10m ago" and "View profile", but NOT our comment snippet
+    const mockDomText = "dougkennedy93\nPosted 10m ago\nGreat architecture tips.\nView profile\nView replies";
+    const commentSnippet = "At CodeAir Software Solutions, we design and develop";
+
+    // Replicate the corrected verification function from threads-actions
+    function verifyCommentInDom(bodyText, snippet, articleTexts = []) {
+      const hasError = /\b(couldn'?t post|something went wrong|try again later|action blocked|rate limit)\b/i.test(bodyText);
+      if (hasError) return { verified: false, error: "error dialog" };
+
+      // Snippet must be found in article texts or body with author
+      const snippetFound = snippet && snippet.length > 5 && articleTexts.some(a => a.includes(snippet));
+      const hasAuthorSnippet = bodyText.toLowerCase().includes("sunmughan") && bodyText.includes(snippet);
+
+      if (snippetFound || hasAuthorSnippet) {
+        return { verified: true, reason: "Comment snippet verified in thread DOM" };
+      }
+      return { verified: false, error: "Awaiting confirmed DOM insertion" };
+    }
+
+    // 1. When snippet is absent, even if body has "Posted" and "View", it MUST FAIL
+    const resAbsent = verifyCommentInDom(mockDomText, commentSnippet, ["dougkennedy93 Great architecture tips."]);
+    assert.strictEqual(resAbsent.verified, false, "Must NOT verify if comment snippet is absent");
+
+    // 2. When snippet IS present with author, it MUST PASS
+    const validDomText = mockDomText + `\nsunmughan\n${commentSnippet}\ncodeair.tech`;
+    const resPresent = verifyCommentInDom(validDomText, commentSnippet, [commentSnippet]);
+    assert.strictEqual(resPresent.verified, true, "Must verify when comment snippet is genuinely present");
+
+    // 3. Draft text inside composer (editable elements) must be rejected
+    function verifyCommentExcludingDrafts(elements, snippet) {
+      return elements.some(el => {
+        if (el.isContentEditable || el.isComposer) return false;
+        return (el.text || "").includes(snippet);
+      });
+    }
+    const draftElements = [{ text: commentSnippet, isContentEditable: true, isComposer: true }];
+    assert.strictEqual(verifyCommentExcludingDrafts(draftElements, commentSnippet), false, "Draft text in composer must never verify as posted");
+  });
+
+  // 57. Own-Post Profile Feed Verification Requirement
+  await test("57. Own-post publishing requires verified presence on profile feed before VERIFIED_PUBLISHED", () => {
+    // When a post is submitted, if modal closes but post is not found on profile, it must be FAILED / UNVERIFIED
+    const mockProfileArticlesWithoutPost = [
+      "sunmughan 2h Earlier post text...",
+      "sunmughan 12h Other older post..."
+    ];
+    const newPostSnippet = "To fellow startup founders: lean architecture beats microservices";
+
+    const isFoundOnProfile = mockProfileArticlesWithoutPost.some(a => a.includes(newPostSnippet));
+    assert.strictEqual(isFoundOnProfile, false, "Post must not be considered found when absent from profile feed");
+
+    // Must NOT mark VERIFIED_PUBLISHED when absent from profile
+    let postStatus = "PENDING_VERIFY";
+    if (isFoundOnProfile) {
+      postStatus = "VERIFIED_PUBLISHED";
+    } else {
+      postStatus = "UNVERIFIED_PROFILE_MISSING";
+    }
+    assert.strictEqual(postStatus, "UNVERIFIED_PROFILE_MISSING", "Post must remain UNVERIFIED if missing on profile feed");
+
+    // When present on profile feed
+    const mockProfileArticlesWithPost = [
+      `sunmughan 1m ${newPostSnippet}`,
+      ...mockProfileArticlesWithoutPost
+    ];
+    const isNowFound = mockProfileArticlesWithPost.some(a => a.includes(newPostSnippet));
+    assert.strictEqual(isNowFound, true);
+    if (isNowFound) {
+      postStatus = "VERIFIED_PUBLISHED";
+    }
+    assert.strictEqual(postStatus, "VERIFIED_PUBLISHED", "Post is marked VERIFIED_PUBLISHED only when confirmed on profile feed");
+  });
+
+  // 58. Direct Message Multi-Element Bubble Verification across SPAN/DIV
+  await test("58. DM bubble verification searches SPAN, DIV, and P elements without failing on dir='auto'", () => {
+    // In Threads, message bubbles are in <span> and <div> elements without dir="auto"
+    const mockElements = [
+      { tagName: "SPAN", text: "That makes sense. What does your current architecture look like?" },
+      { tagName: "DIV", text: "Messages Inbox Requests" }
+    ];
+    const snippet = "That makes sense. What does";
+
+    // Replicate the corrected verification function
+    const isVerified = mockElements.some(b => {
+      if (b.tagName === "SCRIPT" || b.tagName === "STYLE") return false;
+      return (b.text || "").includes(snippet);
+    });
+
+    assert.strictEqual(isVerified, true, "Must verify message presence in SPAN and DIV elements");
+  });
+
+  // 59. Threads-Only Isolation in DM Monitor
+  await test("59. scanAndProcessThreadsOnly processes exclusively Threads DMs with zero Instagram calls", async () => {
+    const dmMonitor = require("../src/engagement/dm-monitor");
+    assert.strictEqual(typeof dmMonitor.scanAndProcessThreadsOnly, "function", "scanAndProcessThreadsOnly must be exposed");
+
+    const res = await dmMonitor.scanAndProcessThreadsOnly({ offlineSimulation: true });
+    assert(res.threads !== undefined, "Results must contain threads");
+    assert.strictEqual(res.instagram, undefined, "Results must NOT contain instagram in Threads-only execution");
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {

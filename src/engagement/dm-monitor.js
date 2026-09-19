@@ -18,6 +18,12 @@ class DmMonitor {
    * Processes a single DM conversation item.
    */
   async processDmItem(dmItem, platform = "threads", options = {}) {
+    // 0. Skip if the scanner detected an outgoing message from us ("You sent...", "You:...")
+    if (dmItem.isOutgoing) {
+      logger.info(`[DM MONITOR] Skipping @${dmItem.sender}: Last message was sent by us ("${dmItem.lastMessage}"). Awaiting recipient reply.`);
+      return { success: false, reason: "Awaiting recipient reply; last message was sent by us" };
+    }
+
     // 1. Generate unique turn ID keyed by sender and message content for true multi-turn tracking
     const dmTurnId = threadsDms.hashMessage(dmItem.sender, dmItem.lastMessage);
 
@@ -41,6 +47,16 @@ class DmMonitor {
     // 2. Load existing conversation state
     const convId = `${platform}:${dmItem.sender}`;
     const existingConv = stateStore.getConversation(convId, platform) || {};
+
+    // Skip if the message is identical to our own previous response (prevents replying to ourselves)
+    if (existingConv.lastResponse && dmItem.lastMessage) {
+      const cleanPrev = existingConv.lastResponse.trim().toLowerCase();
+      const cleanIncoming = dmItem.lastMessage.trim().toLowerCase();
+      if (cleanPrev === cleanIncoming || cleanPrev.startsWith(cleanIncoming) || cleanIncoming.startsWith(cleanPrev.slice(0, 30))) {
+        logger.info(`[DM MONITOR] Skipping @${dmItem.sender}: Last message is identical to our own previous response. Awaiting recipient reply.`);
+        return { success: false, reason: "Awaiting recipient reply; last message was our response" };
+      }
+    }
 
     // 3. Generate response via AI decision engine
     const decision = await aiDecisionEngine.generateConversationReply({
@@ -160,6 +176,20 @@ class DmMonitor {
           response: decision.response_message,
           identity: decision.identity
         };
+      } else if (sendRes && sendRes.restricted) {
+        stateStore.recordHandledDm(dmTurnId, {
+          username: dmItem.sender,
+          messageText: dmItem.lastMessage,
+          responseText: decision.response_message,
+          status: "RESTRICTED_PENDING_ACCEPTANCE",
+          restriction: sendRes.restriction
+        }, platform);
+        logger.warn(`[DM MONITOR] Live DM restricted for @${dmItem.sender}: ${sendRes.reason}`);
+        return {
+          success: false,
+          restricted: true,
+          reason: sendRes.reason
+        };
       } else {
         logger.warn(`[DM MONITOR] Live DM send unverified for @${dmItem.sender}: ${sendRes ? sendRes.reason : "unknown"}`);
         return {
@@ -174,10 +204,50 @@ class DmMonitor {
   }
 
   /**
+   * Threads-only Direct Message scanner and processor.
+   * Completely bypasses any Instagram runtime path for strict Threads automation.
+   */
+  async scanAndProcessThreadsOnly(options = {}) {
+    const results = { threads: [] };
+    if (options.offlineSimulation) {
+      const mockItems = options.mockItems || [
+        { sender: "test_user_sim", lastMessage: "Can you help build my MVP?", threadId: "test_thread_sim" }
+      ];
+      for (const item of mockItems) {
+        const res = await this.processDmItem(item, "threads", { dryRun: true, ...options });
+        results.threads.push({ item, res });
+      }
+      return results;
+    }
+
+    try {
+      const threadsItems = await threadsDms.scanDms();
+      for (const item of threadsItems) {
+        const res = await this.processDmItem(item, "threads", options);
+        results.threads.push({ item, res });
+      }
+    } catch (err) {
+      logger.warn("Threads DM scan skipped or failed", { error: err.message });
+    }
+    return results;
+  }
+
+  /**
    * Scans and processes DMs across both Threads and Instagram.
    */
   async scanAndProcessAll(options = {}) {
     const results = { threads: [], instagram: [] };
+
+    if (options.offlineSimulation) {
+      const mockItems = options.mockItems || [
+        { sender: "test_user_sim", lastMessage: "Can you help build my MVP?", threadId: "test_thread_sim" }
+      ];
+      for (const item of mockItems) {
+        const res = await this.processDmItem(item, "threads", { dryRun: true, ...options });
+        results.threads.push({ item, res });
+      }
+      return results;
+    }
 
     // Threads DMs
     try {

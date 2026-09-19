@@ -1507,6 +1507,46 @@ STATUS: COMPLETED (Phase 1 to Current Operational Phase)
     ✓ DOM-Based Unread DM Monitoring:
       - Agent monitors unread badges directly on the Home feed sidebar ("1\nMessages" or unread badge dots) without navigating away.
       - Enters /messages only when an incoming unread message actually arrives, sends the reply, and immediately returns to the Home feed.
-    ✓ Visible Display Integrity on Termux:X11:
-      - Browser remains 100% focused on https://www.threads.com/ with feed refresh and newest posts prioritized for live monitoring.
     ✓ Active Status: 🟢 RUNNING IN BACKGROUND (Detached Daemon)
+
+8. PHASE 5 & 6: STRICT MULTI-SIGNAL DOM VERIFICATION, EXPLICIT STATE MACHINE & THREADS-ONLY ORCHESTRATION (v1.2.1):
+   ✓ Status: COMPLETED & VERIFIED END-TO-END ON LIVE THREADS PLATFORM
+
+   A. Root Causes Diagnosed & Fixed:
+      1. AI Decision Engine ENOENT:
+         - Root Cause: System attempted to spawn non-existent `agy` binary on Linux PATH (`spawn agy ENOENT`), causing silent qualification failures and reducing agent behavior to scrolling without commenting.
+         - Fix: Implemented native executable wrapper in `scripts/agy` implementing `-p <prompt> --model <model> --output-format json` via Antigravity runtime, symlinked to `~/.local/bin/agy`, and provided direct fallback in `src/ai/ai-runtime.js`.
+      2. False-Positive Comment Verification:
+         - Root Cause: In `threads-actions.js`, loose substring matching `(bodyText.includes("Posted") && bodyText.includes("View"))` falsely matched unrelated page elements (e.g. "Posted 10m ago" and "View profile"), recording unposted comments as `POSTED_LIVE`.
+         - Fix: Replaced with strict snippet search inside thread DOM articles + author `@sunmughan` match, while explicitly ignoring uncommitted draft text in `isContentEditable` and composer textboxes.
+      3. Inline Reply Submit Button Locator:
+         - Root Cause: In `threads-actions.js`, `b.offsetParent !== null` failed on modern flex/sticky container CSS where `offsetParent` is `null`.
+         - Fix: Replaced with bounding client rect dimensions (`rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0`).
+      4. Scheduled Own-Post Profile Verification:
+         - Root Cause: Modal dismissal alone is not proof of publication.
+         - Fix: Added `verifyPostOnProfile` navigating to authenticated profile feed `https://www.threads.com/@sunmughan` and polling DOM for exact post snippet before recording `VERIFIED_PUBLISHED`.
+      5. DM Self-Response Loop & Outgoing Message Detection:
+         - Root Cause: Threads inbox rows display the latest message preview. If our account sent the last message, `lines[1]` displayed "You sent a post" or our previous response text, causing the system to treat our own message as an incoming client inquiry.
+         - Fix: Enhanced `scanDms()` with `isOutgoing` detection and added equality guards against `existingConv.lastResponse` in `dm-monitor.js`.
+      6. Hard External Platform Restriction Handling:
+         - Root Cause: When recipient has not accepted a message request, Threads disables the composer and displays "Message request sent. You can send more once they've accepted your request." The system previously threw an unhandled timeout error.
+         - Fix: Added explicit DOM inspection for "Message request sent" / "once they've accepted your request", transitioning state to `RESTRICTED`, recording `RESTRICTED_PENDING_ACCEPTANCE`, capturing diagnostic screenshots, and pausing DMs for that thread without crashing or retrying infinitely.
+      7. Explicit State Transitions:
+         - Implemented `stateStore.recordActionTransition(actionType, targetId, fromState, toState, metadata)` tracking `INIT → PREPARING → OPENED → TYPING → SUBMITTING → VERIFYING → VERIFIED_SUCCESS` (or `FAILED → DIAGNOSTIC → RETRY_PENDING`) across comments, replies, DMs, and own posts.
+      8. Historical State Store Sanitization:
+         - Inspected `threads-engagement-state.json` and repaired false-positive entry `threads:Dde672uiary` to `COMMENT_FAILED`.
+      9. Strict Threads-Only Isolation:
+         - Created `scanAndProcessThreadsOnly()` in `dm-monitor.js` and wired `threads-agent.js` to execute Threads exclusively, preserving Instagram modules for future multi-platform expansion.
+
+   B. Verified Live Platform Evidence:
+      - Live Comment Verified: Post `Dde_1gCjM3U` from `@onetwoagent_com`. Verified live in DOM with author `@sunmughan` and exact text snippet. Diagnostic screenshot archived at `logs/screenshots/verified_live_comment_scrolled_Dde_1gCjM3U.png`.
+      - Live DM Verified: Direct message to `@anasshaikh.biz` (1150871990597027) verified delivered and recorded under audit `DM_RESPONSE_SENT_VERIFIED`.
+      - Hard Restriction Verified: Thread `1810462356759140` (@pixelvortex_) correctly diagnosed with pending message request. Screenshot archived at `logs/screenshots/dm_exception_1810462356759140_1789856835232.png`.
+      - 6-Hour Cadence Verified: Next post calculated at exactly 6 hours from `our_post_1789848273158` (4 posts per 24h).
+
+   C. Automated Test Suite Results:
+      - Command: `npm test`
+      - Test Suite: 59 Passed, 0 Failed
+      - Pillar & Search Audit: 15 Passed, 0 Failed
+      - Cross-Platform & Browser Audit: 17 Passed, 0 Failed
+      - Total Tests: 91 Passed, 0 Failed (100% Success Rate)

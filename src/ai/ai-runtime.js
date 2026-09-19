@@ -6,6 +6,8 @@
  */
 
 const { spawn } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 const CONFIG = require("../../config");
 const logger = require("../logging/logger");
 
@@ -143,7 +145,11 @@ class AiRuntime {
    */
   async callAntigravityCli(prompt, timeoutMs = 90000) {
     return new Promise((resolve, reject) => {
-      const proc = spawn("agy", [
+      const repoAgy = path.resolve(__dirname, "../../scripts/agy");
+      const localBinAgy = "/home/sunmughan/.local/bin/agy";
+      const bin = fs.existsSync(localBinAgy) ? localBinAgy : (fs.existsSync(repoAgy) ? repoAgy : "agy");
+
+      const proc = spawn(bin, [
         "-p", prompt,
         "--model", this.model,
         "--output-format", "json"

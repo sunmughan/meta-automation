@@ -12,6 +12,25 @@ const aiDecisionEngine = require("../../ai/ai-decision-engine");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const logger = require("../../logging/logger");
 
+const fs = require("fs");
+const path = require("path");
+
+async function captureDiagnosticScreenshot(page, prefix) {
+  try {
+    const dir = path.join(CONFIG.LOGS_DIR || path.resolve(__dirname, "../../../logs"), "screenshots");
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const file = path.join(dir, `${prefix}_${Date.now()}.png`);
+    await page.screenshot({ path: file });
+    logger.info(`Saved diagnostic screenshot to: ${file}`);
+    return file;
+  } catch (e) {
+    logger.warn(`Failed capturing diagnostic screenshot: ${e.message}`);
+    return null;
+  }
+}
+
 class ThreadsActivityWatcher {
   /**
    * Hashes incoming text for unique multi-turn reply tracking.
@@ -148,6 +167,7 @@ class ThreadsActivityWatcher {
             responseText: replyDecision.response_message,
             status: "SIMULATED"
           }, "threads");
+
           duplicateGuard.recordExecuted({
             platform: "threads",
             actionType: "REPLY",
@@ -159,6 +179,11 @@ class ThreadsActivityWatcher {
         }
 
         // Live execution in Threads browser
+        stateStore.recordActionTransition("REPLY", item.id, "INIT", "PREPARING", {
+          username: item.username,
+          url: item.url
+        });
+
         try {
           await page.goto(item.url, { waitUntil: "domcontentloaded", timeout: 45000 });
           await new Promise(r => setTimeout(r, 2500));
@@ -189,20 +214,27 @@ class ThreadsActivityWatcher {
           }
 
           if (!replyInput) {
+            stateStore.recordActionTransition("REPLY", item.id, "PREPARING", "FAILED", {
+              reason: "Could not open reply input"
+            });
             throw new Error(`Could not open reply input for @${item.username} on ${item.url}`);
           }
+
+          stateStore.recordActionTransition("REPLY", item.id, "PREPARING", "OPENED");
 
           await replyInput.focus();
           await new Promise(r => setTimeout(r, 400));
 
-          // Visibly type response
+          // State Transition: TYPING
+          stateStore.recordActionTransition("REPLY", item.id, "OPENED", "TYPING");
           for (const char of replyDecision.response_message) {
             await page.keyboard.sendCharacter(char);
             await new Promise(res => setTimeout(res, Math.floor(Math.random() * 20) + 15));
           }
           await new Promise(res => setTimeout(res, 1500));
 
-          // Submit reply via multi-strategy locator
+          // State Transition: SUBMITTING
+          stateStore.recordActionTransition("REPLY", item.id, "TYPING", "SUBMITTING");
           const postClicked = await page.evaluate(() => {
             const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
             if (dialog) {
@@ -261,32 +293,52 @@ class ThreadsActivityWatcher {
 
           if (!postClicked) {
             try {
-              const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"]');
+              const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"], div[role="textbox"] ~ div button');
               if (submitHandle) {
                 await submitHandle.click();
               }
             } catch (_) {}
           }
 
-          // Strict verification in DOM
+          // State Transition: VERIFYING
+          stateStore.recordActionTransition("REPLY", item.id, "SUBMITTING", "VERIFYING");
+
+          // Strict verification in DOM: confirm reply snippet rendered inside article or comment tree
           const textSnippet = replyDecision.response_message.replace(/https?:\/\/[^\s]+/g, "").slice(0, 30).trim();
           let isVerified = false;
-          for (let attempt = 0; attempt < 8; attempt++) {
+          for (let attempt = 0; attempt < 10; attempt++) {
             await new Promise(r => setTimeout(r, 1000));
             isVerified = await page.evaluate((snippet) => {
               const bodyText = document.body.innerText || "";
               const hasError = /\b(couldn'?t post|something went wrong|action blocked|rate limit)\b/i.test(bodyText);
               if (hasError) return false;
-              const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
-              return snippet && snippet.length > 5 && articles.some(a => (a.innerText || "").includes(snippet));
+              const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"], div[dir="auto"], span'));
+              return snippet && snippet.length > 5 && articles.some(a => {
+                if (a.tagName === 'SCRIPT' || a.tagName === 'STYLE') return false;
+                return (a.innerText || a.textContent || "").includes(snippet);
+              });
             }, textSnippet);
             if (isVerified) break;
           }
 
           if (!isVerified) {
+            stateStore.recordActionTransition("REPLY", item.id, "VERIFYING", "FAILED", {
+              reason: "Reply snippet not found in thread DOM"
+            });
+            stateStore.recordActionTransition("REPLY", item.id, "FAILED", "DIAGNOSTIC", {
+              reason: "Capturing diagnostic screenshot"
+            });
+
             logger.warn(`Live reply to @${item.username} could not be verified in DOM. Skipping state recording.`);
+            await captureDiagnosticScreenshot(page, `reply_unverified_${item.username}`);
             continue;
           }
+
+          // State Transition: VERIFIED_SUCCESS
+          stateStore.recordActionTransition("REPLY", item.id, "VERIFYING", "VERIFIED_SUCCESS", {
+            username: item.username,
+            textSnippet
+          });
 
           // Record verified handled reply
           stateStore.recordHandledReply(item.id, {
@@ -306,6 +358,10 @@ class ThreadsActivityWatcher {
           logger.info(`✅ Verified live reply to @${item.username}: "${replyDecision.response_message.slice(0, 50)}..."`);
         } catch (err) {
           logger.error(`Error executing live reply for @${item.username}: ${err.message}`);
+          stateStore.recordActionTransition("REPLY", item.id, "SUBMITTING", "FAILED", {
+            error: err.message
+          });
+          await captureDiagnosticScreenshot(page, `reply_exception_${item.username}`).catch(() => {});
         }
       }
 
