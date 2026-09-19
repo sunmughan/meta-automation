@@ -265,7 +265,7 @@ class ThreadsPoster {
 
     for (let check = 0; check < 10; check++) {
       await new Promise(r => setTimeout(r, 1000));
-      const checkResult = await page.evaluate((snippet) => {
+      const checkResult = await page.evaluate((snippet, wasSubmitted) => {
         const bodyText = document.body.innerText || "";
         
         // Check for error alert or rate limit toasts
@@ -291,12 +291,12 @@ class ThreadsPoster {
         if (hasPostedToast && noDialog) {
           return { verified: true, reason: "Confirmed via Threads posted toast and closed dialog" };
         }
-        if (noDialog && !hasError && (postSubmitted || hasPostedToast)) {
+        if (noDialog && !hasError && (wasSubmitted || hasPostedToast)) {
           return { verified: true, reason: "Composer modal successfully dismissed without errors" };
         }
 
         return { verified: false, error: "Awaiting confirmed publish" };
-      }, postText.slice(0, 40));
+      }, postText.slice(0, 40), postSubmitted);
 
       if (checkResult.verified) {
         isVerifiedPublished = true;
