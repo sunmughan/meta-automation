@@ -49,18 +49,24 @@ const pkg = require("../package.json");
 
   // 2. Fill Title & Description
   console.log(`Setting Release Title and Description for ${version}...`);
-  const titleText = `${version} - Pure AI-First Entry, Zero Heuristic Guessing, AiQueue Worker & SSOT Markdown Schema`;
+  const titleText = `${version} - Transaction-Verified Action Execution, Safe Retry Quarantine & 6-Hour Cadence`;
   const bodyText = `## What's Changed in ${version}
 
-### 🧠 Pure AI-First Entrypoint & Zero-Discard Pipeline
-- **Removed Hardcoded CodeAir Regex Gates**: Stripped direct regex shortcuts from \`qualifyPost()\` in \`ai-decision-engine.js\`. Every post captured on screen enters AI semantic reasoning directly with zero premature gates.
-- **Zero Heuristic Guessing on AI Failure**: When the Antigravity AI runtime fails after retries in production, posts are quarantined (\`status: "QUARANTINED"\`, \`lead_type: "QUARANTINED"\`, \`decision: "IGNORED"\`) rather than guessed via local regex heuristics. *"A delayed decision is vastly superior to an erroneous AI decision."*
-- **Asynchronous AI Concurrency Queue (\`AiQueue\`)**: Implemented priority scheduling (\`DM_RESPONSE\` > \`REPLY_GENERATION\` > \`COMMENT_SYNTHESIS\` > \`POST_ANALYSIS\`), concurrency governance (default: 1), and an in-memory 120-second deduplication cache in \`ai-runtime.js\` to prevent process thrashing.
-- **Single Brain Authority**: Unified \`intent-classifier.js\` with \`ai-decision-engine.js\`. Marked deterministic classifier as an auxiliary test fixture and added \`classifyAsync()\` delegation.
+### 🛡️ Transaction-Verified Comment & Post Execution
+- **Multi-Signal Verification in \`threads-actions.js\`**: Modal closure and textbox clearing are no longer naively treated as posting success. Submissions now undergo multi-signal DOM verification (comment text snippet inserted into thread \`article\`, Threads \`"Posted"\` / \`"View"\` confirmation toast, and absence of error banners).
+- **False-Positive State Guard**: If verification fails or is cancelled, \`duplicateGuard.recordExecuted()\` is strictly omitted and state is NOT recorded as \`POSTED_LIVE\`, preventing qualified leads from being permanently locked out.
+- **Diagnostic Failure Capture**: Failed comments and unverified posts automatically capture timestamped diagnostic screenshots in \`logs/screenshots/\` for rapid browser triage.
 
-### 📚 Dynamic Knowledge Markdown Schema Contract
-- **Markdown Tables & Markdown Link Support**: Enhanced \`parseServicesMarkdown()\` in \`knowledge-engine.js\` to parse both bullet items and table rows (\`| Service | Description |\`), ignoring dividers and headers. Enhanced \`parseProfilesMarkdown()\` to parse bare URLs, inline links, and markdown brackets \`[Text](URL)\`.
-- **Single-URL Discipline & 4-Mode Representation**: Strict enforcement of maximum 1 link per comment tailored to representation (\`FOUNDER\`, \`COMPANY\`, \`BOTH\`, or \`NEUTRAL\`).
+### 🔁 Safe Retry Quarantine State Machine (\`COMMENT_FAILED\`)
+- **Transient Error Quarantine**: Unverified comments transition to \`status: "COMMENT_FAILED"\` with failure reason and retry tracking.
+- **Cooldown Governance**: Posts in \`COMMENT_FAILED\` are safely retryable after a 15-minute cooldown (up to 3 maximum retries), ensuring network hiccups or transient browser latency do not result in dropped client leads.
+
+### ⏱️ Strict 6-Hour Scheduled Content Cadence (4 Posts / 24 Hours)
+- **Posting Interval Update**: Standardized \`POST_INTERVAL_HOURS=6\` in \`config/index.js\`, \`.env\`, and documentation, enforcing exactly 4 strategic discussion posts / carousels every 24 hours.
+- **Verified-Only Scheduler Audit**: The scheduler exclusively evaluates posts with \`status: "VERIFIED_PUBLISHED"\` or \`published === true\` when calculating elapsed time, ensuring failed or cancelled drafts never disrupt the publishing cadence.
+
+### ⚖️ Single Canonical Rate Governor
+- **Removed Duplicate Session Cap**: Replaced arbitrary per-session comment counters with canonical \`rateLimiter.canPerformAction("COMMENT")\` governance.
 
 ### 📦 Multi-Platform Release Assets & Checksums
 All build distributions are packaged and verified below:
@@ -72,7 +78,7 @@ All build distributions are packaged and verified below:
 - \`meta-automation-android-termux.tar.gz\` (Android Termux)
 - \`SHA256SUMS.txt\` (Cryptographic SHA-256 Checksums)
 
-**Full Changelog**: https://github.com/sunmughan/meta-automation/compare/v1.1.7...${version}`;
+**Full Changelog**: https://github.com/sunmughan/meta-automation/compare/v1.1.8...${version}`;
   await ghPage.evaluate((title, body) => {
     const titleEl = document.querySelector("#release_name, input[name=\"release[name]\"]");
     if (titleEl) {

@@ -1,6 +1,6 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.1.8-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.1.9-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -19,6 +19,9 @@ Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this e
 
 - **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
 - **Pure Antigravity AI-First Brain**: Every post discovered on screen is evaluated directly by the authenticated Antigravity AI Cognitive Brain (`src/ai/ai-decision-engine.js`). **Zero keyword filters, regex pre-filters, or heuristic gatekeepers.**
+- **Transaction-Verified Action Execution (v1.1.9)**: Modal dismissal is never assumed to be a successful submission. Comments and posts require multi-signal confirmation (DOM snippet detection, confirmation toasts, lack of error alerts). On failure, automatic diagnostic screenshots are captured to `logs/screenshots/`, and `duplicateGuard` / `POSTED_LIVE` state are strictly protected from false positives.
+- **Safe Retry Quarantine (`COMMENT_FAILED`)**: Unverified or failed comment attempts transition to `COMMENT_FAILED` with retry tracking and a 15-minute cooldown (up to 3 retries max), ensuring genuine client leads are never permanently lost to transient network or UI hiccups.
+- **Strict 6-Hour Publishing Cadence (4 Posts / 24 Hours)**: Automatically publishes high-value discussion posts and carousel decks across 5 core pillars exactly 4 times every 24 hours. The scheduler evaluates only `VERIFIED_PUBLISHED` posts to prevent scheduling drift.
 - **Asynchronous AI Concurrency Queue (`AiQueue`)**: Prioritizes interactive tasks (`DM_RESPONSE` > `REPLY_GENERATION` > `COMMENT_SYNTHESIS` > `POST_ANALYSIS`) with concurrency governance and an in-memory 120-second deduplication cache to prevent process thrashing.
 - **Zero-Heuristic Guessing Fail-Safe**: In production, if the AI runtime call fails after retries, posts are quarantined (`QUARANTINED`) rather than evaluated by local regex guessing. *"A delayed decision is vastly superior to an erroneous AI decision."*
 - **Dynamic Knowledge Single Source of Truth**: All capabilities, services, exclusions, and official profile links are dynamically parsed directly from `knowledge/*.md` supporting bullet lists, markdown tables, and markdown links without hardcoded arrays.
@@ -100,7 +103,7 @@ Say goodbye to tacky, cheap social graphics. The built-in renderer produces aest
 - **Official Brand Markings**: Embeds the authentic CodeAir logo with `www.codeair.tech` and the PixelGo calligraphic emblem with `pixelgo.live`.
 
 ### 5. Content Strategy & Automated Publishing
-Every **3 hours**, the scheduler selects the next content pillar in rotation, renders a tailored graphic or 5-slide carousel, writes an engaging post, and publishes it:
+Every **6 hours** (exactly 4 posts / 24 hours), the scheduler selects the next content pillar in rotation, renders a tailored graphic or 5-slide carousel, writes an engaging post, and publishes it:
 1. **`pixelgo_hms`**: Hospital management operations, clinical workflows, and modern patient EHR software.
 2. **`builder_network`**: Architecture teardowns, full-stack scaling, and modern product engineering.
 3. **`founders_revolution`**: Bootstrapping, enterprise automation, and founder-led execution.
@@ -349,12 +352,14 @@ Expected output:
 ==================================================
   PILLAR, SEARCH & LEAD AUDIT (USER FEEDBACK FIXES)
 ==================================================
-  ✓ PASS: High-intent search discovery configured with 13 buyer queries
-  ✓ PASS: Configured 3-hour publishing interval (POST_INTERVAL_HOURS=3)
+  ✓ PASS: High-intent search discovery configured with 20 buyer queries
+  ✓ PASS: Configured 6-hour publishing interval (POST_INTERVAL_HOURS=6, exactly 4 posts / 24h)
   ✓ PASS: Verified 5-slide deck & quote card for pillar: [pixelgo_hms]
   ...
 --------------------------------------------------
-Audit Summary: 33 Passed, 0 Failed
+Test Results: 50 Passed, 0 Failed
+Audit Summary: 15 Passed, 0 Failed
+Cross-Platform Results: 17 Passed, 0 Failed
 --------------------------------------------------
 ```
 

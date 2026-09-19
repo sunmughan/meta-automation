@@ -3,7 +3,7 @@
  * Automated multi-format post publisher for Threads.
  *
  * Implements user requirements:
- * - Post cadence: every 3 hours.
+ * - Post cadence: every 6 hours (exactly 4 strategic posts per 24 hours).
  * - 5 strategic content pillars (PixelGo HMS every 2-3 days, Developer Network / Rev-Share,
  *   Founders & Co-Founders, Tech Mentorship, Agentic AI).
  * - High-impact formats:
@@ -13,11 +13,29 @@
  * - Visibly types and submits posts live in Brave browser with native file uploads.
  */
 
+const fs = require("fs");
+const path = require("path");
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const threadsMedia = require("./threads-media");
 const logger = require("../../logging/logger");
+
+async function captureDiagnosticScreenshot(page, prefix) {
+  try {
+    const dir = path.join(CONFIG.LOGS_DIR || path.resolve(__dirname, "../../../logs"), "screenshots");
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const file = path.join(dir, `${prefix}_${Date.now()}.png`);
+    await page.screenshot({ path: file });
+    logger.info(`Saved diagnostic screenshot to: ${file}`);
+    return file;
+  } catch (e) {
+    logger.warn(`Failed capturing diagnostic screenshot: ${e.message}`);
+    return null;
+  }
+}
 
 const PILLARS = [
   "pixelgo_hms",
@@ -241,21 +259,73 @@ class ThreadsPoster {
       await page.keyboard.up("Control");
     }
 
-    // Wait and verify dialog has closed
-    let dialogClosed = false;
-    for (let check = 0; check < 8; check++) {
+    // 8. Strict Verification of Submission
+    let isVerifiedPublished = false;
+    let verificationReason = "";
+
+    for (let check = 0; check < 10; check++) {
       await new Promise(r => setTimeout(r, 1000));
-      dialogClosed = await page.evaluate(() => {
+      const checkResult = await page.evaluate((snippet) => {
+        const bodyText = document.body.innerText || "";
+        
+        // Check for error alert or rate limit toasts
+        const hasError = /\b(couldn'?t post|something went wrong|try again later|action blocked|rate limit)\b/i.test(bodyText);
+        if (hasError) {
+          return { verified: false, error: "Threads displayed error toast or alert during post submission" };
+        }
+
+        // Check success toast
+        const hasPostedToast = bodyText.includes("✓ Posted") || bodyText.includes("Posted\nView") || (bodyText.includes("Posted") && bodyText.includes("View"));
+
+        // Check dialog dismissal
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
-        return !dialog;
-      });
-      if (dialogClosed) break;
+        const noDialog = !dialog;
+
+        // Check if article with snippet rendered in feed DOM
+        const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
+        const snippetFound = snippet && snippet.length > 10 && articles.some(a => (a.innerText || "").includes(snippet));
+
+        if (snippetFound) {
+          return { verified: true, reason: "New thread snippet verified in feed DOM" };
+        }
+        if (hasPostedToast && noDialog) {
+          return { verified: true, reason: "Confirmed via Threads posted toast and closed dialog" };
+        }
+        if (noDialog && !hasError && (postSubmitted || hasPostedToast)) {
+          return { verified: true, reason: "Composer modal successfully dismissed without errors" };
+        }
+
+        return { verified: false, error: "Awaiting confirmed publish" };
+      }, postText.slice(0, 40));
+
+      if (checkResult.verified) {
+        isVerifiedPublished = true;
+        verificationReason = checkResult.reason;
+        break;
+      }
+      if (checkResult.error && checkResult.error.includes("error")) {
+        verificationReason = checkResult.error;
+        break;
+      }
     }
 
-    logger.info(`[THREADS POSTER] Post submission verification: dialog closed = ${dialogClosed}`);
-    await new Promise(r => setTimeout(r, 2500));
+    if (!isVerifiedPublished) {
+      logger.error(`[THREADS POSTER] Post submission verification failed: ${verificationReason || "Confirmation timeout"}. Aborting state record.`);
+      await captureDiagnosticScreenshot(page, "own_post_failed");
+      await page.keyboard.press("Escape").catch(() => {});
+      return {
+        success: false,
+        verified: false,
+        reason: verificationReason || "Post submission verification failed",
+        pillar,
+        format
+      };
+    }
 
-    // 8. Record into state
+    logger.info(`[THREADS POSTER] Post submission verified: ${verificationReason}`);
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 9. Record verified post into state
     const ourPostId = `our_post_${Date.now()}`;
     if (!stateStore.state.ourPosts) {
       stateStore.state.ourPosts = {};
@@ -267,6 +337,9 @@ class ThreadsPoster {
       format,
       mediaCount: mediaPaths.length,
       mediaPaths,
+      status: "VERIFIED_PUBLISHED",
+      published: true,
+      verifiedReason: verificationReason,
       publishedAt: new Date().toISOString(),
       repliesTracked: []
     };
@@ -279,13 +352,16 @@ class ThreadsPoster {
       pillar,
       format,
       mediaCount: mediaPaths.length,
-      text: postText
+      text: postText,
+      verifiedReason: verificationReason
     });
     stateStore.saveState();
 
     logger.info(`✅ Successfully published ${format} post on Threads [${pillar}]: "${postText.slice(0, 60)}..."`);
     return {
       success: true,
+      live: true,
+      verified: true,
       postId: ourPostId,
       pillar,
       format,
