@@ -47,31 +47,32 @@ const PILLARS = [
 
 const PILLAR_CAPTIONS = {
   founders_revolution: [
-    "To SaaS founders and startup builders:\nWhat is the single biggest bottleneck slowing down your product launch right now?\nDrop it below, let's troubleshoot together!",
-    "Build your MVP in 3 weeks, not 6 months.\nA clean UI that solves one core problem beats 20 features nobody asked for.\nAgree or disagree?",
-    "Question for startup founders, builders, and consultants:\nWhat was the hardest lesson you learned from your very first product launch?\nShare your experience below!"
+    "To all SaaS founders, startup builders, and consultants:\nWhat is the hardest part for you right now — finding customers, building the product, or designing the UI?\nLet's connect and help each other out in the comments!",
+    "Building a startup or SaaS product?\nKeep it simple: 1 clean landing page, 1 core feature that works fast, and talk to your users every day.\nWhat product or tool are you launching this month?",
+    "Question for startup founders, developers, and tech consultants:\nWhat is the biggest mistake you made when building your first MVP or SaaS product?\nShare your experience below!"
   ],
   builder_network: [
-    "Looking to connect with 2-3 passionate full-stack or Flutter developers for upcoming client builds (rev-share).\nWhat are you currently building this week? Say hi below!",
-    "Software engineers and UI/UX designers: What tech stack are you enjoying the most right now?\nNext.js, Flutter, Node, or something else? Let's talk tech stacks below!",
-    "Great software is built by people who obsess over clean code and smooth user experience.\nWhat is one project you are proud of building recently? Drop a comment below!"
+    "Calling all software engineers, developers, and UI/UX designers 👋\nWhat tech stack are you building with this week? Next.js, Flutter, Node.js, or something else?\nDrop your stack and side projects below!",
+    "To full-stack developers, mobile app engineers, and UI/UX designers:\nWe are collaborating with builders on client projects with fair revenue share at CodeAir (www.codeair.tech).\nWhat are you working on right now? Say hi below!",
+    "To all software engineers and UI/UX designers:\nWhat is the #1 tool or library in your workflow that saves you the most time?\nLet's share our favorites below!"
   ],
   agentic_ai: [
-    "The best AI automations don't replace people—they eliminate the repetitive 2-hour boring tasks so you can focus on building.\nWhat task in your workflow do you wish was automated today?",
-    "To engineers, marketers, and lead generation pros:\nHow are you using AI in your day-to-day work right now?\nDrop your favorite use case below!",
-    "Clean code, fast APIs, and reliable error handling beat flashy AI demos every single time.\nWhat is your biggest pet peeve with modern software tools?"
+    "To developers, tech enthusiasts, and marketing pros:\nWhat is one repetitive task in your daily work that you wish an AI agent could do for you automatically?\nLet's talk workflow automation below!",
+    "To marketers, lead generation experts, and tech founders:\nHow are you using AI tools right now to find and close qualified leads?\nShare what is working best for you below!",
+    "Building real software automations comes down to clean code, fast APIs, and reliable execution.\nWhat is the coolest AI tool or workflow you tested recently?"
   ],
   tech_mentorship: [
-    "Developers, designers, and tech enthusiasts:\nWhat is one tool or library you started using recently that you cannot live without?\nLet's share recommendations below.",
-    "The best advice for new software engineers:\nBuild real projects, keep your code simple, and ask for user feedback early.\nWhat advice would you give to someone starting today?",
-    "Need a quick second pair of eyes on your software architecture or MVP roadmap?\nDrop your tech question below, happy to help and brainstorm together!"
+    "To engineers, UI/UX designers, and tech enthusiasts:\nWhat is the single best advice you would give to someone learning to code or design products today?\nDrop your advice below!",
+    "If you are a developer, designer, or early founder stuck on app architecture, database setup, or clean UI:\nFeel free to ask your tech question below. Happy to help you brainstorm!",
+    "To SaaS founders and engineers: Clean UI and simple user flows beat 50 complicated features every time.\nWhat is one app that has your favorite user interface?"
   ],
   pixelgo_hms: [
-    "Hospitality founders: Juggling bookings, rooms, and payments across separate tools is a headache. That's why we built PixelGo HMS (pixelgo.live).\nWhat is the clunkiest piece of software your business uses daily?",
-    "When building business software, speed and a clean UI matter more than 50 complex buttons.\nWhat's one business tool you use that you wish was way simpler?",
-    "Building reliable software for real-world businesses is our passion at CodeAir (www.codeair.tech).\nWhat is your favorite product to build or work on?"
+    "To hotel owners, hospitality founders, and business operators:\nManaging bookings, rooms, and payments across 5 different apps is a headache. That's why we built PixelGo HMS (pixelgo.live).\nWhat is the most annoying software you use in your business daily?",
+    "Business software should be fast, clean, and easy to use for everyone on the team.\nWhat is one software tool in your work that you wish was 10x simpler?",
+    "At CodeAir (www.codeair.tech), we build reliable web apps, mobile apps, and custom software for real businesses.\nWhat kind of product is your business planning to build next?"
   ]
 };
+
 
 class ThreadsPoster {
   /**
@@ -287,16 +288,17 @@ class ThreadsPoster {
     logger.info("[THREADS POSTER] Submitting post via active composer Post button...");
     let postSubmitted = false;
 
-    // Locate the Post button element handle in Puppeteer
+    // Locate the Post button element handle in Puppeteer (must be in the composer modal with y > 200)
     const postHandle = await page.evaluateHandle(() => {
-      const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
-      const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
-      return buttons.find(b => {
+      const buttons = [...document.querySelectorAll('div[role="button"], button')];
+      const matching = buttons.filter(b => {
         const txt = (b.innerText || "").trim().toLowerCase();
         const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
         const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-        return (txt === "post" || aria === "post") && isEnabled;
+        const r = b.getBoundingClientRect();
+        return (txt === "post" || aria === "post") && isEnabled && r.y > 200 && r.width > 0;
       });
+      return matching[matching.length - 1] || null;
     });
 
     if (postHandle && postHandle.asElement()) {
@@ -312,16 +314,16 @@ class ThreadsPoster {
       // Fallback strategies
       for (let attempt = 0; attempt < 3; attempt++) {
         postSubmitted = await page.evaluate(() => {
-          const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
-          const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
-          const postBtn = buttons.find(b => {
+          const buttons = [...document.querySelectorAll('div[role="button"], button')];
+          const postBtns = buttons.filter(b => {
             const txt = (b.innerText || "").trim().toLowerCase();
             const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
             return txt === "post" && isEnabled;
           });
-          if (postBtn) {
-            postBtn.focus();
-            postBtn.click();
+          const targetBtn = postBtns[postBtns.length - 1] || postBtns[0];
+          if (targetBtn) {
+            targetBtn.focus();
+            targetBtn.click();
             return true;
           }
           return false;
@@ -336,22 +338,30 @@ class ThreadsPoster {
 
     // 8. Strict Verification of Submission & Profile Presence
     let isModalDismissed = false;
-    for (let check = 0; check < 10; check++) {
+    for (let check = 0; check < 20; check++) {
       await new Promise(r => setTimeout(r, 1000));
       const status = await page.evaluate(() => {
         const bodyText = document.body.innerText || "";
         const hasError = /\b(couldn'?t post|something went wrong|try again later|action blocked|rate limit)\b/i.test(bodyText);
-        const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
-        return { hasError, noDialog: !dialog };
+        // Check if composer textbox or cancel button is still present
+        const textbox = document.querySelector('div[contenteditable="true"]');
+        const buttons = [...document.querySelectorAll('div[role="button"], button')];
+        const hasCancel = buttons.some(b => (b.innerText || "").trim().toLowerCase() === "cancel");
+        return { hasError, isStillOpen: !!(textbox && hasCancel) };
       });
 
       if (status.hasError) {
         break;
       }
-      if (status.noDialog) {
+      if (!status.isStillOpen) {
         isModalDismissed = true;
         break;
       }
+    }
+
+    // Give Threads backend a moment to process the newly submitted post
+    if (isModalDismissed) {
+      await new Promise(r => setTimeout(r, 3500));
     }
 
     if (!isModalDismissed) {

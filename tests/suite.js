@@ -1117,7 +1117,7 @@ async function runAllTests() {
     const reply = await aiDecisionEngine.generateConversationReply({
       incomingMessage: incomingText,
       username: "anasshaikh.biz",
-      convId: "threads:anasshaikh.biz"
+      convId: "threads:test_anasshaikh_mock"
     });
 
     assert.strictEqual(reply.intent, "LEAD_GENERATION_DECLINED", "Intent must be LEAD_GENERATION_DECLINED");
