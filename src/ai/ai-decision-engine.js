@@ -236,10 +236,11 @@ class AiDecisionEngine {
     // -------------------------------------------------------------
     // DISQUALIFIER 0.5: B2B LEAD GENERATION & DATA SALES OFFERS
     // -------------------------------------------------------------
-    const isLeadGeneration =
-      /\b(b2b\s+leads?|lead\s+generation|batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|targeted\s+leads|cold\s+email\s+leads|lead\s+gen\s+service|lead\s+scraper|verified\s+contact\s+info)\b/i.test(lower);
+    const isLeadSalesOffer =
+      /\b(batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|lead\s+scraper|verified\s+contact\s+info|selling\s+leads|providing\s+b2b\s+leads|b2b\s+lead\s+lists?|buy\s+leads)\b/i.test(lower) ||
+      (/\b(b2b\s+leads?|lead\s+generation|targeted\s+leads|cold\s+email\s+leads)\b/i.test(lower) && /\b(i\s+can\s+provide|charge|rate|per\s+lead|payment|deliver|sample\s+data|database)\b/i.test(lower));
 
-    if (isLeadGeneration) {
+    if (isLeadSalesOffer) {
       return {
         intent: "LEAD_GENERATION_BUYER",
         requirement: "Author offering or discussing B2B lead generation / contact list delivery.",
@@ -512,6 +513,54 @@ class AiDecisionEngine {
       };
     }
 
+    // -------------------------------------------------------------
+    // TIER 2: INDUSTRY LEAD & AUDIENCE ENGAGEMENT (SaaS Founders, Devs, Designers, Consultants, Marketers)
+    // Captures high-value engagement posts from our core target audiences in simple English.
+    // -------------------------------------------------------------
+    const isTargetAudienceTopic =
+      /\b(saas|startup|startups|bootstrapped|indiehacker|mvp|co[- ]?founder|founder|software|web\s+app|mobile\s+app|developer|developers|engineer|engineers|programmer|frontend|backend|fullstack|flutter|react|next\.?js|node\.?js|tech\s+stack|codebase|apis?|ui\/ux|ui\s+ux|product\s+design|web\s+design|landing\s+page|figma|user\s+experience|startup\s+consultant|tech\s+consultant|growth\s+advisor|tech\s+enthusiast|ai\s+agents?|ai\s+tools?|ai\s+workflows?|automation|lead\s+generation|lead\s+gen|client\s+acquisition)\b/i.test(lower);
+
+    const isConversationalOrQuestion =
+      lower.includes("?") ||
+      /\b(what\s+(are\s+you|is|tech|do\s+you|would\s+you|tools?|app)|how\s+(do\s+you|to|did\s+you)|thoughts\s+on|feedback\s+on|struggling\s+with|share\s+your|drop\s+your|built\s+this|launched|working\s+on|advice\s+for|anyone\s+(else|using|know))\b/i.test(lower);
+
+    if (isTargetAudienceTopic && isConversationalOrQuestion && text.length >= 25) {
+      let targetAudience = "Tech & Startup Community";
+      if (/\b(saas|startup|mvp|founder|co[- ]?founder)\b/i.test(lower)) targetAudience = "SaaS Founders";
+      else if (/\b(developer|dev|engineer|flutter|react|next\.?js|backend|fullstack)\b/i.test(lower)) targetAudience = "Developers & Engineers";
+      else if (/\b(ui\/ux|ui\s+ux|product\s+design|web\s+design|figma|landing\s+page)\b/i.test(lower)) targetAudience = "UI/UX Designers";
+      else if (/\b(ai\s+agents?|ai\s+tools?|automation|workflows?)\b/i.test(lower)) targetAudience = "AI & Tech Enthusiasts";
+      else if (/\b(lead\s+generation|lead\s+gen|acquisition|marketing)\b/i.test(lower)) targetAudience = "Marketing & Lead Experts";
+      else if (/\b(consultant|advisor)\b/i.test(lower)) targetAudience = "Startup Consultants";
+
+      const capability = matchedCapability || "Web Development";
+      const comment = this.generateIndustryComment({
+        text,
+        username: post.username,
+        targetAudience,
+        capability
+      });
+
+      return {
+        intent: "INDUSTRY_LEAD",
+        requirement: `${targetAudience} discussion: "${text.slice(0, 80).replace(/\s+/g, " ")}..."`,
+        target_entity: "INDIVIDUAL",
+        service_match: true,
+        matched_capability: capability,
+        matched_categories: matchedCategories.length ? matchedCategories : ["Web Development"],
+        matched_services: matchedServices.length ? matchedServices : ["Custom software development"],
+        representation: "FOUNDER",
+        decision: "QUALIFIED",
+        temperature: "WARM",
+        relevance_score: 85,
+        is_genuine_buyer: true,
+        should_reply: true,
+        lead_type: "INDUSTRY_LEAD",
+        reason: `Target ${targetAudience} discussion directly relevant to CodeAir services and audience.`,
+        generated_comment: comment
+      };
+    }
+
     // Unmatched general technology or ambiguous discussion
     return {
       intent: "NEEDS_REVIEW",
@@ -526,6 +575,84 @@ class AiDecisionEngine {
       should_reply: false,
       reason: "General discussion without explicit client project demand or hiring intent."
     };
+  }
+
+  /**
+   * Generates simple, friendly English comments for target audience engagement.
+   * Zero complicated dictionary words. Friendly, human, and encouraging.
+   */
+  generateIndustryComment(params) {
+    const { text = "", username = "", targetAudience = "", capability = "Web Development" } = params;
+    const lower = text.toLowerCase();
+    const handle = username ? `@${username}` : "";
+    const greeting = handle ? (Math.random() > 0.5 ? `${handle} ` : `Hey ${handle}, `) : "";
+
+    // 1. Asking what people are building or working on
+    if (/\b(what('?s|\s+is|\s+are)\s+(everyone|you(\s+all)?|people)\s+(building|creating|working\s+on|shipping)|what\s+are\s+you\s+building)\b/i.test(lower)) {
+      const answers = [
+        `${greeting}We're building custom web apps, SaaS platforms, and mobile apps over at CodeAir (www.codeair.tech). What project are you focused on this week?`,
+        `${greeting}At CodeAir (www.codeair.tech), we build custom software and hotel management systems (PixelGo HMS). Love seeing builders ship. What are you working on?`,
+        `${greeting}I'm Sunmughan, building full-stack web platforms and Flutter apps with our team at CodeAir. What are you building right now?`
+      ];
+      return answers[Math.floor(Math.random() * answers.length)];
+    }
+
+    // 2. SaaS Founders & MVPs
+    if (targetAudience === "SaaS Founders" || /\b(saas|mvp|startup)\b/i.test(lower)) {
+      const saasReplies = [
+        `${greeting}Keeping your first version simple and launching fast is key. Don't build 50 features before talking to your first 20 users. What core problem is your product solving?`,
+        `${greeting}The biggest trap with early SaaS is over-complicating the tech stack. A clean PostgreSQL database and simple frontend will take you surprisingly far. What are you launching with?`,
+        `${greeting}Clean UI and fast onboarding win every time. If users don't get the value in 10 seconds, they bounce. What has been your biggest feedback from users so far?`
+      ];
+      return saasReplies[Math.floor(Math.random() * saasReplies.length)];
+    }
+
+    // 3. UI/UX Designers
+    if (targetAudience === "UI/UX Designers" || /\b(ui\/ux|design|figma|landing\s+page)\b/i.test(lower)) {
+      const designReplies = [
+        `${greeting}Clean visual hierarchy and fast loading beat fancy animations every single time. If the user can find what they need in 2 clicks, you win. Great points here!`,
+        `${greeting}Simple user flows and clear buttons always convert best. A lot of apps over-design when simple and clean works so much better. What tool did you design this in?`,
+        `${greeting}Navigation clarity and mobile responsiveness are where most products drop the ball. Clean spacing makes a huge difference. Love this perspective!`
+      ];
+      return designReplies[Math.floor(Math.random() * designReplies.length)];
+    }
+
+    // 4. Developers & Engineers
+    if (targetAudience === "Developers & Engineers" || /\b(developer|flutter|react|next|backend|api)\b/i.test(lower)) {
+      const devReplies = [
+        `${greeting}Clean database design and simple APIs save weeks of refactoring later. Keeping the architecture modular from day one is always worth it. What tech stack are you using?`,
+        `${greeting}Fast load times and reliable error handling make a huge difference in user experience. What is your go-to frontend framework these days?`,
+        `${greeting}Simple code that is easy to read and maintain beats clever code every time. What features are you currently building this week?`
+      ];
+      return devReplies[Math.floor(Math.random() * devReplies.length)];
+    }
+
+    // 5. AI & Tech Enthusiasts
+    if (targetAudience === "AI & Tech Enthusiasts" || /\b(ai|agent|automation|workflow)\b/i.test(lower)) {
+      const aiReplies = [
+        `${greeting}When building AI automations, testing on real data and having clean fallback rules is what makes them reliable in production. What specific task are you automating?`,
+        `${greeting}AI works best when it handles repetitive tasks while human logic handles edge cases. What tools or models are you experimenting with right now?`,
+        `${greeting}Keeping prompt instructions simple and testing edge cases early saves so much headache. What is the coolest automation you've set up so far?`
+      ];
+      return aiReplies[Math.floor(Math.random() * aiReplies.length)];
+    }
+
+    // 6. Marketing & Lead Experts
+    if (targetAudience === "Marketing & Lead Experts" || /\b(lead|acquisition|outreach|marketing)\b/i.test(lower)) {
+      const marketingReplies = [
+        `${greeting}Real conversations and genuine value always convert better than generic automated messages. What channels have brought you the highest quality leads?`,
+        `${greeting}Clean positioning and direct communication make lead generation so much easier. When your offer is clear, people respond. What is working best for you right now?`,
+        `${greeting}Understanding your customer's exact pain point is 90% of marketing. When the product solves a real headache, the sale follows naturally. Great insight!`
+      ];
+      return marketingReplies[Math.floor(Math.random() * marketingReplies.length)];
+    }
+
+    // Fallback simple English comment
+    const generalReplies = [
+      `${greeting}Keeping things clean, simple, and reliable is always the best approach. What are you working on this week?`,
+      `${greeting}Great insight! Focus and simplicity beat complexity every time. What project is keeping you busy right now?`
+    ];
+    return generalReplies[Math.floor(Math.random() * generalReplies.length)];
   }
 
   /**
@@ -545,25 +672,26 @@ class AiDecisionEngine {
    */
   normalizeAiResponse(aiRes, post) {
     const intent = (aiRes.intent || "").toUpperCase();
-    const isBuyer = intent === "BUYER" || intent === "PROJECT_BUYER" || aiRes.is_genuine_buyer === true;
+    const isBuyer = intent === "BUYER" || intent === "PROJECT_BUYER" || intent === "INDUSTRY_LEAD" || aiRes.is_genuine_buyer === true;
 
     if (isBuyer) {
       const cap = aiRes.primary_capability || aiRes.primary_category || "Web Development";
+      const isWarm = intent === "INDUSTRY_LEAD" || aiRes.temperature === "WARM";
       return {
-        intent: "BUYER",
+        intent: intent || "BUYER",
         requirement: aiRes.requirement || post.text.slice(0, 100),
         target_entity: aiRes.target_entity || "EITHER",
         service_match: true,
         matched_capability: cap,
         matched_categories: [cap],
         matched_services: [cap],
-        representation: aiRes.representation || "COMPANY",
+        representation: aiRes.representation || "FOUNDER",
         decision: "QUALIFIED",
-        temperature: "HOT",
-        relevance_score: 95,
+        temperature: isWarm ? "WARM" : "HOT",
+        relevance_score: isWarm ? 85 : 95,
         is_genuine_buyer: true,
         should_reply: true,
-        reason: aiRes.reason || `AI qualified genuine buyer for ${cap}.`,
+        reason: aiRes.reason || `AI qualified lead for ${cap}.`,
         generated_comment: aiRes.generated_comment || null
       };
     }

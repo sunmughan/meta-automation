@@ -218,7 +218,7 @@ async function commandAnalyze(options = {}) {
 
       // Post live if conditions permit (rateLimiter is the canonical governor)
       const canCommentNow = rateLimiter.canPerformAction("COMMENT", post.platform || "threads");
-      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && canCommentNow.allowed) {
+      if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && canCommentNow.allowed && liveCommentsPosted < maxLiveComments) {
         console.log(`  🚀 Posting live comment on @${post.username}'s post...`);
         const postRes = await threadsActions.postComment(post, commentToPost);
         if (postRes && postRes.success) {
@@ -439,37 +439,37 @@ async function commandRun() {
       console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING`);
       console.log(`==============================================`);
 
-      // 1. Check DMs periodically (every 10 cycles = ~5-8 min, or cycle 1) so browser doesn't flick pages constantly
-      if (cycle === 1 || cycle % 10 === 0) {
-        await commandDms();
-      }
-
-      // 2. Check Activity & multi-turn replies periodically (cycle 1, and every 10 cycles on cycle 5, 15, 25...)
-      if (cycle === 1 || cycle % 10 === 5) {
-        await commandReplies();
-      }
-
-      // 3. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
+      // 1. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
       await checkAndPublishScheduledPost();
 
-      // 4. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
-      if (cycle % 3 === 1) {
+      // 2. High-intent keyword search discovery (run every 6 cycles to discover active buyer queries)
+      if (cycle % 6 === 3) {
         console.log("\n[SEARCH DISCOVERY] Searching Threads for high-intent client queries (websites, AI dev)...");
         const searchRes = await searchThreadsKeywords({ queryCount: 1 });
         console.log(`Search queries visible posts: ${searchRes.scannedCount}, Newly discovered: ${searchRes.newCount}`);
       }
 
-      // 5. Natural feed browsing (8-10 posts per cycle)
+      // 3. Natural feed browsing & scrolling on Home Feed
       console.log("\n[FEED DISCOVERY] Scanning and browsing Threads feed naturally...");
       const scanRes = await scanThreadsFeed({ maxPosts: 10, scrollStep: 450, waitAfterScroll: 1000 });
       console.log(`Feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
 
-      // 6. Lead qualification & live commenting on prioritized leads (search/buyers first)
+      // 4. Lead qualification & live commenting on prioritized leads (buyers + target audience)
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
       await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
 
-      // 7. Refresh feed periodically (every 8 cycles) so feed doesn't constantly jump to top
-      if (cycle % 8 === 0) {
+      // 5. Check Activity / Replies calmly (every 15 cycles = ~12-15 min, offset from DMs)
+      if (cycle % 15 === 8) {
+        await commandReplies();
+      }
+
+      // 6. Check DMs periodically (every 20 cycles = ~15-20 min)
+      if (cycle % 20 === 14) {
+        await commandDms();
+      }
+
+      // 7. Natural feed refresh only after 30 cycles (~25-30 min)
+      if (cycle % 30 === 0) {
         const page = await browserManager.getThreadsPage();
         await refreshThreadsFeed(page);
       }
