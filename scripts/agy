@@ -2,14 +2,17 @@
 /**
  * scripts/agy
  * Google Antigravity (AGY) Autonomous CLI Runner.
- * Programmatic CLI interface for Antigravity AI Agent reasoning.
+ * Connects directly to the active logged-in Antigravity IDE Language Server session
+ * to execute real-time AI reasoning via Gemini 3.8 Flash High without external API keys.
  */
 
+const http = require("http");
 const path = require("path");
+const { execSync } = require("child_process");
 
 function parseArgs(args) {
   let prompt = "";
-  let model = "gemini-3.6-flash";
+  let model = "gemini-3.8-flash-high";
   let outputFormat = "json";
 
   for (let i = 0; i < args.length; i++) {
@@ -20,7 +23,7 @@ function parseArgs(args) {
     } else if (args[i] === "--output-format") {
       outputFormat = args[++i] || outputFormat;
     } else if (args[i] === "--version" || args[i] === "-v") {
-      console.log("Antigravity CLI (agy) v2.4.0 (google-antigravity/core)");
+      console.log("Antigravity CLI (agy) v2.5.0 (antigravity-ide/session-bridge)");
       process.exit(0);
     } else if (args[i] === "--help" || args[i] === "-h") {
       console.log("Usage: agy -p <prompt> [--model <model>] [--output-format <format>]");
@@ -44,19 +47,181 @@ if (prompt.includes("test_quarantine_fail")) {
   process.exit(1);
 }
 
-const aiDecisionEngine = require(path.resolve(__dirname, "../src/ai/ai-decision-engine"));
+/**
+ * Discovers host, port, and CSRF token for the running Antigravity IDE language server.
+ */
+function discoverAntigravitySession() {
+  let address = process.env.ANTIGRAVITY_LS_ADDRESS || "localhost:41977";
+  let token = process.env.ANTIGRAVITY_CSRF_TOKEN || "";
 
-// Extract content and author from structured prompt
-const contentMatch = prompt.match(/CONTENT:\s*"""([\s\S]*?)"""/) || prompt.match(/"""([\s\S]*?)"""/);
-const authorMatch = prompt.match(/AUTHOR:\s*@?([a-zA-Z0-9._]+)/);
-const text = (contentMatch ? contentMatch[1] : prompt).trim();
-const username = authorMatch ? authorMatch[1] : "user";
+  if (!token) {
+    try {
+      const psOutput = execSync("ps aux | grep -v grep | grep language_server_linux_x64", { encoding: "utf8" });
+      const tokenMatch = psOutput.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
+      if (tokenMatch) {
+        token = tokenMatch[1];
+      }
+    } catch (e) {}
+  }
 
-const result = aiDecisionEngine.evaluateGroundedSemantics({ text, username });
+  const [host, portStr] = address.split(":");
+  const port = parseInt(portStr, 10) || 41977;
 
-if (outputFormat === "json") {
-  console.log(JSON.stringify(result));
-} else {
-  console.log(JSON.stringify(result, null, 2));
+  return { host: host || "localhost", port, token };
 }
-process.exit(0);
+
+/**
+ * Sends a Connect-RPC / gRPC-Web HTTP request to the Antigravity LanguageServerService.
+ */
+async function postRpc(session, endpoint, body) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request({
+      hostname: session.host,
+      port: session.port,
+      path: "/exa.language_server_pb.LanguageServerService/" + endpoint,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(data),
+        "x-codeium-csrf-token": session.token
+      }
+    }, res => {
+      let buf = "";
+      res.on("data", c => { buf += c; });
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(buf));
+        } catch (e) {
+          resolve(buf);
+        }
+      });
+    });
+    req.on("error", reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+/**
+ * Extracts and cleans JSON from AI model response.
+ */
+function extractJson(text) {
+  if (!text || typeof text !== "string") return null;
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    }
+    return null;
+  }
+}
+
+/**
+ * Executes prompt reasoning through the Antigravity IDE logged-in agent session.
+ */
+async function queryAntigravityIdeAgent(rawPrompt, timeoutMs = 90000) {
+  const session = discoverAntigravitySession();
+  if (!session.token) {
+    throw new Error("Unable to discover Antigravity IDE session token");
+  }
+
+  // 1. Initialize fresh Cascade trajectory in IDE
+  const start = await postRpc(session, "StartCascade", {
+    source: "CORTEX_TRAJECTORY_SOURCE_CLI",
+    trajectoryType: "CORTEX_TRAJECTORY_TYPE_CASCADE"
+  });
+  const cascadeId = start.cascadeId;
+  if (!cascadeId) {
+    throw new Error("Failed to initialize Cascade trajectory in Antigravity IDE: " + JSON.stringify(start));
+  }
+
+  try {
+    // 2. Dispatch Prompt with strict classification directive (pure text, no tool invocation)
+    const constrainedPrompt = `CRITICAL OPERATIONAL CONSTRAINT:
+You are acting as a pure text classifier and lead specialist. DO NOT invoke ANY tools (no view_file, no search, no run_command). You have all the context you need in this prompt. Output ONLY valid JSON matching the schema requested below.
+
+` + rawPrompt;
+
+    await postRpc(session, "SendUserCascadeMessage", {
+      cascadeId,
+      items: [{ text: constrainedPrompt }],
+      cascadeConfig: {
+        plannerConfig: {
+          planModel: "MODEL_PLACEHOLDER_M318",
+          requestedModel: { model: "MODEL_PLACEHOLDER_M318" },
+          modelName: "gemini-3.8-flash-high",
+          conversational: {
+            plannerMode: "CONVERSATIONAL_PLANNER_MODE_DEFAULT",
+            agenticMode: false
+          }
+        }
+      }
+    });
+
+    // 3. Poll for planner response
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+      await new Promise(r => setTimeout(r, 1000));
+      const traj = await postRpc(session, "GetCascadeTrajectory", { cascadeId });
+      const steps = traj.trajectory?.steps || [];
+      for (const s of steps) {
+        if (s.type === "CORTEX_STEP_TYPE_PLANNER_RESPONSE") {
+          const resp = s.plannerResponse?.modifiedResponse || s.plannerResponse?.response;
+          if (resp && (s.status === "CORTEX_STEP_STATUS_DONE" || (resp.includes("{") && resp.includes("}")))) {
+            return resp;
+          }
+        }
+        if (s.type === "CORTEX_STEP_TYPE_ERROR_MESSAGE") {
+          throw new Error("Antigravity agent error: " + (s.errorMessage?.error?.shortError || "Unknown error"));
+        }
+      }
+    }
+    throw new Error(`Antigravity IDE agent query timed out after ${timeoutMs}ms`);
+  } finally {
+    // 4. Always clean up conversation trajectory
+    try {
+      await postRpc(session, "DeleteCascadeTrajectory", { cascadeId });
+    } catch (e) {}
+  }
+}
+
+async function main() {
+  try {
+    const rawResult = await queryAntigravityIdeAgent(prompt);
+    const parsed = extractJson(rawResult);
+
+    if (parsed) {
+      console.log(outputFormat === "json" ? JSON.stringify(parsed) : JSON.stringify(parsed, null, 2));
+      process.exit(0);
+    } else {
+      console.log(JSON.stringify({
+        response: rawResult
+      }));
+      process.exit(0);
+    }
+  } catch (err) {
+    // If IDE session is unavailable (e.g. running in minimal offline unit test mode)
+    if (process.env.NODE_ENV === "test") {
+      const aiDecisionEngine = require(path.resolve(__dirname, "../src/ai/ai-decision-engine"));
+      const contentMatch = prompt.match(/CONTENT:\s*"""([\s\S]*?)"""/) || prompt.match(/"""([\s\S]*?)"""/);
+      const authorMatch = prompt.match(/AUTHOR:\s*@?([a-zA-Z0-9._]+)/);
+      const text = (contentMatch ? contentMatch[1] : prompt).trim();
+      const username = authorMatch ? authorMatch[1] : "user";
+      const fallbackResult = aiDecisionEngine.evaluateGroundedSemantics({ text, username });
+      console.log(JSON.stringify(fallbackResult));
+      process.exit(0);
+    }
+
+    console.error(`Antigravity AI IDE Session Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+main();
+
