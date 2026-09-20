@@ -26,6 +26,10 @@ yarn-error.log*
 
 # Backups & Temporary Files
 backups/
+release/
+*.tgz
+*.tar.gz
+*.zip
 *.bak
 *.tmp
 .DS_Store
