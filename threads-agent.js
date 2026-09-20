@@ -354,20 +354,21 @@ async function commandStatus() {
 }
 
 async function checkAndPublishScheduledPost(force = false) {
-  const lastFailure = stateStore.getLastPostAttemptFailure();
-  const failureCooldownMs = 30 * 60 * 1000; // 30 minutes failure cooldown
-  const timeSinceFailure = lastFailure ? (Date.now() - (lastFailure.timestamp || 0)) : Infinity;
-
-  if (!force && timeSinceFailure < failureCooldownMs) {
-    const minWait = Math.ceil((failureCooldownMs - timeSinceFailure) / 60000);
-    console.log(`[SCHEDULED POST] Recent post attempt failure recorded (${lastFailure.reason || "unverified"}). Cooldown active for ~${minWait} min.`);
-    return null;
-  }
-
   const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
   const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
   const latestPost = verifiedPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
   const lastPostTime = latestPost ? new Date(latestPost.publishedAt).getTime() : 0;
+
+  const lastFailure = stateStore.getLastPostAttemptFailure();
+  const failureCooldownMs = 30 * 60 * 1000; // 30 minutes failure cooldown
+  const timeSinceFailure = lastFailure ? (Date.now() - (lastFailure.timestamp || 0)) : Infinity;
+  const isFailureObsolete = lastFailure && lastPostTime > (lastFailure.timestamp || 0);
+
+  if (!force && !isFailureObsolete && timeSinceFailure < failureCooldownMs) {
+    const minWait = Math.ceil((failureCooldownMs - timeSinceFailure) / 60000);
+    console.log(`[SCHEDULED POST] Recent post attempt failure recorded (${lastFailure.reason || "unverified"}). Cooldown active for ~${minWait} min.`);
+    return null;
+  }
   const postIntervalHours = CONFIG.POST_INTERVAL_HOURS || 6;
   const postIntervalMs = postIntervalHours * 60 * 60 * 1000;
   const elapsedMs = Date.now() - lastPostTime;
