@@ -65,16 +65,25 @@ class ThreadsActivityWatcher {
         for (const row of rows) {
           const text = (row.innerText || "").trim();
           // Check if notification indicates a reply
-          if (/replied|commented|mentioned/i.test(text)) {
+          if (/replied|commented|mentioned|quoted/i.test(text)) {
             const link = row.querySelector('a[href*="/post/"]') || (row.tagName === "A" ? row : null);
             const href = link ? link.href : null;
-            const authorMatch = text.match(/@?([a-zA-Z0-9._]+)\s+(replied|commented)/i);
-            const username = authorMatch ? authorMatch[1] : "user";
+            const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+            let username = "user";
+            const authorMatch = text.match(/@?([a-zA-Z0-9._]+)\s*(?:replied|commented|mentioned|quoted)/i);
+            if (authorMatch && authorMatch[1]) {
+              username = authorMatch[1];
+            } else if (lines.length > 0 && /^[a-zA-Z0-9._]+$/.test(lines[0].replace(/^@/, ""))) {
+              username = lines[0].replace(/^@/, "");
+            }
+
+            const messageText = lines.find(l => !/replied|commented|mentioned|ago$|^\d+[hmd]$/i.test(l) && l.length > 3) || text;
 
             results.push({
               username,
               url: href,
-              text
+              text: messageText,
+              fullNotificationText: text
             });
           }
         }

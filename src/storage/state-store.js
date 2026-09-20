@@ -120,9 +120,15 @@ class StateStore {
     }
   }
 
-  getRetryableFailedPosts(maxRetries = 3, cooldownMinutes = 15, platform = "threads") {
+  getRetryableFailedPosts(maxRetries = 3, cooldownMinutes = 15, platform = "threads", options = {}) {
     const cutoffMs = Date.now() - cooldownMinutes * 60 * 1000;
     return Object.values(this.state.posts).filter(p => {
+      if (!p || !p.postId) return false;
+      if (!options.includeTestPosts) {
+        if (p.postId.includes("test_") || (p.username && (p.username.includes("user_retry") || p.username.includes("user_test")))) {
+          return false;
+        }
+      }
       if ((p.platform || "threads") !== platform) return false;
       if (p.status !== "COMMENT_FAILED") return false;
       const retryCount = p.retryCount || 0;
