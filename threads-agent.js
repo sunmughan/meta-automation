@@ -521,13 +521,13 @@ async function commandOnboard(options = {}) {
     });
 
     try {
-      founderName = await ask("1. Founder Full Name", currentFounder.name || "Founder");
-      founderRole = await ask("2. Founder Role / Title", currentFounder.role || "Technical Architect & Founder");
-      founderProfile = await ask("3. Founder Profile / LinkedIn URL", currentProfiles.founder.linkedin || "https://linkedin.com");
-      threadsUsername = await ask("4. Threads Username (without @)", currentFounder.threadsUsername || CONFIG.THREADS_USERNAME || "user");
-      companyName = await ask("5. Company / Brand Name", currentCompany.name || "My Company");
-      companyWebsite = await ask("6. Company Website URL", currentCompany.website || "https://mycompany.com");
-      companyProduct = await ask("7. Product / Specialty URL (optional)", currentCompany.productUrl || "");
+      founderName = await ask("1. Founder Full Name", currentFounder.name || "Sunmughan Swamy");
+      founderRole = await ask("2. Founder Role / Title", currentFounder.role || "Founder & CEO, CodeAir Software Solutions");
+      founderProfile = await ask("3. Founder Profile / LinkedIn URL", currentProfiles.founder.linkedin || "https://linkedin.com/in/sunmughan");
+      threadsUsername = await ask("4. Threads Username (without @)", currentFounder.threadsUsername || CONFIG.THREADS_USERNAME || "sunmughan");
+      companyName = await ask("5. Company / Brand Name", currentCompany.name || "CodeAir Software Solutions");
+      companyWebsite = await ask("6. Company Website URL", currentCompany.website || "https://www.codeair.tech");
+      companyProduct = await ask("7. Product / Specialty URL (optional)", currentCompany.productUrl || "https://pixelgo.live");
       companySummary = await ask("8. Company Brief Summary", currentCompany.summary || "Custom software engineering, cloud architecture, and modern AI automation");
 
       const rawApproved = await ask("9. Core Approved Services (comma-separated)", "Custom Software, SaaS MVPs, Web Applications, Mobile Apps, AI Workflows");

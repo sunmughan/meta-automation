@@ -39,17 +39,17 @@ npm run onboard
 # or: node threads-agent.js onboard
 ```
 The wizard prompts you for:
-| Prompt | Description | Example |
+| Prompt | Description | Example (Default / Reference) |
 |---|---|---|
-| **Founder Name** | Your full name or persona | `Elena Rostova` |
-| **Founder Role** | Your title / expertise | `Founder & Chief AI Architect` |
-| **Profile URL** | Your verified LinkedIn or portfolio | `https://linkedin.com/in/elena-ai` |
-| **Threads Username** | Your handle (for post verification) | `elena_ai` |
-| **Company Name** | Your agency, startup, or brand | `Apex AI Studio` |
-| **Company Website** | Official website | `https://apexai.io` |
-| **Product URL** | Flagship product / demo link | `https://apexai.io/neural-flow` |
-| **Approved Services** | Core capabilities you provide | `AI Agents, SaaS MVPs, Cloud Backend` |
-| **Excluded Services** | Non-core areas to decline politely | `Graphic Design, SEO, B2B Cold Lists` |
+| **Founder Name** | Full name or personal brand | `Sunmughan Swamy` |
+| **Founder Role** | Title / technical expertise | `Founder & CEO, CodeAir Software Solutions` |
+| **Profile URL** | Verified LinkedIn or portfolio | `https://linkedin.com/in/sunmughan` |
+| **Threads Username** | Handle (for post verification) | `sunmughan` |
+| **Company Name** | Software engineering agency / tech brand | `CodeAir Software Solutions` |
+| **Company Website** | Official company website | `https://www.codeair.tech` |
+| **Product URL** | Flagship product / demo platform | `https://pixelgo.live` |
+| **Approved Services** | Core capabilities you deliver | `Custom Software, SaaS MVPs, Web Apps, Mobile Apps, AI Workflows` |
+| **Excluded Services** | Non-core areas to decline politely | `Graphic Design, SEO Marketing, Accounting, Recruitment` |
 
 ### 2. The Knowledge Base Directory (`./knowledge/`)
 All brand identity files live in `knowledge/` and serve as the single source of truth:
@@ -61,12 +61,12 @@ All brand identity files live in `knowledge/` and serve as the single source of 
 - **`knowledge/voice.md`**: Tone guidelines, anti-canned-response rules, and conversational framing.
 
 ### 3. Customizing Your 5 Social Publishing Pillars (`knowledge/pillars.md`)
-Every 6 hours, the engine publishes high-value content across 5 pillars defined in `knowledge/pillars.md`. You can adapt these 5 pillars for any industry:
-- **Pillar 1**: Flagship Product / Core Platform (e.g. `pixelgo_hms` for hospitality or `neural_flow` for AI)
-- **Pillar 2**: Industry Collaboration / Talent Network (e.g. `builder_network` for engineering rev-share)
-- **Pillar 3**: Founder Insights & Strategy (e.g. `founders_revolution` for startup MVPs)
-- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (e.g. `tech_mentorship` for systems design)
-- **Pillar 5**: Practical AI & Modern Trends (e.g. `agentic_ai` for enterprise automation)
+Every 6 hours, the engine publishes high-value content across 5 pillars defined in `knowledge/pillars.md`:
+- **Pillar 1**: Flagship Product / Core Platform (`pixelgo_hms` — PixelGo HMS Unified Hospitality Operations System)
+- **Pillar 2**: Industry Collaboration / Talent Network (`builder_network` — CodeAir Builder Network & Engineering Rev-Share)
+- **Pillar 3**: Founder Insights & Strategy (`founders_revolution` — Practical Startup Engineering, MVPs & Tech Strategy)
+- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (`tech_mentorship` — Architecture, Clean Code & Systems Design)
+- **Pillar 5**: Practical AI & Modern Trends (`agentic_ai` — Antigravity Agentic Reasoning & Enterprise Automation)
 
 ---
 

@@ -5,6 +5,8 @@
 Name: Sunmughan Swamy
 Role: Founder / CEO, CodeAir Software Solutions
 Location: India
+Threads: @sunmughan
+LinkedIn: https://linkedin.com/in/sunmughan
 
 ## Professional Focus
 
