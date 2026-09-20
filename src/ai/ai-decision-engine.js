@@ -293,7 +293,7 @@ class AiDecisionEngine {
        /\b(we|i|here|dm|contact|agency|studio|duo)\b/i.test(lower));
 
     const isDirectSellerPromotion =
-      /\b(my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|what\s+you\s+have\s+in\s+mind.*vercel\.app)\b/i.test(lower) ||
+      /\b(my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|what\s+you\s+have\s+in\s+mind.*vercel\.app|looking\s+for\s+(\d+\s+)?(businesses|clients|companies|brands|startups|people)\s+(that|who)\s+(need|want)|independent\s+(web\s+developer|developer|designer|engineer))\b/i.test(lower) ||
       (/\b(i('?m|\s+am)\s+([a-z\s]+)?(developer|designer|engineer|builder|manager|marketer|specialist|consultant|strategist|creator|freelancer|editor))\b/i.test(lower) && !hasBuyerIntent);
 
     if (isRhetoricalSellerQuestion || isDirectSellerPromotion) {
@@ -325,6 +325,31 @@ class AiDecisionEngine {
         decision: "IGNORED",
         is_genuine_buyer: false,
         reason: "Corporate recruitment / salaried job opening, not a contract software buyer."
+      };
+    }
+
+    // -------------------------------------------------------------
+    // DISQUALIFIER 3.5: EDUCATIONAL ARTICLES, COMPARISONS, & RHETORICAL ADVICE
+    // (e.g. "When you need a website, the first decision...", "Website development vs website builder")
+    // -------------------------------------------------------------
+    const isEducationalOrComparison =
+      /\b(((if|when|why|before|how)\s+you\s+need)|((do|are)\s+you\s+need)|((if|when)\s+you('?re|\s+are)\s+(looking|building|trying|planning))|(should\s+you\s+(hire|build|choose))|(which\s+is\s+(better|best))|(\bvs\b.*(which|better|difference))|(pros\s+and\s+cons)|(guide\s+to)|(tips\s+for)|(here('?s|\s+is)\s+(how|why|what)))\b/i.test(lower);
+
+    const hasFirstPersonBuyerStatement =
+      /\b((i|we)\s+need|looking\s+to\s+hire|hire\s+someone|looking\s+for\s+(a|someone)|dm\s+me\s+your\s+(rates|portfolio))\b/i.test(lower) &&
+      !/\b((if|when|why|before)\s+(i|we)\s+need)\b/i.test(lower);
+
+    if (isEducationalOrComparison && !hasFirstPersonBuyerStatement) {
+      return {
+        intent: "EDUCATIONAL_CONTENT",
+        requirement: "Author sharing an educational comparison, blog article, or rhetorical advice for readers.",
+        target_entity: null,
+        service_match: false,
+        representation: "IGNORE",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        should_reply: false,
+        reason: "Author is sharing educational advice or product comparison for readers, not seeking software services for themselves."
       };
     }
 

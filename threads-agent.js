@@ -108,7 +108,7 @@ async function commandAnalyze(options = {}) {
     .filter(p => (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform))
     .sort((a, b) => new Date(b.discoveredAt || 0) - new Date(a.discoveredAt || 0));
 
-  const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed;
+  const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed.slice(0, 10);
 
   console.log(`Found ${unanalyzed.length} posts pending qualification/posting (processing ${targetPosts.length})...\n`);
 
@@ -422,24 +422,27 @@ async function commandRun() {
       await checkAndPublishScheduledPost();
 
       // 4. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
-      if (cycle % 2 === 1) {
+      // 4. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
+      if (cycle % 4 === 1) {
         console.log("\n[SEARCH DISCOVERY] Searching Threads for high-intent client queries (websites, AI dev)...");
-        const searchRes = await searchThreadsKeywords({ queryCount: 2 });
+        const searchRes = await searchThreadsKeywords({ queryCount: 1 });
         console.log(`Search queries visible posts: ${searchRes.scannedCount}, Newly discovered: ${searchRes.newCount}`);
       }
 
-      // 5. Deep visible feed scan & scrolling (aiming for up to 50 posts) on user's screen
-      console.log("\n[FEED DISCOVERY] Scanning and visibly scrolling Threads feed deeply (up to 50 posts)...");
-      const scanRes = await scanThreadsFeed({ maxPosts: 50, scrollStep: 550, waitAfterScroll: 1300 });
+      // 5. Natural feed browsing (10-12 posts per cycle)
+      console.log("\n[FEED DISCOVERY] Scanning and browsing Threads feed naturally...");
+      const scanRes = await scanThreadsFeed({ maxPosts: 12, scrollStep: 450, waitAfterScroll: 1000 });
       console.log(`Feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
 
       // 6. Lead qualification & live commenting on qualified founder / buyer / tech posts
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
-      await commandAnalyze();
+      await commandAnalyze(8);
 
-      // 7. Smoothly refresh the feed to bring in fresh new posts for next scan
-      const page = await browserManager.getThreadsPage();
-      await refreshThreadsFeed(page);
+      // 7. Refresh feed periodically (every 8 cycles) so feed doesn't constantly jump to top
+      if (cycle % 8 === 0) {
+        const page = await browserManager.getThreadsPage();
+        await refreshThreadsFeed(page);
+      }
 
       console.log(`\n==============================================`);
       console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED`);
