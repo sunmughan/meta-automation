@@ -49,6 +49,48 @@ const PILLARS = [
 
 class ThreadsPoster {
   /**
+   * Selects the next pillar in rotation.
+   * Ensures PixelGo HMS is highlighted every 2-3 days.
+   */
+  selectNextPillar() {
+    const pillars = knowledge.getContentPillars();
+    const pillarIds = pillars && pillars.length > 0 ? pillars.map(p => p.id) : PILLARS;
+    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
+    const twoDaysAgo = Date.now() - (48 * 60 * 60 * 1000);
+    const hasRecentPixelGo = ourPosts.some(p => p.pillar === "pixelgo_hms" && new Date(p.publishedAt).getTime() > twoDaysAgo);
+
+    if (!hasRecentPixelGo && pillarIds.includes("pixelgo_hms")) {
+      return "pixelgo_hms";
+    }
+
+    // Pick pillar least recently used
+    const recentPillars = ourPosts.slice(-4).map(p => p.pillar);
+    const candidate = pillarIds.find(pil => !recentPillars.includes(pil)) || pillarIds[Math.floor(Math.random() * pillarIds.length)];
+    return candidate;
+  }
+
+  /**
+   * Determines whether this post should be a 5-slide carousel, single card, or text-only.
+   */
+  determinePostFormat(pillar) {
+    const lastCarouselDate = stateStore.state.lastCarouselDate ? new Date(stateStore.state.lastCarouselDate).getTime() : 0;
+    const hoursSinceLastCarousel = (Date.now() - lastCarouselDate) / (1000 * 60 * 60);
+
+    // Alternate days rule: If last carousel was >= 40 hours ago, generate a full 5-slide carousel deck!
+    if (hoursSinceLastCarousel >= 40 || lastCarouselDate === 0) {
+      return "CAROUSEL";
+    }
+
+    // Otherwise, alternate between single visual card and text-only
+    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
+    const lastPost = ourPosts[ourPosts.length - 1];
+    if (lastPost && lastPost.format === "SINGLE_CARD") {
+      return "TEXT_ONLY";
+    }
+    return "SINGLE_CARD";
+  }
+
+  /**
    * Generates dynamic post content, discussion captions, and visual specs
    * using the live Antigravity IDE Gemini 3.8 Flash High agent session.
    * Eliminates all hardcoded static caption dictionaries.
@@ -80,6 +122,7 @@ INSTRUCTIONS:
    - Hook: Catchy first 1-2 lines that stop the scroll.
    - Body: 1-2 insightful technical or operational sentences based on current industry/market trends.
    - Discussion Question / CTA: End with an open, engaging question inviting founders, developers, or operators to comment.
+   - CRITICAL LENGTH CONSTRAINT: Threads enforces a strict 500-character maximum per post. The "caption" MUST be between 180 and 400 characters (NEVER exceed 420 characters). Keep it punchy and concise!
 2. If format is SINGLE_CARD:
    - Provide "quote": A punchy, memorable 1-2 sentence quote or perspective for a dark-mode visual card.
    - Provide "badge": A short 2-3 word topic tag (e.g. "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE", "INDUSTRY TECH").
@@ -164,7 +207,15 @@ OUTPUT STRICT JSON:
 
     // Dynamically generate fresh post content & visual specs via Antigravity AI
     const dynamicContent = await this.generateDynamicPostContent(pillar, format);
-    const postText = options.text || dynamicContent.caption;
+
+    let postText = (options.text || dynamicContent.caption || "").trim();
+    if (postText.length > 450) {
+      const truncated = postText.slice(0, 440);
+      const lastSentence = truncated.lastIndexOf(".");
+      const lastQuestion = truncated.lastIndexOf("?");
+      const cutoff = Math.max(lastSentence, lastQuestion);
+      postText = cutoff > 200 ? truncated.slice(0, cutoff + 1) : truncated.trim();
+    }
     const ourPostId = `our_post_${Date.now()}`;
 
     stateStore.recordActionTransition("OWN_POST", ourPostId, "INIT", "PREPARING", {
@@ -368,6 +419,11 @@ OUTPUT STRICT JSON:
         reason: "Capturing diagnostic screenshot"
       });
       await captureDiagnosticScreenshot(page, "own_post_modal_stuck");
+      await page.evaluate(() => {
+        const buttons = [...document.querySelectorAll('div[role="button"], button')];
+        const cancelBtn = buttons.find(b => ["cancel", "discard"].includes((b.innerText || "").trim().toLowerCase()));
+        if (cancelBtn) cancelBtn.click();
+      }).catch(() => {});
       await page.keyboard.press("Escape").catch(() => {});
 
       stateStore.recordOurPostAttemptFailure({

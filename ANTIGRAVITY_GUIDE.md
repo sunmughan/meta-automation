@@ -94,22 +94,22 @@ npm run onboard
 node threads-agent.js onboard
 ```
 The wizard prompts you for:
-1. **Founder Full Name & Role** (e.g. `Elena Rostova`, `Founder & Chief AI Architect`)
-2. **Threads Username** (e.g. `elena_ai` — used for profile feed verification)
-3. **LinkedIn / Founder Profile URL** (e.g. `https://linkedin.com/in/elena-ai`)
-4. **Company / Brand Name** (e.g. `Apex AI Studio`)
-5. **Official Company Website** (e.g. `https://apexai.io`)
-6. **Flagship Product URL** (e.g. `https://apexai.io/neural-flow`)
-7. **Approved Capabilities** (comma-separated list of services you deliver)
-8. **Excluded Capabilities** (comma-separated list of non-core services to decline)
+1. **Founder Full Name & Role** (e.g. `Sunmughan Swamy`, `Founder & CEO, CodeAir Software Solutions`)
+2. **Threads Username** (e.g. `sunmughan` — used for profile feed verification)
+3. **LinkedIn / Founder Profile URL** (e.g. `https://linkedin.com/in/sunmughan`)
+4. **Company / Brand Name** (e.g. `CodeAir Software Solutions`)
+5. **Official Company Website** (e.g. `https://www.codeair.tech`)
+6. **Flagship Product URL** (e.g. `https://pixelgo.live`)
+7. **Approved Capabilities** (comma-separated list of services, e.g. `Custom Software, SaaS MVPs, Web Apps, Mobile Apps, AI Workflows`)
+8. **Excluded Capabilities** (comma-separated list of non-core services to decline, e.g. `Graphic Design, SEO Marketing, Accounting, Recruitment`)
 
 ### 2. Custom Content Pillars (`knowledge/pillars.md`)
-The 5 social publishing pillars are defined in `knowledge/pillars.md`. You can customize them for any domain:
-- **Pillar 1**: Flagship Product / Core Platform (e.g., `pixelgo_hms` for hospitality or `neural_flow` for AI workflows)
-- **Pillar 2**: Industry Collaboration / Talent Network (e.g., developer network or partner ecosystem)
-- **Pillar 3**: Founder Insights & Strategy (e.g., startup scaling, MVP architecture)
-- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (e.g., architecture, system design)
-- **Pillar 5**: Practical AI & Modern Tech Trends (e.g., deterministic agents, autonomous tools)
+The 5 social publishing pillars are defined in `knowledge/pillars.md`:
+- **Pillar 1**: Flagship Product / Core Platform (`pixelgo_hms` — PixelGo HMS Hospitality Operations)
+- **Pillar 2**: Industry Collaboration / Talent Network (`builder_network` — CodeAir Builder Network & Rev-Share)
+- **Pillar 3**: Founder Insights & Strategy (`founders_revolution` — Practical Startup Engineering & MVPs)
+- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (`tech_mentorship` — Architecture, Systems Design & Clean Code)
+- **Pillar 5**: Practical AI & Modern Tech Trends (`agentic_ai` — Antigravity Agentic Reasoning & Enterprise Automation)
 
 ---
 

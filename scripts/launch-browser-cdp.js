@@ -428,6 +428,21 @@ async function launchBrowser(preference = null) {
   console.log(`🚀 Executable: ${browser.binary}`);
   console.log(`📂 User Data: ${browser.userDataDir}`);
 
+  const shouldRestart = process.argv.includes("--restart") || process.argv.includes("-r");
+  const runningType = detectRunningBrowser();
+  if ((runningType && !active) || shouldRestart) {
+    console.log(`🔄 Restarting ${browser.name} to activate CDP debugging on port ${CDP_PORT} (preserving tabs & logins)...`);
+    try {
+      if (OS === "win32") {
+        const exe = browser.type === "brave" ? "brave.exe" : browser.type === "chrome" ? "chrome.exe" : browser.type === "edge" ? "msedge.exe" : "chrome.exe";
+        execSync(`taskkill /IM ${exe} 2>nul`, { stdio: "ignore" });
+      } else {
+        execSync(`pkill -TERM -f "${browser.binary}" 2>/dev/null || pkill -TERM -f "${browser.type}" 2>/dev/null || true`, { stdio: "ignore" });
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    } catch (e) {}
+  }
+
   // Create user data directory if needed
   if (!fs.existsSync(browser.userDataDir)) {
     try {

@@ -24,13 +24,15 @@ async function runMultiBrandTest() {
   const backupFiles = {};
   const targetFiles = ["founder.md", "company.md", "profiles.md", "services.md", "pillars.md"];
 
-  // Backup original knowledge files
+  // Backup original knowledge files and .env
   for (const f of targetFiles) {
     const p = path.join(knowledgeDir, f);
     if (fs.existsSync(p)) {
       backupFiles[f] = fs.readFileSync(p, "utf8");
     }
   }
+  const envPath = path.resolve(__dirname, "../.env");
+  const envBackup = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : null;
 
   try {
     // 1. Verify default knowledge engine state (CodeAir / Sunmughan)
@@ -138,6 +140,9 @@ async function runMultiBrandTest() {
     console.log("Restoring original production knowledge base (CodeAir / Sunmughan)...");
     for (const [f, content] of Object.entries(backupFiles)) {
       fs.writeFileSync(path.join(knowledgeDir, f), content, "utf8");
+    }
+    if (envBackup !== null) {
+      fs.writeFileSync(envPath, envBackup, "utf8");
     }
     knowledge.loadKnowledge();
     console.log("✓ Production knowledge base restored cleanly.");
