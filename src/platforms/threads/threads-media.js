@@ -16,6 +16,7 @@ const path = require("path");
 const CONFIG = require("../../../config");
 const renderer = require("./threads-html-renderer");
 const logger = require("../../logging/logger");
+const knowledge = require("../../knowledge/knowledge-engine");
 
 const MEDIA_DIR = path.resolve(CONFIG.ROOT_DIR, "logs/media_slides");
 
@@ -49,8 +50,9 @@ class ThreadsMedia {
     if (dynamicSlides && Array.isArray(dynamicSlides) && dynamicSlides.length >= 2) {
       const baseSpecs = this.getDeckSpecs(theme);
       const base0 = baseSpecs[0] || {};
+      const compTag = (knowledge.getCompanyInfo().name || "COMPANY").toUpperCase().slice(0, 10);
       deckSpecs = dynamicSlides.map((s, idx) => ({
-        badge: s.badge || base0.badge || "CODEAIR • ARCHITECTURE",
+        badge: s.badge || base0.badge || `${compTag} • ARCHITECTURE`,
         accentColor: base0.accentColor || "#00F0FF",
         glowColor: base0.glowColor || "rgba(0, 240, 255, 0.12)",
         title: s.title || `Key Insight #${idx + 1}`,
@@ -100,6 +102,12 @@ class ThreadsMedia {
    * Quote specs for single visual card posts.
    */
   getPillarQuoteSpec(pillar) {
+    const founder = knowledge.getFounderInfo();
+    const company = knowledge.getCompanyInfo();
+    const compTag = (company.name || "COMPANY").toUpperCase().slice(0, 10);
+    const authorName = founder.name || "Founder";
+    const authorRole = `${founder.role || "Founder"}, ${company.name || "Software"}`;
+
     switch (pillar) {
       case "pixelgo_hms":
         return {
@@ -108,20 +116,20 @@ class ThreadsMedia {
           accentColor: "#00F0FF",
           glowColor: "rgba(0, 240, 255, 0.16)",
           quote: "Hotel operations shouldn’t require 6 disconnected software tools. One unified reactive engine changes everything.",
-          author: "Sunmughan Swamy",
-          role: "Founder, CodeAir Software Solutions",
+          author: authorName,
+          role: authorRole,
           footerTag: "HOSPITALITY TECH"
         };
 
       case "founders_revolution":
         return {
           isQuoteCard: true,
-          badge: "STARTUP FOUNDERS • CODEAIR",
+          badge: `STARTUP FOUNDERS • ${compTag}`,
           accentColor: "#7928CA",
           glowColor: "rgba(121, 40, 202, 0.18)",
           quote: "Premature microservices and AI hype kill early startups. Clean architecture and fast shipping create real market value.",
-          author: "Sunmughan Swamy",
-          role: "Founder, CodeAir Software Solutions",
+          author: authorName,
+          role: authorRole,
           footerTag: "FOUNDER MINDSET"
         };
 
@@ -132,8 +140,8 @@ class ThreadsMedia {
           accentColor: "#10B981",
           glowColor: "rgba(16, 185, 129, 0.16)",
           quote: "If you're an ambitious developer stuck on database scaling, system design, or launching your first SaaS—let’s talk.",
-          author: "Sunmughan Swamy",
-          role: "Founder, CodeAir Software Solutions",
+          author: authorName,
+          role: authorRole,
           footerTag: "DEVELOPER GUIDANCE"
         };
 
@@ -144,8 +152,8 @@ class ThreadsMedia {
           accentColor: "#00F0FF",
           glowColor: "rgba(0, 240, 255, 0.16)",
           quote: "AI prompts without deterministic guardrails are just toys. Enterprise autonomy requires strict schemas and state machines.",
-          author: "Sunmughan Swamy",
-          role: "Founder, CodeAir Software Solutions",
+          author: authorName,
+          role: authorRole,
           footerTag: "AI ARCHITECTURE"
         };
 
@@ -153,12 +161,12 @@ class ThreadsMedia {
       default:
         return {
           isQuoteCard: true,
-          badge: "CODEAIR • BUILDER NETWORK",
+          badge: `${compTag} • BUILDER NETWORK`,
           accentColor: "#00F0FF",
           glowColor: "rgba(0, 240, 255, 0.16)",
           quote: "Looking for passionate software engineers who want to build real systems, collaborate on client work, and share project revenue.",
-          author: "Sunmughan Swamy",
-          role: "Founder, CodeAir Software Solutions",
+          author: authorName,
+          role: authorRole,
           footerTag: "REV-SHARE COLLABORATION"
         };
     }

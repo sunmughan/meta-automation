@@ -25,8 +25,9 @@ This guide provides complete, step-by-step instructions on setting up **Google A
 
 ## 🧠 Architectural Overview
 
-**Meta Automation** uses a dual-layer architecture:
-- **The Brain (Antigravity AI / Gemini 3.6 Flash)**: Analyzes conversational context, evaluates genuine purchase intent, applies anti-spam negative filtering, resolves persona identities (Founder vs. Company), and drafts executive-level responses.
+**Meta Automation** uses an advanced dual-layer cognitive architecture:
+- **The Brain (Live Antigravity IDE Agent Session / `gemini-3.8-flash-high`)**: Powered directly by the active Antigravity IDE session over Connect-RPC (`http://127.0.0.1:41977`). Analyzes conversational context, evaluates genuine purchase intent, enforces anti-spam negative filtering, resolves persona identities (Founder vs. Company), and drafts executive-level responses. **Zero external API keys required — runs completely on your active IDE session.**
+- **The Dynamic In-Context Grounding Layer (RAG)**: Dynamically reads your brand's `knowledge/*.md` files on-the-fly (`founder.md`, `company.md`, `profiles.md`, `services.md`, `pillars.md`) so the AI speaks authentically for ANY business with zero hardcoding.
 - **The Hands (Puppeteer + CDP on Port 9222)**: Directly controls your existing authenticated desktop or mobile browser session, types with human cadence and jitter, renders Stripe/Linear-grade graphics, and submits posts/DMs without API keys or session resets.
 
 ---
@@ -81,6 +82,37 @@ agy --version || antigravity --version
 
 ---
 
+## 🎓 Training & Onboarding Your Business (Universal Brand Customization)
+
+Meta Automation is 100% agnostic to business type or industry. Any founder, agency, consultant, or enterprise can configure the engine for their brand in seconds:
+
+### 1. Interactive CLI Wizard
+Run the onboarding wizard in your terminal:
+```bash
+npm run onboard
+# or
+node threads-agent.js onboard
+```
+The wizard prompts you for:
+1. **Founder Full Name & Role** (e.g. `Elena Rostova`, `Founder & Chief AI Architect`)
+2. **Threads Username** (e.g. `elena_ai` — used for profile feed verification)
+3. **LinkedIn / Founder Profile URL** (e.g. `https://linkedin.com/in/elena-ai`)
+4. **Company / Brand Name** (e.g. `Apex AI Studio`)
+5. **Official Company Website** (e.g. `https://apexai.io`)
+6. **Flagship Product URL** (e.g. `https://apexai.io/neural-flow`)
+7. **Approved Capabilities** (comma-separated list of services you deliver)
+8. **Excluded Capabilities** (comma-separated list of non-core services to decline)
+
+### 2. Custom Content Pillars (`knowledge/pillars.md`)
+The 5 social publishing pillars are defined in `knowledge/pillars.md`. You can customize them for any domain:
+- **Pillar 1**: Flagship Product / Core Platform (e.g., `pixelgo_hms` for hospitality or `neural_flow` for AI workflows)
+- **Pillar 2**: Industry Collaboration / Talent Network (e.g., developer network or partner ecosystem)
+- **Pillar 3**: Founder Insights & Strategy (e.g., startup scaling, MVP architecture)
+- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (e.g., architecture, system design)
+- **Pillar 5**: Practical AI & Modern Tech Trends (e.g., deterministic agents, autonomous tools)
+
+---
+
 ## 💬 Master Prompts to Control the Automation
 
 When interacting with Antigravity inside this repository, use these battle-tested prompts depending on your goal:
@@ -91,11 +123,11 @@ When interacting with Antigravity inside this repository, use these battle-teste
 ```text
 You are the primary growth director for Meta Automation.
 1. Attach to the active Brave/Chromium browser on CDP port 9222.
-2. Continuously scan the Threads organic feed and all 13 high-intent search channels for prospective buyers looking for website design, SaaS, AI automation, custom CRMs, and hospital software.
-3. Apply strict negative filters to reject recruiters, job seekers, and generic service sellers.
-4. Route qualified leads to either Founder identity (Sunmughan Swamy) or Company identity (CodeAir Software Solutions).
+2. Continuously scan the Threads organic feed and all 13 high-intent search channels for prospective buyers matching our approved services in knowledge/services.md.
+3. Apply strict Antigravity AI reasoning to reject recruiters, job seekers, and generic service sellers with zero keyword guessing.
+4. Route qualified leads to either Founder identity or Company identity based on knowledge/profiles.md with strict Single-URL Discipline.
 5. Post contextual, high-value comments and monitor direct messages with duplicate guards.
-6. Execute the automated 3-hour publishing cadence across the 5 strategic content pillars.
+6. Execute the automated 6-hour publishing cadence (4 posts / 24h) across our 5 strategic content pillars in knowledge/pillars.md.
 ```
 
 ---

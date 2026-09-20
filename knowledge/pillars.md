@@ -1,0 +1,40 @@
+# Content Pillars for Automated Social Publishing
+
+This file defines the strategic content pillars used by the 6-hour publishing engine.
+The automation cycles through these pillars to generate fresh, thought-provoking discussions, quote cards, and 5-slide carousel decks.
+
+Any user, agency, or business can customize these 5 pillars to match their specific niche, industry, and target audience.
+
+---
+
+## Pillar 1: pixelgo_hms
+- **Title**: Hospitality Tech & PMS Operations
+- **Badge**: HOSPITALITY TECH
+- **Focus**: Hotel & hospitality operations, reservation systems, PMS simplicity, modern guest experiences.
+- **Audience**: Hotel owners, resort managers, hospitality operators, travel tech founders.
+- **Reference URL**: https://pixelgo.live
+
+## Pillar 2: builder_network
+- **Title**: Engineering Collaboration & Builder Network
+- **Badge**: BUILDER NETWORK
+- **Focus**: Real-world software engineering collaboration, transparent client deliverables, fair revenue share, full-stack craft.
+- **Audience**: Freelancers, frontend/backend engineers, UI/UX designers, tech leads.
+- **Reference URL**: https://www.codeair.tech
+
+## Pillar 3: founders_revolution
+- **Title**: Startup Lessons & SaaS Architecture
+- **Badge**: FOUNDER MINDSET
+- **Focus**: Hard-earned founder lessons, building simple MVPs before scaling, revenue-first execution, avoiding architecture traps.
+- **Audience**: SaaS founders, indie hackers, early-stage startup leaders, product managers.
+
+## Pillar 4: tech_mentorship
+- **Title**: Systems Architecture & Engineering Craft
+- **Badge**: ARCHITECTURE
+- **Focus**: Production systems design, clean database modeling, API performance, resilient state management, full-stack debugging.
+- **Audience**: Junior to senior developers, engineering managers, software architects.
+
+## Pillar 5: agentic_ai
+- **Title**: Practical Agentic AI & Deterministic Automation
+- **Badge**: AGENTIC AI
+- **Focus**: Practical AI workflows, autonomous browser agents, local LLM orchestration, structured output governance, deterministic business automation over hype.
+- **Audience**: AI engineers, automation specialists, tech-forward business operators, CTOs.

@@ -10,6 +10,8 @@
  * Grounded strictly in founder.md, company.md, and lead-rules.md.
  */
 
+const knowledge = require("../knowledge/knowledge-engine");
+
 class IdentityResolver {
   /**
    * Resolves the appropriate communication identity based on incoming context.
@@ -28,22 +30,33 @@ class IdentityResolver {
     const orig = String(context.originalPost || "").toLowerCase();
     const combined = `${orig} ${text}`;
 
+    const company = knowledge.getCompanyInfo();
+    const founder = knowledge.getFounderInfo();
+    const companyClean = (company.name || "codeair").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const companyWords = (company.name || "codeair").trim().split(/\s+/).map(w => w.replace(/[^a-z0-9]/gi, "")).filter(Boolean);
+    const companyPattern = Array.from(new Set([companyClean, companyWords.join("\\s+"), companyWords[0], "codeair"])).filter(Boolean).join("|");
+
+    const founderClean = (founder.name || "founder").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const founderWords = (founder.name || "founder").trim().split(/\s+/).map(w => w.replace(/[^a-z0-9]/gi, "")).filter(Boolean);
+    const founderPattern = Array.from(new Set([founderClean, founderWords.join("\\s+"), founderWords[0]])).filter(Boolean).join("|");
+
     const isAskingWhoBehind =
-      /\bwho\s+(is\s+)?(behind|founded|started|runs|owns|built)\s+(codeair|this|it)\b/i.test(text) ||
+      new RegExp(`\\bwho\\s+(is\\s+)?(behind|founded|started|runs|owns|built)\\s+(${companyPattern}|this|it)\\b`, "i").test(text) ||
       /\bwho\s+are\s+you\b/i.test(text) ||
       /\bwho\s+is\s+the\s+founder\b/i.test(text);
 
     const isAskingForFounderDirectly =
       /\b(speak|talk|connect|chat|discuss)\s+(directly\s+)?with\s+(the\s+)?founder\b/i.test(text) ||
+      new RegExp(`\\bwho\\s+(is\\s+)?(${founderPattern})\\b`, "i").test(text) ||
       /\bare\s+you\s+the\s+founder\b/i.test(text) ||
-      /\bwho\s+founded\s+codeair\b/i.test(text) ||
+      new RegExp(`\\bwho\\s+founded\\s+(${companyPattern})\\b`, "i").test(text) ||
       /\btechnical\s+lead\b/i.test(text) && /\b(speak|talk|meet)\b/i.test(text);
 
     const isAskingWhatCompanyDoes =
-      /\bwhat\s+(does\s+)?codeair\s+do\b/i.test(text) ||
+      new RegExp(`\\bwhat\\s+(does\\s+)?(${companyPattern})\\s+do\\b`, "i").test(text) ||
       /\bwhat\s+do\s+you\s+(guys\s+)?do\b/i.test(text) ||
       /\bwhat\s+services\s+do\s+you\s+offer\b/i.test(text) ||
-      /\btell\s+me\s+about\s+codeair\b/i.test(text);
+      new RegExp(`\\btell\\s+me\\s+about\\s+(${companyPattern})\\b`, "i").test(text);
 
     const isAskingBoth =
       (isAskingWhoBehind || isAskingForFounderDirectly) &&
@@ -69,7 +82,7 @@ class IdentityResolver {
     if (isAskingWhatCompanyDoes) {
       return {
         identity: "COMPANY",
-        reason: "User explicitly asked about CodeAir or its service capabilities."
+        reason: `User explicitly asked about ${company.name} or its service capabilities.`
       };
     }
 
@@ -82,10 +95,12 @@ class IdentityResolver {
     }
 
     // Rule 5: Company profile requested
-    if (/\b(codeair('s)?\s+linkedin|company\s+linkedin|codeair\s+website|company\s+website)\b/i.test(text)) {
+    const isCompanyProfileReq =
+      new RegExp(`\\b((codeair|${companyClean})('s)?\\s+linkedin|company\\s+linkedin|(codeair|${companyClean})\\s+website|company\\s+website)\\b`, "i").test(text);
+    if (isCompanyProfileReq) {
       return {
         identity: "COMPANY",
-        reason: "User requested official CodeAir company profile."
+        reason: `User requested official ${company.name} company profile.`
       };
     }
 
@@ -110,7 +125,7 @@ class IdentityResolver {
       // If initial discovery on a public post, can be COMPANY or NEUTRAL discovery question
       return {
         identity: "COMPANY",
-        reason: "Direct software/IT buyer requirement matching CodeAir service scope."
+        reason: `Direct software/IT buyer requirement matching ${company.name} service scope.`
       };
     }
 

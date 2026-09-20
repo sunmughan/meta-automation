@@ -14,8 +14,11 @@
  *   node threads-agent.js test      - Run automated diagnostic test suite
  */
 
+const fs = require("fs");
+const path = require("path");
 const readline = require("readline");
 const CONFIG = require("./config");
+const knowledge = require("./src/knowledge/knowledge-engine");
 const browserManager = require("./src/browser/browser-manager");
 const { checkThreadsAuth } = require("./src/platforms/threads/threads-auth");
 const { checkInstagramAuth } = require("./src/platforms/instagram/instagram-auth");
@@ -486,10 +489,164 @@ async function commandRun() {
   }
 }
 
+async function commandOnboard(options = {}) {
+  console.log("\n==============================================");
+  console.log("   🎓 ANTIGRAVITY BRAND ONBOARDING WIZARD");
+  console.log("   Train the AI System on Your Business in Seconds");
+  console.log("==============================================\n");
+
+  const currentFounder = knowledge.getFounderInfo();
+  const currentCompany = knowledge.getCompanyInfo();
+  const currentProfiles = knowledge.getOfficialProfiles();
+
+  let founderName = options.founderName;
+  let founderRole = options.founderRole;
+  let founderProfile = options.founderProfile;
+  let threadsUsername = options.threadsUsername;
+  let companyName = options.companyName;
+  let companyWebsite = options.companyWebsite;
+  let companyProduct = options.companyProduct;
+  let companySummary = options.companySummary;
+  let approvedServices = options.approvedServices;
+  let excludedServices = options.excludedServices;
+
+  if (!options.nonInteractive) {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    const ask = (query, defaultVal = "") => new Promise(resolve => {
+      const prompt = defaultVal ? `${query} [${defaultVal}]: ` : `${query}: `;
+      rl.question(prompt, answer => resolve(answer.trim() || defaultVal));
+    });
+
+    try {
+      founderName = await ask("1. Founder Full Name", currentFounder.name || "Founder");
+      founderRole = await ask("2. Founder Role / Title", currentFounder.role || "Technical Architect & Founder");
+      founderProfile = await ask("3. Founder Profile / LinkedIn URL", currentProfiles.founder.linkedin || "https://linkedin.com");
+      threadsUsername = await ask("4. Threads Username (without @)", currentFounder.threadsUsername || CONFIG.THREADS_USERNAME || "user");
+      companyName = await ask("5. Company / Brand Name", currentCompany.name || "My Company");
+      companyWebsite = await ask("6. Company Website URL", currentCompany.website || "https://mycompany.com");
+      companyProduct = await ask("7. Product / Specialty URL (optional)", currentCompany.productUrl || "");
+      companySummary = await ask("8. Company Brief Summary", currentCompany.summary || "Custom software engineering, cloud architecture, and modern AI automation");
+
+      const rawApproved = await ask("9. Core Approved Services (comma-separated)", "Custom Software, SaaS MVPs, Web Applications, Mobile Apps, AI Workflows");
+      approvedServices = rawApproved.split(",").map(s => s.trim()).filter(Boolean);
+
+      const rawExcluded = await ask("10. Excluded Non-Core Services (comma-separated)", "Graphic Design, SEO Marketing, Accounting, Recruitment");
+      excludedServices = rawExcluded.split(",").map(s => s.trim()).filter(Boolean);
+    } finally {
+      rl.close();
+    }
+  } else {
+    approvedServices = Array.isArray(approvedServices) ? approvedServices : (approvedServices || "").split(",").map(s => s.trim()).filter(Boolean);
+    excludedServices = Array.isArray(excludedServices) ? excludedServices : (excludedServices || "").split(",").map(s => s.trim()).filter(Boolean);
+  }
+
+  const knowledgeDir = path.resolve(CONFIG.ROOT_DIR, "knowledge");
+  if (!fs.existsSync(knowledgeDir)) {
+    fs.mkdirSync(knowledgeDir, { recursive: true });
+  }
+
+  const cleanUsername = String(threadsUsername || "user").replace(/^@/, "").trim();
+
+  // 1. Write knowledge/founder.md
+  const founderMd = `# Founder Profile
+
+## Identity
+Name: ${founderName}
+Role: ${founderRole}
+Threads: @${cleanUsername}
+LinkedIn: ${founderProfile}
+
+## Background & Philosophy
+${founderName} is the ${founderRole} of ${companyName}.
+`;
+  fs.writeFileSync(path.join(knowledgeDir, "founder.md"), founderMd, "utf8");
+
+  // 2. Write knowledge/company.md
+  const companyMd = `# Company Profile
+
+## Identity
+Name: ${companyName}
+Website: ${companyWebsite}
+Product: ${companyProduct || "None"}
+
+## Summary
+${companySummary}
+`;
+  fs.writeFileSync(path.join(knowledgeDir, "company.md"), companyMd, "utf8");
+
+  // 3. Write knowledge/profiles.md
+  const profilesMd = `# Official Profiles & URLs
+
+## Founder
+Name: ${founderName}
+Role: ${founderRole}
+Threads: @${cleanUsername}
+LinkedIn: ${founderProfile}
+
+## Company
+Name: ${companyName}
+Website: ${companyWebsite}
+Product: ${companyProduct || "None"}
+`;
+  fs.writeFileSync(path.join(knowledgeDir, "profiles.md"), profilesMd, "utf8");
+
+  // 4. Write knowledge/services.md
+  const servicesMd = `# Services & Capabilities
+
+## Approved Capabilities
+${approvedServices.map(s => `- ${s}`).join("\n")}
+
+## Excluded Capabilities
+${excludedServices.map(s => `- ${s}`).join("\n")}
+`;
+  fs.writeFileSync(path.join(knowledgeDir, "services.md"), servicesMd, "utf8");
+
+  // 5. Update .env if present
+  const envPath = path.resolve(CONFIG.ROOT_DIR, ".env");
+  if (fs.existsSync(envPath)) {
+    let envContent = fs.readFileSync(envPath, "utf8");
+    if (envContent.includes("THREADS_USERNAME=")) {
+      envContent = envContent.replace(/THREADS_USERNAME=.*(?:\r?\n|$)/, `THREADS_USERNAME=${cleanUsername}\n`);
+    } else {
+      envContent += `\nTHREADS_USERNAME=${cleanUsername}\n`;
+    }
+    fs.writeFileSync(envPath, envContent, "utf8");
+  }
+
+  // 6. Reload Knowledge in Memory
+  knowledge.loadKnowledge();
+
+  console.log("\n==============================================");
+  console.log("   ✅ BRAND ONBOARDING COMPLETED SUCCESSFULLY!");
+  console.log("==============================================");
+  console.log(`  Founder    : ${founderName} (${founderRole})`);
+  console.log(`  Threads    : @${cleanUsername}`);
+  console.log(`  Company    : ${companyName}`);
+  console.log(`  Website    : ${companyWebsite}`);
+  if (companyProduct) {
+    console.log(`  Product    : ${companyProduct}`);
+  }
+  console.log(`  Approved   : ${approvedServices.length} capabilities`);
+  console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
+  console.log(`  AI Engine  : Live Antigravity IDE Gemini 3.8 Flash High`);
+  console.log("==============================================\n");
+  console.log("Your brand knowledge base is saved in ./knowledge/");
+  console.log("All qualification engines, response generators, and visual posters");
+  console.log("are now 100% grounded in your brand identity with zero hardcoding!\n");
+  return 0;
+}
+
 async function main() {
   const cmd = (process.argv[2] || "status").toLowerCase();
 
   switch (cmd) {
+    case "onboard":
+    case "configure":
+      process.exit(await commandOnboard());
+      break;
     case "auth":
       process.exit(await commandAuth());
       break;
@@ -525,7 +682,7 @@ async function main() {
       break;
     default:
       console.log(`Unknown command: ${cmd}`);
-      console.log("Available: auth, scan, analyze, approve, replies, dms, post, status, test, run");
+      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, test, run");
       process.exit(1);
   }
 }
@@ -536,3 +693,14 @@ if (require.main === module) {
     process.exit(1);
   });
 }
+
+module.exports = {
+  commandAuth,
+  commandScan,
+  commandAnalyze,
+  commandApprove,
+  commandReplies,
+  commandDms,
+  commandStatus,
+  commandOnboard
+};
