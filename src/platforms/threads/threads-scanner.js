@@ -92,9 +92,9 @@ async function scanThreadsFeed(options = {}) {
   const page = await browserManager.getThreadsPage();
   await page.bringToFront();
 
-  // Navigate to home feed if on messages, activity, or another page
+  // Navigate to home feed if on messages, activity, profile, or another page
   const currentUrl = page.url();
-  if (!currentUrl.includes("threads.com") || currentUrl.includes("/messages") || currentUrl.includes("/activity")) {
+  if (!currentUrl.includes("threads.com") || currentUrl.includes("/messages") || currentUrl.includes("/activity") || currentUrl.includes("/@") || currentUrl.includes("/search")) {
     logger.info("Navigating back to Threads Home feed from subpage...", { currentUrl });
     const clickedHome = await page.evaluate(() => {
       const homeLink = document.querySelector('a[href="/"], svg[aria-label="Threads"]');
