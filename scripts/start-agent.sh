@@ -25,7 +25,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 cd "$AGENT_DIR" || exit 1
-nohup node threads-agent.js run >> "$LOG_FILE" 2>&1 &
+nohup node threads-agent.js run < /dev/null >> "$LOG_FILE" 2>&1 &
 AGENT_PID=$!
 echo "$AGENT_PID" > "$PID_FILE"
 
