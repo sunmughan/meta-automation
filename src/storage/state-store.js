@@ -192,6 +192,77 @@ class StateStore {
     return this.state.conversations[key] || this.state.conversations[convId] || null;
   }
 
+  /**
+   * Retrieves recent outgoing messages sent by CodeAir for a given conversation.
+   * Used by Duplicate Guard and Relevance Gate to prevent repeating responses.
+   *
+   * @param {string} convId
+   * @param {number} [limit=5]
+   * @param {string} [platform="threads"]
+   * @returns {string[]}
+   */
+  getRecentOutgoingMessages(convId, limit = 5, platform = "threads") {
+    const key = this.getConversationKey(platform, convId);
+    const conv = this.state.conversations[key] || this.state.conversations[convId];
+    const outgoing = [];
+    if (!conv) return outgoing;
+
+    if (conv.lastResponse && typeof conv.lastResponse === "string" && !outgoing.includes(conv.lastResponse)) {
+      outgoing.push(conv.lastResponse);
+    }
+    if (conv.lastOutgoingMessage && typeof conv.lastOutgoingMessage === "string" && !outgoing.includes(conv.lastOutgoingMessage)) {
+      outgoing.push(conv.lastOutgoingMessage);
+    }
+
+    if (Array.isArray(conv.previousMessages)) {
+      for (let i = conv.previousMessages.length - 1; i >= 0; i--) {
+        const msg = conv.previousMessages[i];
+        if (msg && (msg.sender === "CodeAir" || msg.sender === "US" || msg.isOutgoing)) {
+          if (msg.text && !outgoing.includes(msg.text)) {
+            outgoing.push(msg.text);
+          }
+        }
+      }
+    }
+
+    // Also check recorded DMs for this user
+    const username = conv.user || conv.username;
+    if (username && this.state.dms) {
+      for (const dm of Object.values(this.state.dms)) {
+        if (dm && (dm.username === username || (dm.key && dm.key.includes(username))) && dm.responseText) {
+          if (!outgoing.includes(dm.responseText)) {
+            outgoing.push(dm.responseText);
+          }
+        }
+      }
+    }
+
+    return outgoing.slice(0, limit);
+  }
+
+  /**
+   * Cleans up and deduplicates historical messages in a corrupted or loop-affected conversation.
+   */
+  sanitizeConversation(convId, platform = "threads") {
+    const key = this.getConversationKey(platform, convId);
+    const conv = this.state.conversations[key] || this.state.conversations[convId];
+    if (!conv || !Array.isArray(conv.previousMessages)) return;
+
+    const seen = new Set();
+    const sanitizedMessages = [];
+
+    for (const msg of conv.previousMessages) {
+      const hash = `${msg.sender}:${String(msg.text || "").trim().toLowerCase()}`;
+      if (!seen.has(hash)) {
+        seen.add(hash);
+        sanitizedMessages.push(msg);
+      }
+    }
+
+    conv.previousMessages = sanitizedMessages;
+    this.saveState();
+  }
+
   saveConversation(convData) {
     const platform = convData.platform || "threads";
     const convId = convData.conversationId || convData.id;
@@ -203,12 +274,17 @@ class StateStore {
     const updated = {
       platform,
       conversationId: convId,
+      participant: convData.participant || convData.user || convData.username || existing.participant || "unknown",
       user: convData.user || convData.username || existing.user || "unknown",
       postId: convData.postId || existing.postId || null,
       username: convData.username || existing.username || "unknown",
       displayName: convData.displayName || existing.displayName || "",
       originalPost: convData.originalPost || existing.originalPost || "",
-      identifiedIntent: convData.identifiedIntent || existing.identifiedIntent || "GENERAL",
+      messageId: convData.messageId || existing.messageId || null,
+      incomingText: convData.incomingText || convData.lastIncomingMessage || existing.incomingText || "",
+      identifiedIntent: convData.identifiedIntent || convData.detectedIntent || existing.identifiedIntent || "GENERAL",
+      detectedIntent: convData.detectedIntent || convData.identifiedIntent || existing.detectedIntent || "GENERAL",
+      commercialContext: convData.commercialContext || existing.commercialContext || "COMMERCIAL_DISCOVERY",
       identifiedRequirement: convData.identifiedRequirement || existing.identifiedRequirement || "",
       matchedService: convData.matchedService || existing.matchedService || "",
       leadScore: convData.leadScore !== undefined ? convData.leadScore : (existing.leadScore || 0),
@@ -218,7 +294,11 @@ class StateStore {
       previousMessages: Array.isArray(convData.previousMessages)
         ? convData.previousMessages
         : (existing.previousMessages || []),
-      lastResponse: convData.lastResponse || existing.lastResponse || "",
+      lastResponse: convData.lastResponse || convData.lastOutgoingMessage || existing.lastResponse || "",
+      lastOutgoingMessage: convData.lastOutgoingMessage || convData.lastResponse || existing.lastOutgoingMessage || "",
+      lastIncomingMessage: convData.lastIncomingMessage || convData.incomingText || existing.lastIncomingMessage || "",
+      pendingQuestion: convData.pendingQuestion !== undefined ? convData.pendingQuestion : (existing.pendingQuestion || null),
+      nextExpectedResponse: convData.nextExpectedResponse || existing.nextExpectedResponse || null,
       conversationStage: convData.conversationStage || existing.conversationStage || "INITIAL",
       lastAction: convData.lastAction || existing.lastAction || "INIT",
       timestamp: now,

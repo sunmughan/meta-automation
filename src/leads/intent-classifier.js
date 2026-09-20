@@ -98,7 +98,30 @@ const IRRELEVANT_PATTERNS = [
   /\b(weather|raining|sunny|snowing)\b/i
 ];
 
-// 5. General non-tech networking chatter
+// 5. Career Advice & Job / Degree Transition queries (Strictly non-commercial)
+const CAREER_ADVICE_PATTERNS = [
+  /\bcareer\s+(advice|path|paths|change|transition|move|growth|options?)\b/i,
+  /\bjob\s+(titles?|paths?|search|hunting|market)\b/i,
+  /\bwhat\s+(career|job|role|paths?|titles?)\s+should\s+i\b/i,
+  /\b(figure|figuring)\s+out\s+my\s+next\s+move\b/i,
+  /\b(finished|graduated|earned|completed)\s+my\s+(ba|bs|bachelor'?s|master'?s|degree|mba|phd)\b/i,
+  /\b(ba|bs|degree)\s+in\s+business(\s+administration)?\b/i,
+  /\bwfh[,\s]+(\$?\d+k\+?|remote)/i,
+  /\bminimal\s+phones?\b/i,
+  /\bentry[- ]level\s+(roles?|jobs?|positions?|advice)\b/i,
+  /\bhow\s+do\s+i\s+break\s+into\b/i,
+  /\bhow\s+to\s+get\s+into\s+(tech|software|data|product)\b/i,
+  /\badvice\s+for\s+(new\s+grads|beginners|career\s+changers|moms?)\b/i,
+  /\bresume\s+(feedback|review|help)\b/i
+];
+
+// 6. B2B Lead Generation & Outreach Offers (Non-software services)
+const LEAD_GENERATION_PATTERNS = [
+  /\b(b2b\s+leads?|lead\s+generation|batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|targeted\s+leads|cold\s+email\s+leads|sample\s+sheet|data\s+quality|leads\s+ready\s+to\s+get\s+converted)\b/i,
+  /\b(lead\s+gen\s+service|lead\s+scraper|verified\s+contact\s+info)\b/i
+];
+
+// 7. General non-tech networking chatter
 const NETWORKING_PATTERNS = [
   /\bexpand\s+my\s+network\b/i,
   /\bchat\s+and\s+connect\b/i,
@@ -106,7 +129,7 @@ const NETWORKING_PATTERNS = [
   /\bgood\s+morning\s+(threads|everyone|all)\b/i
 ];
 
-// 6. Explicit buyer / client demand signals (Author is seeking/hiring someone to build for them)
+// 8. Explicit buyer / client demand signals (Author is seeking/hiring someone to build for them)
 const BUYING_INTENT_PATTERNS = [
   // First-person requests for developers, agencies, or software creation
   /\b(i|we)\s+need(\s+someone|\s+somebody)?\s+(to\s+build|to\s+develop|to\s+create|to\s+make|to\s+design|to\s+code)\b/i,
@@ -251,7 +274,7 @@ class IntentClassifier {
           temperature: "IGNORE",
           is_genuine_buyer: false,
           lead_type: "SERVICE_PROVIDER",
-          intent: "PROVIDER",
+          intent: "SERVICE_PROVIDER",
           reason: "Author is advertising or showcasing their own freelance/agency services.",
           matchedServices: [],
           should_reply: false
@@ -259,7 +282,41 @@ class IntentClassifier {
       }
     }
 
-    // Rule 4: Irrelevant lifestyle, celebrity, travel, meme, birthday posts
+    // Rule 4: Career Advice & Job/Degree Transition queries are strictly ignored (zero sales pitch)
+    for (const pat of CAREER_ADVICE_PATTERNS) {
+      if (pat.test(text)) {
+        return {
+          qualified: false,
+          score: 0,
+          temperature: "IGNORE",
+          is_genuine_buyer: false,
+          lead_type: "CAREER_ADVICE",
+          intent: "CAREER_ADVICE",
+          reason: "Author is asking for personal career advice or job titles, not hiring for a software project.",
+          matchedServices: [],
+          should_reply: false
+        };
+      }
+    }
+
+    // Rule 5: B2B Lead Generation & Sales Outreach Offers (Not software buyers)
+    for (const pat of LEAD_GENERATION_PATTERNS) {
+      if (pat.test(text)) {
+        return {
+          qualified: false,
+          score: 0,
+          temperature: "IGNORE",
+          is_genuine_buyer: false,
+          lead_type: "LEAD_GENERATION_BUYER",
+          intent: "LEAD_GENERATION_BUYER",
+          reason: "Author is offering or discussing B2B lead generation / marketing data, not hiring for software development.",
+          matchedServices: [],
+          should_reply: false
+        };
+      }
+    }
+
+    // Rule 6: Irrelevant lifestyle, celebrity, travel, meme, birthday posts
     for (const pat of IRRELEVANT_PATTERNS) {
       if (pat.test(text)) {
         return {

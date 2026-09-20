@@ -18,10 +18,20 @@ class DmMonitor {
    * Processes a single DM conversation item.
    */
   async processDmItem(dmItem, platform = "threads", options = {}) {
-    // 0. Skip if the scanner detected an outgoing message from us ("You sent...", "You:...")
-    if (dmItem.isOutgoing) {
-      logger.info(`[DM MONITOR] Skipping @${dmItem.sender}: Last message was sent by us ("${dmItem.lastMessage}"). Awaiting recipient reply.`);
-      return { success: false, reason: "Awaiting recipient reply; last message was sent by us" };
+    const convId = `${platform}:${dmItem.sender}`;
+    const recentOutgoing = stateStore.getRecentOutgoingMessages(convId, 5, platform);
+    const cleanIncoming = String(dmItem.lastMessage || "").trim().toLowerCase();
+
+    // 0. Skip if the scanner detected an outgoing message from us or matches any recent outgoing response
+    const isOutgoingPattern = /^(you\b|you sent|you shared|you replied|seen\b|sent a post|sent a photo|sent an attachment)/i.test(dmItem.lastMessage || "");
+    const matchesOurRecent = recentOutgoing.some(prev => {
+      const cleanPrev = String(prev).trim().toLowerCase();
+      return cleanPrev === cleanIncoming || cleanPrev.startsWith(cleanIncoming) || cleanIncoming.startsWith(cleanPrev.slice(0, 30));
+    });
+
+    if (dmItem.isOutgoing || isOutgoingPattern || matchesOurRecent) {
+      logger.info(`[DM MONITOR] Skipping @${dmItem.sender}: Last message was sent by us or matches recent outgoing response. Awaiting recipient reply.`);
+      return { success: false, reason: "Awaiting recipient reply; last message was our response" };
     }
 
     // 1. Generate unique turn ID keyed by sender and message content for true multi-turn tracking
@@ -32,55 +42,75 @@ class DmMonitor {
       return { success: false, reason: "Already handled this message turn" };
     }
 
-    // Check duplicate guard
-    const dupCheck = duplicateGuard.canExecute({
-      platform,
-      actionType: "DM",
-      targetId: dmTurnId,
-      text: dmItem.lastMessage
+    // 2. Load existing conversation state
+    const existingConv = stateStore.getConversation(convId, platform) || {};
+    stateStore.recordActionTransition("DM", dmTurnId, "INIT", "CONTEXT_VERIFIED", {
+      username: dmItem.sender,
+      incomingMessage: dmItem.lastMessage.slice(0, 50)
     });
 
-    if (!dupCheck.allowed) {
-      return { success: false, reason: dupCheck.reason };
-    }
-
-    // 2. Load existing conversation state
-    const convId = `${platform}:${dmItem.sender}`;
-    const existingConv = stateStore.getConversation(convId, platform) || {};
-
-    // Skip if the message is identical to our own previous response (prevents replying to ourselves)
-    if (existingConv.lastResponse && dmItem.lastMessage) {
-      const cleanPrev = existingConv.lastResponse.trim().toLowerCase();
-      const cleanIncoming = dmItem.lastMessage.trim().toLowerCase();
-      if (cleanPrev === cleanIncoming || cleanPrev.startsWith(cleanIncoming) || cleanIncoming.startsWith(cleanPrev.slice(0, 30))) {
-        logger.info(`[DM MONITOR] Skipping @${dmItem.sender}: Last message is identical to our own previous response. Awaiting recipient reply.`);
-        return { success: false, reason: "Awaiting recipient reply; last message was our response" };
-      }
-    }
-
-    // 3. Generate response via AI decision engine
+    // 3. Generate response via AI decision engine with full conversation context
     const decision = await aiDecisionEngine.generateConversationReply({
       platform,
+      convId,
       username: dmItem.sender,
       originalPost: existingConv.originalPost || "",
       ourPreviousMessage: existingConv.lastResponse || "",
       incomingMessage: dmItem.lastMessage,
       conversationStage: existingConv.conversationStage || "DISCOVERY",
       companyMentionedBefore: existingConv.companyIntroduced,
-      founderMentionedBefore: existingConv.founderIntroduced
+      founderMentionedBefore: existingConv.founderIntroduced,
+      recentOutgoing
     });
 
-    // 4. Save persistent conversation state
+    stateStore.recordActionTransition("DM", dmTurnId, "CONTEXT_VERIFIED", "RESPONSE_GENERATED", {
+      intent: decision.intent,
+      identity: decision.identity
+    });
+
+    // 4. Enforce Duplicate Guard on proposed outgoing message
+    const dupCheck = duplicateGuard.canSendChatMessage(convId, decision.response_message, platform);
+    if (!dupCheck.allowed) {
+      logger.warn(`[DM MONITOR] Duplicate guard blocked response to @${dmItem.sender}: ${dupCheck.reason}`);
+      stateStore.recordActionTransition("DM", dmTurnId, "RESPONSE_GENERATED", "BLOCKED_DUPLICATE", {
+        reason: dupCheck.reason
+      });
+      return { success: false, reason: dupCheck.reason };
+    }
+
+    // 5. Enforce Strict Relevance Gate on proposed response
+    const relevanceCheck = aiDecisionEngine.evaluateRelevanceGate(
+      decision.response_message,
+      { convId, recentOutgoing },
+      dmItem.lastMessage
+    );
+    if (!relevanceCheck.approved) {
+      logger.warn(`[DM MONITOR] Relevance gate blocked response to @${dmItem.sender}: ${relevanceCheck.reason}`);
+      stateStore.recordActionTransition("DM", dmTurnId, "RESPONSE_GENERATED", "BLOCKED_IRRELEVANT", {
+        reason: relevanceCheck.reason
+      });
+      return { success: false, reason: relevanceCheck.reason };
+    }
+
+    stateStore.recordActionTransition("DM", dmTurnId, "RESPONSE_GENERATED", "RELEVANCE_VERIFIED");
+
+    // 6. Save persistent conversation state
     const updatedConv = stateStore.saveConversation({
       platform,
       conversationId: convId,
+      participant: dmItem.sender,
       user: dmItem.sender,
       username: dmItem.sender,
+      incomingText: dmItem.lastMessage,
+      lastIncomingMessage: dmItem.lastMessage,
+      detectedIntent: decision.intent,
       identifiedIntent: decision.intent,
       identityUsed: decision.identity,
+      commercialContext: decision.intent === "LEAD_GENERATION_DECLINED" ? "NON_COMMERCIAL_DECLINED" : "COMMERCIAL_DISCOVERY",
       companyIntroduced: decision.identity === "COMPANY" || decision.identity === "BOTH" || existingConv.companyIntroduced,
       founderIntroduced: decision.identity === "FOUNDER" || decision.identity === "BOTH" || existingConv.founderIntroduced,
       lastResponse: decision.response_message,
+      lastOutgoingMessage: decision.response_message,
       conversationStage: decision.conversation_stage,
       lastAction: "DM_REPLY_GENERATED",
       previousMessages: [
@@ -92,7 +122,7 @@ class DmMonitor {
       newActionDetails: { dmTurnId, identity: decision.identity, humanReview: decision.human_review_required }
     });
 
-    // 5. Apply Execution / Dry Run / Approval
+    // 7. Apply Execution / Dry Run / Approval
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
     const isApprovalMode = options.approvalMode !== undefined ? options.approvalMode : CONFIG.APPROVAL_MODE;
     const isPostingEnabled = CONFIG.POSTING_ENABLED;
@@ -133,7 +163,8 @@ class DmMonitor {
         platform,
         actionType: "DM",
         targetId: dmTurnId,
-        text: dmItem.lastMessage
+        text: decision.response_message,
+        username: dmItem.sender
       });
 
       return {
@@ -144,11 +175,13 @@ class DmMonitor {
       };
     }
 
-    // 6. Live Execution in Browser
+    // 8. Live Execution in Browser
     if (platform === "threads") {
       logger.info(`[DM MONITOR] Executing live Threads DM send to @${dmItem.sender}...`);
+      stateStore.recordActionTransition("DM", dmTurnId, "RELEVANCE_VERIFIED", "SEND_ATTEMPTED");
       const sendRes = await threadsDms.sendDirectMessage(dmItem.threadId || dmItem.sender, decision.response_message);
       if (sendRes && sendRes.verified) {
+        stateStore.recordActionTransition("DM", dmTurnId, "SEND_ATTEMPTED", "SEND_VERIFIED");
         stateStore.recordHandledDm(dmTurnId, {
           username: dmItem.sender,
           messageText: dmItem.lastMessage,
@@ -160,7 +193,8 @@ class DmMonitor {
           platform,
           actionType: "DM",
           targetId: dmTurnId,
-          text: dmItem.lastMessage
+          text: decision.response_message,
+          username: dmItem.sender
         });
 
         logger.audit("DM_RESPONSE_SENT_VERIFIED", `${platform}:${dmTurnId}`, {

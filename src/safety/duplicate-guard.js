@@ -19,6 +19,61 @@ class DuplicateGuard {
   }
 
   /**
+   * Calculates word overlap similarity (Jaccard index) between two text strings.
+   */
+  calculateSimilarity(text1, text2) {
+    const t1 = String(text1 || "").trim().toLowerCase();
+    const t2 = String(text2 || "").trim().toLowerCase();
+    if (t1 === t2) return 1.0;
+    if (!t1 || !t2) return 0.0;
+
+    const words1 = new Set(t1.split(/\s+/).filter(w => w.length > 2));
+    const words2 = new Set(t2.split(/\s+/).filter(w => w.length > 2));
+    if (words1.size === 0 || words2.size === 0) return 0.0;
+
+    let intersection = 0;
+    for (const w of words1) {
+      if (words2.has(w)) intersection++;
+    }
+    const union = new Set([...words1, ...words2]).size;
+    return union === 0 ? 0.0 : intersection / union;
+  }
+
+  /**
+   * Conversation-level message deduplication:
+   * Prevents sending exact identical or semantically duplicate (>75% similarity)
+   * messages within the same conversation thread.
+   *
+   * @param {string} convId
+   * @param {string} text
+   * @param {string} [platform="threads"]
+   * @returns {{ allowed: boolean, reason?: string }}
+   */
+  canSendChatMessage(convId, text, platform = "threads") {
+    if (!convId || !text) return { allowed: true };
+    const recent = stateStore.getRecentOutgoingMessages(convId, 5, platform);
+    const cleanText = String(text).trim().toLowerCase();
+
+    for (const prev of recent) {
+      const cleanPrev = String(prev).trim().toLowerCase();
+      if (cleanPrev === cleanText) {
+        return {
+          allowed: false,
+          reason: `Exact identical message was already sent in conversation ${convId}. Repetition blocked.`
+        };
+      }
+      const sim = this.calculateSimilarity(cleanText, cleanPrev);
+      if (sim >= 0.75) {
+        return {
+          allowed: false,
+          reason: `Semantically identical message (${Math.round(sim * 100)}% similarity) was already sent recently in conversation ${convId}. Repetition blocked.`
+        };
+      }
+    }
+    return { allowed: true };
+  }
+
+  /**
    * Checks if an action is allowed or duplicate.
    *
    * @param {Object} params
@@ -26,10 +81,11 @@ class DuplicateGuard {
    * @param {string} params.actionType - "COMMENT"|"REPLY"|"DM"
    * @param {string} params.targetId - postId | replyId | dmId | userId
    * @param {string} [params.text] - generated text to check for repetition
+   * @param {string} [params.convId] - conversation ID for conversation-level deduplication
    * @returns {{ allowed: boolean, reason?: string }}
    */
   canExecute(params) {
-    const { platform = "threads", actionType, targetId, text } = params;
+    const { platform = "threads", actionType, targetId, text, convId } = params;
 
     if (!targetId) {
       return { allowed: false, reason: "Missing targetId." };
@@ -59,7 +115,15 @@ class DuplicateGuard {
       }
     }
 
-    // 2. Exact text repetition check across recent actions
+    // 2. Conversation-level message deduplication
+    if (convId && text) {
+      const convCheck = this.canSendChatMessage(convId, text, platform);
+      if (!convCheck.allowed) {
+        return convCheck;
+      }
+    }
+
+    // 3. Exact text repetition check across recent actions
     if (text) {
       const textHash = this.hashText(text);
       const recentActions = stateStore.getActionsInWindow(null, 24 * 3600 * 1000); // 24 hours

@@ -922,10 +922,12 @@ async function runAllTests() {
   await test("54. DM Monitor respects approval mode and does not mark SENT_VERIFIED without browser delivery", async () => {
     const dmMonitor = require("../src/engagement/dm-monitor");
 
+    const testSender = `test_client_999_${Date.now()}`;
+
     const testItem = {
-      sender: "test_client_999",
+      sender: testSender,
       lastMessage: "Need a landing page by next week. Can you help?",
-      threadId: "test_thread_999"
+      threadId: `test_thread_${testSender}`
     };
 
     const res = await dmMonitor.processDmItem(testItem, "threads", { approvalMode: true });
@@ -939,6 +941,8 @@ async function runAllTests() {
 
     // Cleanup test DM state
     delete stateStore.state.dms[`threads:${dmTurnId}`];
+    delete stateStore.state.conversations[`threads:${testSender}`];
+    delete stateStore.state.conversations[testSender];
     stateStore.saveState();
   });
 
@@ -1086,6 +1090,181 @@ async function runAllTests() {
     const res = await dmMonitor.scanAndProcessThreadsOnly({ offlineSimulation: true });
     assert(res.threads !== undefined, "Results must contain threads");
     assert.strictEqual(res.instagram, undefined, "Results must NOT contain instagram in Threads-only execution");
+  });
+
+  // 60. Screenshot 1 Regression: Career Advice post (@mrsjortizx3) must be strictly ignored
+  await test("60. Screenshot 1 Regression: Career seeker post (@mrsjortizx3) receives zero promotional comment", async () => {
+    const post = {
+      username: "mrsjortizx3",
+      postId: "test_career_post_60",
+      text: "Just finished my BA in Business Administration... Mom of 3... I want WFH, $80K+... What career paths/job titles should I be looking into?"
+    };
+    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    assert.strictEqual(decision.is_genuine_buyer, false, "Career seeker must NOT be qualified as buyer");
+    assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
+    assert.strictEqual(decision.should_reply, false, "should_reply must be false");
+    assert.strictEqual(decision.intent, "CAREER_ADVICE", "Intent must be CAREER_ADVICE");
+    assert.strictEqual(decision.generated_comment, null, "Must generate zero promotional comment");
+  });
+
+  // 61. Screenshot 2 Regression: B2B Lead Gen payment proposal (@anasshaikh.biz) must decline without software pitch
+  await test("61. Screenshot 2 Regression: B2B lead gen DM (@anasshaikh.biz) declines without software architecture pitch", async () => {
+    const incomingText = "Hi Sunmughan, before we move forward I want to set clear expectations. This will be a payment-based deal, not commission-only I charge a flat rate per batch of leads delivered, and payment will be taken at the time of delivering the leads, not as an advance like some others might ask. I can provide well-researched, targeted decision-maker leads matching your criteria (B2B businesses looking to outsource or go digital, USA first), but I can't guarantee they'll convert into clients no lead generation service can promise conversions, since that depends on your pitch, timing, and their internal decisions. If this works for you, let me know your budget per lead/batch and I'll get started.";
+    
+    // First verify resolveRequestedLink does NOT mistake 'digital' for git repo link
+    const link = knowledge.resolveRequestedLink(incomingText);
+    assert.strictEqual(link, null, "Word 'digital' must not trigger git/github link resolution");
+
+    const reply = await aiDecisionEngine.generateConversationReply({
+      incomingMessage: incomingText,
+      username: "anasshaikh.biz",
+      convId: "threads:anasshaikh.biz"
+    });
+
+    assert.strictEqual(reply.intent, "LEAD_GENERATION_DECLINED", "Intent must be LEAD_GENERATION_DECLINED");
+    assert.strictEqual(reply.service_match, false, "service_match must be false");
+    assert.strictEqual(reply.conversation_stage, "CLOSED", "Conversation stage must be CLOSED");
+    assert(!reply.response_message.toLowerCase().includes("architecture"), "Response must NOT ask about software architecture");
+    assert(!reply.response_message.toLowerCase().includes("timeline for this project"), "Response must NOT ask for target timeline");
+    assert(!reply.response_message.toLowerCase().includes("tech stack"), "Response must NOT ask about tech stack");
+    assert(reply.response_message.toLowerCase().includes("lead generation") || reply.response_message.toLowerCase().includes("lists"), "Response must directly address lead generation proposal");
+  });
+
+  // 62. Message-Level Exact Deduplication blocks identical outgoing message in same conversation
+  test("62. Duplicate Guard blocks sending identical outgoing message in the same conversation thread", () => {
+    const convId = "threads:test_dedup_user_62";
+    stateStore.saveConversation({
+      platform: "threads",
+      conversationId: convId,
+      user: "test_dedup_user_62",
+      lastResponse: "That sounds like a great project. Could you share a bit more detail about the core features?"
+    });
+
+    const check = duplicateGuard.canSendChatMessage(convId, "That sounds like a great project. Could you share a bit more detail about the core features?", "threads");
+    assert.strictEqual(check.allowed, false, "Exact duplicate message must be blocked");
+    assert(check.reason.includes("Exact identical message was already sent"), "Reason must cite exact duplicate");
+  });
+
+  // 63. Semantic Message Deduplication (>75% token similarity blocked)
+  test("63. Duplicate Guard blocks semantically identical message (>75% similarity) in same thread", () => {
+    const convId = "threads:test_dedup_user_63";
+    stateStore.saveConversation({
+      platform: "threads",
+      conversationId: convId,
+      user: "test_dedup_user_63",
+      lastResponse: "That makes sense. What does your current architecture look like, and what is your target timeline for this project?"
+    });
+
+    // Slight variation: 85%+ word overlap
+    const nearDuplicate = "That makes sense. What does your current architecture look like and what is the target timeline for this project?";
+    const check = duplicateGuard.canSendChatMessage(convId, nearDuplicate, "threads");
+    assert.strictEqual(check.allowed, false, "Near-duplicate (>75% similarity) must be blocked");
+    assert(check.reason.includes("Semantically identical message"), "Reason must cite semantic duplicate");
+  });
+
+  // 64. Relevance Gate blocks software architecture pitch on non-software proposal
+  test("64. Relevance Gate blocks software architecture pitch on non-software proposal", () => {
+    const proposedResponse = "That makes sense. What does your current architecture look like, and what is your target timeline for this project?";
+    const incomingProposal = "I offer flat rate B2B leads batch delivery for decision makers.";
+    const gateCheck = aiDecisionEngine.evaluateRelevanceGate(proposedResponse, {}, incomingProposal);
+    assert.strictEqual(gateCheck.approved, false, "Gate must reject software architecture pitch on lead generation proposal");
+    assert(gateCheck.reason.includes("Inappropriate software architecture/timeline question"), "Reason must cite violation");
+  });
+
+  // 65. Job Seeker posts are strictly ignored with zero promotional pitch
+  await test("65. Job Seeker candidate post is strictly ignored without sales pitch", async () => {
+    const post = {
+      username: "fresh_grad_dev",
+      postId: "test_job_post_65",
+      text: "Recent graduate looking for entry-level software engineer roles or internship. Hire me! Available for work."
+    };
+    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    assert.strictEqual(decision.is_genuine_buyer, false, "Job seeker must not be qualified as buyer");
+    assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
+    assert.strictEqual(decision.intent, "JOB_SEEKER", "Intent must be JOB_SEEKER");
+    assert.strictEqual(decision.should_reply, false, "should_reply must be false");
+  });
+
+  // 66. Corporate HR salaried recruitment ad is strictly ignored
+  await test("66. Corporate salaried employee recruitment is strictly ignored", async () => {
+    const post = {
+      username: "enterprise_recruiter",
+      postId: "test_recruitment_post_66",
+      text: "We are hiring a full-time Senior React Developer. Salary $120k-$150k with 401k and healthcare. Send resume to careers@acme.com"
+    };
+    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    assert.strictEqual(decision.is_genuine_buyer, false, "Corporate HR must not be qualified as buyer");
+    assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
+    assert.strictEqual(decision.intent, "RECRUITMENT", "Intent must be RECRUITMENT");
+    assert.strictEqual(decision.should_reply, false, "should_reply must be false");
+  });
+
+  // 67. Freelancer promoting own agency services is strictly ignored
+  await test("67. Freelancer promoting own services is strictly ignored", async () => {
+    const post = {
+      username: "creative_agency",
+      postId: "test_seller_post_67",
+      text: "Check out my latest client website built with Next.js and Tailwind! Accepting new clients, DM me for rates."
+    };
+    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    assert.strictEqual(decision.is_genuine_buyer, false, "Freelancer must not be qualified as buyer");
+    assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
+    assert.strictEqual(decision.intent, "SERVICE_PROVIDER", "Intent must be SERVICE_PROVIDER");
+    assert.strictEqual(decision.should_reply, false, "should_reply must be false");
+  });
+
+  // 68. Genuine Software Buyer qualifies cleanly with approved capability
+  await test("68. Genuine software buyer qualifies and receives custom grounded comment", async () => {
+    const post = {
+      username: "fintech_founder",
+      postId: "test_buyer_post_68",
+      text: "Looking for an agency or developer to build a custom SaaS platform with Stripe billing and multi-tenancy. Who should I talk to?"
+    };
+    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    assert.strictEqual(decision.is_genuine_buyer, true, "Genuine SaaS buyer must be qualified");
+    assert.strictEqual(decision.decision, "QUALIFIED", "Decision must be QUALIFIED");
+    assert.strictEqual(decision.should_reply, true, "should_reply must be true");
+    assert.strictEqual(decision.matched_capability, "SaaS development", "Must match SaaS development capability");
+    assert(decision.generated_comment.length > 50, "Must synthesize engaging comment");
+  });
+
+  // 69. Conversation State Machine persists complete rich conversation schema
+  test("69. StateStore persists enriched conversation schema with commercial context", () => {
+    const convId = "threads:test_schema_user_69";
+    const record = stateStore.saveConversation({
+      platform: "threads",
+      conversationId: convId,
+      participant: "test_schema_user_69",
+      incomingText: "We need an MVP built in 3 months",
+      detectedIntent: "PROJECT_INQUIRY",
+      commercialContext: "COMMERCIAL_DISCOVERY",
+      conversationStage: "SCOPING",
+      lastOutgoingMessage: "What are the core integrations needed?"
+    });
+
+    assert.strictEqual(record.participant, "test_schema_user_69", "Participant must match");
+    assert.strictEqual(record.detectedIntent, "PROJECT_INQUIRY", "Detected intent must be preserved");
+    assert.strictEqual(record.commercialContext, "COMMERCIAL_DISCOVERY", "Commercial context must be preserved");
+    assert.strictEqual(record.conversationStage, "SCOPING", "Conversation stage must match");
+    assert.strictEqual(record.lastOutgoingMessage, "What are the core integrations needed?", "Last outgoing message must match");
+  });
+
+  // 70. DM Monitor transaction state machine records validated lifecycle transitions
+  await test("70. DM Monitor executes complete transaction lifecycle transitions", async () => {
+    const dmMonitor = require("../src/engagement/dm-monitor");
+    const testSender = `test_trans_user_${Date.now()}`;
+    const dmItem = {
+      sender: testSender,
+      lastMessage: "Do you build custom web apps?",
+      threadId: `thread_${testSender}`
+    };
+
+    const res = await dmMonitor.processDmItem(dmItem, "threads", { dryRun: true });
+    assert.strictEqual(res.success, true, "DM processing must succeed in dryRun");
+    assert(res.response.length > 20, "Response must be generated");
+
+    const transitions = stateStore.state.actionTransitions.filter(t => t.actionType === "DM");
+    assert(transitions.length >= 3, "Must record at least INIT, CONTEXT_VERIFIED, RESPONSE_GENERATED transitions");
   });
 
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
