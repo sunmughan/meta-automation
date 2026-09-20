@@ -322,7 +322,38 @@ async function runAllTests() {
     });
     assert(!comment.toLowerCase().includes("multi-agent"), "Comment must NOT mention multi-agent systems");
     assert(!comment.toLowerCase().includes("document triage"), "Comment must NOT mention document triage");
-    assert(comment.toLowerCase().includes("mobile") || comment.toLowerCase().includes("flutter") || comment.toLowerCase().includes("app"), "Comment must focus on mobile apps");
+    assert(!comment.toLowerCase().includes("ai automation"), "Comment must NOT mention AI automation");
+    assert(comment.toLowerCase().includes("mobile") || comment.toLowerCase().includes("flutter"), "Comment must focus on mobile apps");
+  });
+
+  // 25b. User Screenshot Regression: React Developer with "paid" and "waiting" must get React/Web comment, NOT AI
+  test("25b. User Screenshot Regression: React Developer with paid/waiting keywords gets React comment", () => {
+    const post = {
+      text: "⚛️ Need a React Developer for an immediate project. Multiple modern web applications are waiting to be built, with more client work lined up. Paid available. Reply now!",
+      username: "prince_verma__pxh"
+    };
+    const founderComment = commentGenerator.generateEngagingComment({
+      text: post.text,
+      username: post.username,
+      matchedCategories: ["Web Development"],
+      identity: "FOUNDER"
+    });
+    assert(founderComment.toLowerCase().includes("react") || founderComment.toLowerCase().includes("web application"), "Comment must explicitly address React or web applications");
+    assert(!founderComment.toLowerCase().includes("ai automation"), "Must NEVER mention AI automation for a React developer post");
+    assert(!founderComment.toLowerCase().includes("llm"), "Must NEVER mention LLMs for a React developer post");
+    assert(!founderComment.toLowerCase().includes("agent workflow"), "Must NEVER mention agent workflows for a React developer post");
+    assert(founderComment.includes("linkedin.com/in/sunmughan"), "Founder comment must contain founder LinkedIn link");
+    assert(!founderComment.includes("codeair.tech"), "Founder comment must never contain company website");
+
+    // Also test with empty matchedCategories to verify regex fallback
+    const fallbackComment = commentGenerator.generateEngagingComment({
+      text: post.text,
+      username: post.username,
+      matchedCategories: [],
+      identity: "FOUNDER"
+    });
+    assert(fallbackComment.toLowerCase().includes("react") || fallbackComment.toLowerCase().includes("web application"), "Fallback regex must identify React/Web");
+    assert(!fallbackComment.toLowerCase().includes("ai automation"), "Fallback regex must NOT mistake 'paid' or 'waiting' for AI");
   });
 
   // 26. Project Hiring Request: "We're hiring a web developer to build our website"
