@@ -360,7 +360,8 @@ class AiDecisionEngine {
         const gateCheck = this.evaluateRelevanceGate(responseMessage, { ...context, convId }, incomingMessage);
         if (!gateCheck.approved) {
           logger.warn(`[AI Engine] Relevance gate blocked proposed response: ${gateCheck.reason}`);
-          responseMessage = `Understood. Feel free to connect directly if you have any questions regarding CodeAir's custom software engineering services.`;
+          const company = knowledge.getCompanyInfo();
+          responseMessage = `Understood. Feel free to connect directly if you have any questions regarding ${company.name}'s custom engineering services.`;
         }
 
         return {
@@ -401,26 +402,31 @@ class AiDecisionEngine {
       username = "user"
     } = context;
 
+    const company = knowledge.getCompanyInfo();
+    const founder = knowledge.getFounderInfo();
     const profiles = knowledge.getOfficialProfiles();
     const approved = knowledge.getApprovedServices();
     const excluded = knowledge.getExcludedServices();
+    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "https://linkedin.com";
+    const companyUrl = profiles.company.website || company.website || "https://www.codeair.tech";
+    const productUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:
-You are acting as the autonomous Lead Conversations Specialist for CodeAir Software Solutions. DO NOT invoke ANY tools (no view_file, no search, no run_command). Output ONLY valid JSON matching the schema below.
+You are acting as the autonomous Lead Conversations Specialist for ${company.name}. DO NOT invoke ANY tools (no view_file, no search, no run_command). Output ONLY valid JSON matching the schema below.
 
 Positioning & Official Profiles:
-- Founder & Chief Architect: Sunmughan Swamy (Founder of CodeAir Software Solutions)
-- Company: CodeAir Software Solutions (Custom Web Applications, SaaS MVPs, Flutter Mobile Apps, AI Automations, PixelGo HMS Hotel Management)
+- Founder & Leader: ${founder.name} (${founder.role} of ${company.name})
+- Company: ${company.name} (${company.summary})
 - Official URLs:
-  * Company Website: ${profiles.company.website || "https://www.codeair.tech"}
-  * PixelGo HMS: ${profiles.company.pixelgo || "https://pixelgo.live"}
-  * Founder LinkedIn: ${profiles.founder.linkedin || "https://linkedin.com/in/sunmughan"}
+  * Company Website: ${companyUrl}
+  * Product/Specialty: ${productUrl}
+  * Founder Profile: ${founderUrl}
 
-Approved Software Capabilities:
+Approved Capabilities:
 ${approved.slice(0, 20).map(s => `- ${s}`).join("\n")}
 
-Excluded Non-Software Capabilities:
+Excluded Non-Core Capabilities:
 ${excluded.slice(0, 10).map(s => `- ${s}`).join("\n")}
 
 Conversation Context:
@@ -433,15 +439,15 @@ Conversation Context:
 INSTRUCTIONS:
 1. Recipient Intent & Dynamic Response Generation:
    - If recipient is selling/offering B2B lead generation lists, scrapers, databases, or marketing outreach:
-     Politely decline in natural conversational English. Clarify that CodeAir specializes strictly in custom software engineering and does not purchase external lead batches. Set intent: "LEAD_GENERATION_DECLINED", service_match: false, conversation_stage: "CLOSED".
+     Politely decline in natural conversational English. Clarify that ${company.name} specializes strictly in software development and does not purchase external lead batches or lead generation services. Never ask questions about software architecture, tech stacks, or project timelines when declining lead proposals. Set intent: "LEAD_GENERATION_DECLINED", service_match: false, conversation_stage: "CLOSED".
    - If recipient is asking for a job, internship, or employment:
-     Politely decline and wish them the best in their career journey, noting CodeAir is not hiring currently. Set intent: "CAREER_INQUIRY", service_match: false, conversation_stage: "CLOSED".
-   - If recipient is asking about Sunmughan Swamy or who is behind CodeAir:
-     Introduce Sunmughan Swamy as founder & technical architect, and share Founder LinkedIn. Set identity: "FOUNDER", intent: "FOUNDER_INQUIRY".
-   - If recipient is asking what CodeAir does or provides:
-     Describe CodeAir's custom software, SaaS, mobile apps, and PixelGo HMS. Share Company Website. Set identity: "COMPANY", intent: "CAPABILITY_INQUIRY".
+     Politely decline and wish them the best in their career journey, noting ${company.name} is not hiring currently. Set intent: "CAREER_INQUIRY", service_match: false, conversation_stage: "CLOSED".
+   - If recipient is asking about ${founder.name} or who is behind ${company.name}:
+     Introduce ${founder.name} as ${founder.role}, and share Founder Profile (${founderUrl}). Set identity: "FOUNDER", intent: "FOUNDER_INQUIRY".
+   - If recipient is asking what ${company.name} does or provides:
+     Describe ${company.name}'s core offerings and capabilities. Share Company Website (${companyUrl}). Set identity: "COMPANY", intent: "CAPABILITY_INQUIRY".
    - If recipient is discussing a project, app, software requirement, or technical question:
-     Respond like an experienced software architect. Acknowledge their project, provide a brief technical insight, and ask 1-2 focused questions about their scope, stack, or timeline. Set intent: "PROJECT_INQUIRY", conversation_stage: "SCOPING" or "DISCOVERY".
+     Respond like an experienced technical architect. Acknowledge their project, provide a brief technical insight, and ask 1-2 focused questions about their scope, stack, or timeline. Set intent: "PROJECT_INQUIRY", conversation_stage: "SCOPING" or "DISCOVERY".
    - If recipient asked for a link:
      Provide the relevant verified official link. Set intent: "LINK_REQUEST".
 
@@ -461,27 +467,32 @@ OUTPUT STRICT JSON:
   }
 
   buildFullSemanticPrompt(post) {
+    const company = knowledge.getCompanyInfo();
+    const founder = knowledge.getFounderInfo();
     const approved = knowledge.getApprovedServices();
     const excluded = knowledge.getExcludedServices();
     const profiles = knowledge.getOfficialProfiles();
+    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "https://linkedin.com";
+    const companyUrl = profiles.company.website || company.website || "https://www.codeair.tech";
+    const productUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:
 You are acting as a pure text classifier and lead specialist. DO NOT invoke ANY tools (no view_file, no search, no run_command). You have all the context you need in this prompt. Output ONLY valid JSON matching the schema below.
 
-You are the autonomous AI Lead Specialist for CodeAir Software Solutions.
-Knowledge Base: Custom software, SaaS platforms, web applications, Flutter mobile apps, AI automations, hospitality systems (PixelGo HMS).
-Founder: Sunmughan Swamy (Founder & Technical Architect).
+You are the autonomous AI Lead Specialist for ${company.name}.
+Knowledge Base: ${company.summary}.
+Founder: ${founder.name} (${founder.role}).
 
 Official URLs:
-- Company Website: ${profiles.company.website || "https://www.codeair.tech"}
-- PixelGo HMS (Hospitality): ${profiles.company.pixelgo || "https://pixelgo.live"}
-- Founder LinkedIn: ${profiles.founder.linkedin || "https://www.linkedin.com/in/sunmughan/"}
+- Company Website: ${companyUrl}
+- Product/Specialty: ${productUrl}
+- Founder Profile: ${founderUrl}
 
 Approved Capabilities:
 ${approved.slice(0, 25).map(s => `- ${s}`).join("\n")}
 
-Excluded Non-Software Capabilities:
+Excluded Non-Core Capabilities:
 ${excluded.slice(0, 10).map(s => `- ${s}`).join("\n")}
 
 Analyze this social media post with zero bias:
@@ -494,9 +505,9 @@ CRITICAL INSTRUCTIONS:
 1. Classify INTENT: BUYER | BRAND_INQUIRY | FOUNDER_INQUIRY | CAPABILITY_INQUIRY | CAREER_ADVICE | LEAD_GENERATION_BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
 2. Genuine buyers and direct brand inquiries qualify (is_genuine_buyer: true, decision: "QUALIFIED"):
    - Anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
-   - Anyone directly asking about CodeAir or founder Sunmughan Swamy (e.g. "Who is behind CodeAir?", "What does CodeAir do?"):
-     * If asking about founder / who is behind CodeAir: set intent: "FOUNDER_INQUIRY", representation: "FOUNDER", target_entity: "INDIVIDUAL", generated_comment must introduce Sunmughan Swamy (Founder & Technical Architect) and include Founder LinkedIn (${profiles.founder.linkedin || "https://linkedin.com/in/sunmughan"}).
-     * If asking about company / what CodeAir does: set intent: "CAPABILITY_INQUIRY", representation: "COMPANY", target_entity: "COMPANY", generated_comment must describe CodeAir custom software engineering capabilities and include Company Website (${profiles.company.website || "https://www.codeair.tech"}).
+   - Anyone directly asking about ${company.name} or founder ${founder.name} (e.g. "Who is behind ${company.name}?", "What does ${company.name} do?"):
+     * If asking about founder / who is behind ${company.name}: set intent: "FOUNDER_INQUIRY", representation: "FOUNDER", target_entity: "INDIVIDUAL", generated_comment must introduce ${founder.name} (${founder.role}) and include Founder Profile (${founderUrl}).
+     * If asking about company / what ${company.name} does: set intent: "CAPABILITY_INQUIRY", representation: "COMPANY", target_entity: "COMPANY", generated_comment must describe ${company.name} core capabilities and include Company Website (${companyUrl}).
 3. Strict Disqualifications (Zero Sales Pitch):
    - REAL_ESTATE / PROPERTIES / INVESTMENTS: Anyone advertising, selling, buying, or promoting real estate properties, plots, apartments, or property developer services. Strictly classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - CAREER_ADVICE: Anyone asking about job titles, degrees, career transitions, WFH options, or resume feedback.
@@ -510,14 +521,14 @@ CRITICAL INSTRUCTIONS:
    - If user asks for an agency/company/team: COMPANY
    - If open to either: BOTH (or COMPANY)
 8. Single-URL Discipline:
-   - For FOUNDER: Share Founder LinkedIn only (${profiles.founder.linkedin || "https://linkedin.com/in/sunmughan"}). Never include company website.
-   - For COMPANY: Share Company Website only (${profiles.company.website || "https://www.codeair.tech"}, or ${profiles.company.pixelgo || "https://pixelgo.live"} for hospitality). Never include founder personal link.
+   - For FOUNDER: Share Founder Profile only (${founderUrl}). Never include company website.
+   - For COMPANY: Share Company Website only (${companyUrl}, or ${productUrl} for hospitality). Never include founder personal link.
    - For NEUTRAL: Zero URLs.
    - Maximum 1 URL total across the comment.
 9. Bespoke Comment Synthesis (generated_comment):
    - If genuine buyer or brand inquiry, generate a bespoke 2-3 sentence comment addressing the author's exact project, stack, or question.
-   - If user asks for an individual/freelancer/developer/co-founder or asks who is behind CodeAir: Speak as Sunmughan Swamy (Founder & Technical Architect) and share Founder LinkedIn only.
-   - If user asks for an agency/team/company or asks what CodeAir does: Speak as CodeAir Software Solutions and share Company Website only.
+   - If user asks for an individual/freelancer/developer/co-founder or asks who is behind ${company.name}: Speak as ${founder.name} (${founder.role}) and share Founder Profile only.
+   - If user asks for an agency/team/company or asks what ${company.name} does: Speak as ${company.name} and share Company Website only.
    - Zero canned clichés. Directly helpful, authentic, and engaging.
    - If post is disqualified (not a genuine buyer or brand inquiry): set generated_comment: null.
 

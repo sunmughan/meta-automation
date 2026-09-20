@@ -8,6 +8,8 @@
   },
   "scripts": {
     "test": "node tests/suite.js",
+    "onboard": "node threads-agent.js onboard",
+    "configure": "node threads-agent.js onboard",
     "start": "node threads-agent.js run",
     "auth": "node threads-agent.js auth",
     "scan": "node threads-agent.js scan",

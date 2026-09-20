@@ -54,22 +54,21 @@ class ThreadsPoster {
    * Eliminates all hardcoded static caption dictionaries.
    */
   async generateDynamicPostContent(pillar, format = "TEXT_ONLY") {
+    const founder = knowledge.getFounderInfo();
+    const company = knowledge.getCompanyInfo();
+    const pillars = knowledge.getContentPillars();
     const profiles = knowledge.getOfficialProfiles();
     const approved = knowledge.getApprovedServices();
 
     const prompt = `
 CRITICAL OPERATIONAL CONSTRAINT:
-You are acting as the Chief Content Strategist & Technical Architect for Sunmughan Swamy (Founder of CodeAir Software Solutions). DO NOT invoke ANY tools. Output ONLY valid JSON matching the schema below.
+You are acting as the Chief Content Strategist & Technical Architect for ${founder.name} (${founder.role} of ${company.name}). DO NOT invoke ANY tools. Output ONLY valid JSON matching the schema below.
 
 Brand & Context:
-- Founder: Sunmughan Swamy (Technical Architect, Builder, Systems Thinker)
-- Company: CodeAir Software Solutions (Custom Software, SaaS MVPs, Flutter Mobile Apps, AI Workflows, PixelGo HMS Hotel Management)
+- Founder: ${founder.name} (${founder.role})
+- Company: ${company.name} (${company.summary})
 - Target Pillars:
-  * pixelgo_hms: Hotel & hospitality tech operations, reservation systems, PMS simplicity (mention pixelgo.live naturally if relevant).
-  * builder_network: Collaboration with engineers, developers, and UI/UX designers, building real client projects with fair revenue share (mention www.codeair.tech naturally if relevant).
-  * founders_revolution: Hard lessons for SaaS founders, startup MVPs, building simple before scaling, product feedback.
-  * tech_mentorship: Systems architecture, clean database design, frontend/backend engineering advice for builders.
-  * agentic_ai: Practical AI workflows, enterprise agentic systems, deterministic engineering vs hype.
+${pillars.map(p => `  * ${p.id}: ${p.title} - ${p.description}`).join("\n")}
 
 Current Post Directive:
 - Selected Pillar: ${pillar}
@@ -77,13 +76,13 @@ Current Post Directive:
 
 INSTRUCTIONS:
 1. Generate an engaging, authentic, thought-provoking post for Threads:
-   - Voice: Sunmughan Swamy (experienced technical founder, conversational, sharp, honest, no corporate fluff).
+   - Voice: ${founder.name} (${founder.role}, conversational, sharp, honest, no corporate fluff).
    - Hook: Catchy first 1-2 lines that stop the scroll.
-   - Body: 1-2 insightful technical or operational sentences based on current SaaS/tech trends.
+   - Body: 1-2 insightful technical or operational sentences based on current industry/market trends.
    - Discussion Question / CTA: End with an open, engaging question inviting founders, developers, or operators to comment.
 2. If format is SINGLE_CARD:
-   - Provide "quote": A punchy, memorable 1-2 sentence engineering/founder quote for a dark-mode visual card.
-   - Provide "badge": A short 2-3 word topic tag (e.g. "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE", "HOSPITALITY TECH").
+   - Provide "quote": A punchy, memorable 1-2 sentence quote or perspective for a dark-mode visual card.
+   - Provide "badge": A short 2-3 word topic tag (e.g. "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE", "INDUSTRY TECH").
 3. If format is CAROUSEL:
    - Provide 5 slides for a mini-deck:
      * title: punchy slide headline
@@ -108,10 +107,12 @@ OUTPUT STRICT JSON:
       throw new Error("Empty post content returned from AI");
     } catch (e) {
       logger.warn(`[THREADS POSTER] AI post generation failed (${e.message}), generating emergency dynamic fallback`);
+      const compBadge = (company.name || "FOUNDER").toUpperCase().slice(0, 10);
+      const pillarTag = (pillar || "BUILDER").toUpperCase().replace(/_/g, " ");
       return {
         caption: `Building real software comes down to clean architecture, fast iterations, and talking to users every day. What are you building this week?`,
         quote: "Clean architecture and fast shipping create real market value.",
-        badge: "CODEAIR • BUILDER"
+        badge: `${compBadge} • ${pillarTag}`
       };
     }
   }
@@ -119,8 +120,10 @@ OUTPUT STRICT JSON:
   /**
    * Strictly verifies that the newly published post appears on the authenticated profile feed.
    */
-  async verifyPostOnProfile(page, postText, username = "sunmughan") {
-    const profileUrl = `https://www.threads.com/@${username}`;
+  async verifyPostOnProfile(page, postText, username = null) {
+    const founder = knowledge.getFounderInfo();
+    const activeUsername = username || founder.threadsUsername || CONFIG.THREADS_USERNAME || "user";
+    const profileUrl = `https://www.threads.com/@${activeUsername}`;
     logger.info(`[THREADS POSTER] Navigating to profile feed (${profileUrl}) for multi-signal live post verification...`);
     try {
       await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 35000 });
@@ -385,7 +388,7 @@ OUTPUT STRICT JSON:
 
     // Secondary Strict Profile Feed Verification (Mandatory User Requirement)
     // Confirm the post actually rendered live on the authenticated profile feed DOM
-    const profileVerify = await this.verifyPostOnProfile(page, postText, "sunmughan");
+    const profileVerify = await this.verifyPostOnProfile(page, postText);
 
     if (!profileVerify.verified) {
       stateStore.recordActionTransition("OWN_POST", ourPostId, "VERIFYING", "FAILED", {

@@ -1,33 +1,72 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.1.9-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.2.3-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
-[![Antigravity](https://img.shields.io/badge/Cognitive%20Brain-Antigravity%20AI-9945FF.svg?style=for-the-badge)](ANTIGRAVITY_GUIDE.md)
+[![Antigravity](https://img.shields.io/badge/Cognitive%20Brain-Antigravity%20AI%20(Gemini%203.8%20Flash%20High)-9945FF.svg?style=for-the-badge)](ANTIGRAVITY_GUIDE.md)
 [![CodeAir](https://img.shields.io/badge/Engineered%20By-CodeAir-00F0FF.svg?style=for-the-badge)](https://www.codeair.tech)
 [![PixelGo](https://img.shields.io/badge/Product-PixelGo%20HMS-00E599.svg?style=for-the-badge)](https://pixelgo.live)
 
 **Meta Automation** is an enterprise-grade autonomous social discovery, AI lead generation, and conversational engagement engine designed for **Threads** and **Instagram**.
 
-Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds and search queries, passes every discovered post directly to the **Antigravity AI Cognitive Brain** for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages multi-turn sales conversations — all while running stealthily on your authenticated browser session.
+Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds and search queries, passes every discovered post directly to the **Antigravity AI Cognitive Brain** (`gemini-3.8-flash-high`) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages multi-turn sales conversations — all while running stealthily on your authenticated browser session with zero external API key costs.
 
 ---
 
 ## 🌟 Key Architectural Highlights
 
 - **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
-- **Pure Antigravity AI-First Brain**: Every post discovered on screen is evaluated directly by the authenticated Antigravity AI Cognitive Brain (`src/ai/ai-decision-engine.js`). **Zero keyword filters, regex pre-filters, or heuristic gatekeepers.**
-- **Transaction-Verified Action Execution (v1.1.9)**: Modal dismissal is never assumed to be a successful submission. Comments and posts require multi-signal confirmation (DOM snippet detection, confirmation toasts, lack of error alerts). On failure, automatic diagnostic screenshots are captured to `logs/screenshots/`, and `duplicateGuard` / `POSTED_LIVE` state are strictly protected from false positives.
-- **Safe Retry Quarantine (`COMMENT_FAILED`)**: Unverified or failed comment attempts transition to `COMMENT_FAILED` with retry tracking and a 15-minute cooldown (up to 3 retries max), ensuring genuine client leads are never permanently lost to transient network or UI hiccups.
+- **Pure Antigravity AI-First Brain (Zero Regex / Zero Hardcoding)**: Every post discovered on screen is evaluated directly by the authenticated Antigravity IDE agent session (`src/ai/ai-decision-engine.js`) running `gemini-3.8-flash-high` over Connect-RPC (`http://127.0.0.1:41977`). **Zero keyword lists, regex pre-filters, or static response templates.**
+- **Universal Multi-User Brand Customization (v1.2.3)**: Any user or business can onboard their personal brand, agency, or software product in seconds via `npm run onboard`. Zero hardcoded company/founder names anywhere in the engine.
+- **Dynamic In-Context Grounding (RAG)**: The engine reads `knowledge/*.md` on-the-fly (`founder.md`, `company.md`, `profiles.md`, `services.md`, `pillars.md`) and injects structured contracts directly into the AI prompt context at runtime with 100% brand isolation.
+- **Transaction-Verified Action Execution**: Modal dismissal is never assumed to be a successful submission. Comments and posts require multi-signal confirmation (DOM snippet detection, confirmation toasts, profile feed presence).
 - **Strict 6-Hour Publishing Cadence (4 Posts / 24 Hours)**: Automatically publishes high-value discussion posts and carousel decks across 5 core pillars exactly 4 times every 24 hours. The scheduler evaluates only `VERIFIED_PUBLISHED` posts to prevent scheduling drift.
-- **Asynchronous AI Concurrency Queue (`AiQueue`)**: Prioritizes interactive tasks (`DM_RESPONSE` > `REPLY_GENERATION` > `COMMENT_SYNTHESIS` > `POST_ANALYSIS`) with concurrency governance and an in-memory 120-second deduplication cache to prevent process thrashing.
-- **Zero-Heuristic Guessing Fail-Safe**: In production, if the AI runtime call fails after retries, posts are quarantined (`QUARANTINED`) rather than evaluated by local regex guessing. *"A delayed decision is vastly superior to an erroneous AI decision."*
-- **Dynamic Knowledge Single Source of Truth**: All capabilities, services, exclusions, and official profile links are dynamically parsed directly from `knowledge/*.md` supporting bullet lists, markdown tables, and markdown links without hardcoded arrays.
-- **Contextual 4-Mode Representation & Single-URL Discipline**: Dynamically adopts `FOUNDER`, `COMPANY`, `BOTH`, or `NEUTRAL` identity with strict single-URL discipline (Founder LinkedIn for individual/dev requests; CodeAir / PixelGo HMS for agency/product requests; maximum 1 link).
+- **Contextual Representation & Single-URL Discipline**: Dynamically adopts `FOUNDER`, `COMPANY`, `BOTH`, or `NEUTRAL` identity with strict single-URL discipline (Founder LinkedIn for individual/dev requests; Company Website / Product for agency/product requests; maximum 1 link).
 - **Stripe/Linear-Grade Graphic Rendering**: Renders 1080x1080 high-contrast social cards, metric grids, and multi-slide carousel decks directly with headless CSS/HTML rendering and official SVG/WebP branding.
-- **Persistent Background Daemon**: Comes equipped with process management (`start-automation`, `status-automation`, `stop-automation`) that runs 24/7 in the background with auto-restart and telemetry tracking.
+
+---
+
+## 🎓 Training & Configuring the AI for Your Business
+
+You can train Meta Automation on **ANY business, personal brand, agency, or software product** in seconds. The AI will immediately begin qualifying leads, writing bespoke comments, and generating social decks tailored specifically to your company.
+
+### 1. Interactive Onboarding Wizard
+Run the onboarding command:
+```bash
+npm run onboard
+# or: node threads-agent.js onboard
+```
+The wizard prompts you for:
+| Prompt | Description | Example |
+|---|---|---|
+| **Founder Name** | Your full name or persona | `Elena Rostova` |
+| **Founder Role** | Your title / expertise | `Founder & Chief AI Architect` |
+| **Profile URL** | Your verified LinkedIn or portfolio | `https://linkedin.com/in/elena-ai` |
+| **Threads Username** | Your handle (for post verification) | `elena_ai` |
+| **Company Name** | Your agency, startup, or brand | `Apex AI Studio` |
+| **Company Website** | Official website | `https://apexai.io` |
+| **Product URL** | Flagship product / demo link | `https://apexai.io/neural-flow` |
+| **Approved Services** | Core capabilities you provide | `AI Agents, SaaS MVPs, Cloud Backend` |
+| **Excluded Services** | Non-core areas to decline politely | `Graphic Design, SEO, B2B Cold Lists` |
+
+### 2. The Knowledge Base Directory (`./knowledge/`)
+All brand identity files live in `knowledge/` and serve as the single source of truth:
+- **`knowledge/founder.md`**: Founder identity, background, technical positioning, and profile links.
+- **`knowledge/company.md`**: Company name, website, summary, and flagship product links.
+- **`knowledge/profiles.md`**: Verified URLs used by the **Single-URL Discipline** engine.
+- **`knowledge/services.md`**: List of approved services vs. excluded non-core categories.
+- **`knowledge/pillars.md`**: The 5 content pillars used for automated 6-hour posting rotation.
+- **`knowledge/voice.md`**: Tone guidelines, anti-canned-response rules, and conversational framing.
+
+### 3. Customizing Your 5 Social Publishing Pillars (`knowledge/pillars.md`)
+Every 6 hours, the engine publishes high-value content across 5 pillars defined in `knowledge/pillars.md`. You can adapt these 5 pillars for any industry:
+- **Pillar 1**: Flagship Product / Core Platform (e.g. `pixelgo_hms` for hospitality or `neural_flow` for AI)
+- **Pillar 2**: Industry Collaboration / Talent Network (e.g. `builder_network` for engineering rev-share)
+- **Pillar 3**: Founder Insights & Strategy (e.g. `founders_revolution` for startup MVPs)
+- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (e.g. `tech_mentorship` for systems design)
+- **Pillar 5**: Practical AI & Modern Trends (e.g. `agentic_ai` for enterprise automation)
 
 ---
 

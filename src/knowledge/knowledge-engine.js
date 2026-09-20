@@ -25,6 +25,10 @@ class KnowledgeEngine {
     this.loadAll();
   }
 
+  loadKnowledge(force = true) {
+    return this.loadAll(force);
+  }
+
   loadAll(force = false) {
     const now = Date.now();
     if (!force && now - this.lastChecked < this.checkIntervalMs && this.cache.size > 0) {
@@ -68,6 +72,15 @@ class KnowledgeEngine {
     if (fileName === "profiles.md") {
       return this.parseProfilesMarkdown(content);
     }
+    if (fileName === "founder.md") {
+      return this.parseFounderMarkdown(content);
+    }
+    if (fileName === "company.md") {
+      return this.parseCompanyMarkdown(content);
+    }
+    if (fileName === "pillars.md") {
+      return this.parsePillarsMarkdown(content);
+    }
     return null;
   }
 
@@ -86,7 +99,7 @@ class KnowledgeEngine {
 
       const lines = trimmed.split("\n");
       const heading = lines[0].trim().toUpperCase();
-      const isExcluded = heading.includes("NOT A CODEAIR SERVICE") || heading.includes("EXCLUSION");
+      const isExcluded = heading.includes("EXCLUSION") || heading.includes("EXCLUDED") || heading.includes("NOT A ") || heading.includes("OUT OF SCOPE") || heading.includes("DO NOT PROVIDE") || heading.includes("EXCLUDE");
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -149,7 +162,8 @@ class KnowledgeEngine {
         github: "",
         facebook: "",
         instagram: "",
-        linkedin: ""
+        linkedin: "",
+        threadsUsername: ""
       },
       company: {
         name: "CodeAir Software Solutions",
@@ -162,7 +176,7 @@ class KnowledgeEngine {
     };
 
     const lines = content.split("\n");
-    let currentScope = "FOUNDER"; // FOUNDER or COMPANY
+    let currentScope = "FOUNDER";
     let currentSubHeading = "";
 
     for (let i = 0; i < lines.length; i++) {
@@ -177,6 +191,34 @@ class KnowledgeEngine {
         currentSubHeading = line.slice(4).trim().toLowerCase();
       }
 
+      // Dynamic Founder Name / Role parsing (supports bullet points, bolding, and key-values)
+      const itemLine = line.replace(/^[*-]\s*/, "").replace(/\*\*/g, "");
+      if (currentScope === "FOUNDER") {
+        if (/^name:\s*/i.test(itemLine)) {
+          const val = itemLine.replace(/^name:\s*/i, "").trim();
+          if (val) profiles.founder.name = val;
+          else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].startsWith("#")) {
+            profiles.founder.name = lines[++i].trim();
+          }
+        } else if (/^role:\s*/i.test(itemLine)) {
+          const val = itemLine.replace(/^role:\s*/i, "").trim();
+          if (val) profiles.founder.role = val;
+          else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].startsWith("#")) {
+            profiles.founder.role = lines[++i].trim();
+          }
+        }
+      } else if (currentScope === "COMPANY") {
+        if (/^(?:company\s+)?name:\s*/i.test(itemLine)) {
+          const val = itemLine.replace(/^(?:company\s+)?name:\s*/i, "").trim();
+          if (val) profiles.company.name = val;
+        } else if (/^(?:company\s+)?website:\s*/i.test(itemLine)) {
+          const urlInLine = itemLine.match(/https?:\/\/[^\s)\],|]+/i);
+          if (urlInLine && !profiles.company.website) {
+            profiles.company.website = urlInLine[0].trim();
+          }
+        }
+      }
+
       // Check if line contains a URL (bare URL, markdown link [Text](URL), bullet item, or table cell)
       const urlMatch = line.match(/https?:\/\/[^\s)\],|]+/i);
       if (urlMatch) {
@@ -188,9 +230,15 @@ class KnowledgeEngine {
           else if (contextLine.includes("linkedin") && !profiles.founder.linkedin) profiles.founder.linkedin = url;
           else if (contextLine.includes("instagram") && !profiles.founder.instagram) profiles.founder.instagram = url;
           else if (contextLine.includes("facebook") && !profiles.founder.facebook) profiles.founder.facebook = url;
+          else if ((contextLine.includes("threads") || url.includes("threads.com") || url.includes("threads.net")) && !profiles.founder.threadsUsername) {
+            const m = url.match(/@([a-zA-Z0-9._-]+)/);
+            if (m) profiles.founder.threadsUsername = m[1];
+          }
         } else if (currentScope === "COMPANY") {
-          if (contextLine.includes("pixelgo") && !profiles.company.pixelgo) profiles.company.pixelgo = url;
-          else if ((contextLine.includes("website") || contextLine.includes("site") || contextLine.includes("codeair.tech")) && !profiles.company.website) {
+          if ((contextLine.includes("pixelgo") || contextLine.includes("product") || contextLine.includes("flagship") || contextLine.includes("demo")) && !profiles.company.pixelgo) {
+            profiles.company.pixelgo = url;
+          }
+          else if ((contextLine.includes("website") || contextLine.includes("site") || contextLine.includes("home") || contextLine.includes("domain") || contextLine.includes("codeair.tech")) && !profiles.company.website) {
             profiles.company.website = url.includes("codeair.tech") && !url.includes("www.")
               ? url.replace("codeair.tech", "www.codeair.tech")
               : url;
@@ -203,24 +251,104 @@ class KnowledgeEngine {
       }
     }
 
-    // Canonical normalization if www was omitted or heading had slight naming difference
-    if (!profiles.company.website || !profiles.company.website.includes("www.")) {
-      const m = content.match(/https?:\/\/(www\.)codeair\.tech[^\s)\],|]*/i);
-      if (m) profiles.company.website = m[0];
-      else if (profiles.company.website) {
-        profiles.company.website = profiles.company.website.replace("codeair.tech", "www.codeair.tech");
-      }
+    // Dynamic website fallback: find any valid domain URL in company section if not explicitly labeled
+    if (!profiles.company.website) {
+      const allUrls = content.match(/https?:\/\/[^\s)\],|]+/gi) || [];
+      const nonSocial = allUrls.find(u => !u.includes("linkedin.com") && !u.includes("github.com") && !u.includes("instagram.com") && !u.includes("facebook.com"));
+      if (nonSocial) profiles.company.website = nonSocial;
     }
-    if (!profiles.company.pixelgo) {
-      const m = content.match(/https?:\/\/(www\.)?pixelgo\.live[^\s)\],|]*/i);
-      if (m) profiles.company.pixelgo = m[0];
-    }
+
+    // Dynamic founder linkedin fallback
     if (!profiles.founder.linkedin) {
-      const m = content.match(/https?:\/\/(www\.)?linkedin\.com\/in\/sunmughan[^\s)\],|]*/i);
-      if (m) profiles.founder.linkedin = m[0];
+      const allUrls = content.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[^\s)\],|]+/gi) || [];
+      if (allUrls[0]) profiles.founder.linkedin = allUrls[0];
     }
 
     return profiles;
+  }
+
+  /**
+   * Dynamically parses founder.md into structured founder profile information.
+   */
+  parseFounderMarkdown(content) {
+    if (!content) return {};
+    const info = { name: "", role: "", location: "", bio: "", threadsUsername: "" };
+    const nameM = content.match(/^(?:##\s*Name|\*?\*?Name\*?\*?):\s*([^\n]+)/im) ||
+                  content.match(/^(?:##\s*Name|\*?\*?Name\*?\*?)\s*\n+([^\n#]+)/im);
+    if (nameM && nameM[1].trim() && !/^(role:|location:|linkedin:|threads:|##)/i.test(nameM[1].trim())) {
+      info.name = nameM[1].trim();
+    }
+
+    const roleM = content.match(/^(?:##\s*Role|\*?\*?Role\*?\*?):\s*([^\n]+)/im) ||
+                  content.match(/^(?:##\s*Role|\*?\*?Role\*?\*?)\s*\n+([^\n#]+)/im);
+    if (roleM && roleM[1].trim() && !/^(##|location:|linkedin:|threads:)/i.test(roleM[1].trim())) {
+      info.role = roleM[1].trim();
+    }
+
+    const locM = content.match(/^Location:\s*([^\n]+)/im);
+    if (locM && locM[1].trim()) info.location = locM[1].trim();
+
+    const threadsM = content.match(/threads\.(?:net|com)\/@([a-zA-Z0-9._-]+)/i) || content.match(/@([a-zA-Z0-9._-]+)/);
+    if (threadsM) info.threadsUsername = threadsM[1].trim();
+
+    return info;
+  }
+
+  /**
+   * Dynamically parses company.md into structured company profile information.
+   */
+  parseCompanyMarkdown(content) {
+    if (!content) return {};
+    const info = { name: "", website: "", type: "", flagship: "", description: "" };
+    const nameM = content.match(/^(?:##\s*Name|\*?\*?Company\s+Name\*?\*?|\*?\*?Name\*?\*?):\s*([^\n]+)/im) ||
+                  content.match(/^(?:##\s*Name|\*?\*?Company\s+Name\*?\*?|\*?\*?Name\*?\*?)\s*\n+([^\n#]+)/im) ||
+                  content.match(/^#\s+([^\n]+)/m);
+    if (nameM && nameM[1].trim() && !/^(##|website:|product:)/i.test(nameM[1].trim())) {
+      info.name = nameM[1].trim();
+    }
+
+    const webM = content.match(/^(?:##\s*Website|\*?\*?Company\s+Website\*?\*?|\*?\*?Website\*?\*?):\s*([^\n]+)/im) ||
+                 content.match(/^(?:##\s*Website|\*?\*?Company\s+Website\*?\*?|\*?\*?Website\*?\*?)\s*\n+([^\n#]+)/im);
+    if (webM && webM[1].trim() && !/^(##|product:)/i.test(webM[1].trim())) {
+      info.website = webM[1].trim();
+    }
+
+    const typeM = content.match(/^Company Type:\s*([^\n]+)/im);
+    if (typeM && typeM[1].trim()) info.type = typeM[1].trim();
+
+    const prodM = content.match(/^(?:Flagship Products?|##\s*Product|\*?\*?Product\*?\*?):\s*([^\n]+)/im);
+    if (prodM && prodM[1].trim()) info.flagship = prodM[1].trim();
+
+    return info;
+  }
+
+  /**
+   * Dynamically parses pillars.md into 5 content pillars for automated social posting.
+   */
+  parsePillarsMarkdown(content) {
+    if (!content) return [];
+    const pillars = [];
+    const regex = /##\s+Pillar\s+\d+:\s*([^\n]+)([\s\S]*?)(?=(?:##\s+Pillar\s+\d+:|$))/gi;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      const id = match[1].trim();
+      const body = match[2];
+      const titleM = body.match(/- \*\*Title\*\*:\s*([^\n]+)/i);
+      const badgeM = body.match(/- \*\*Badge\*\*:\s*([^\n]+)/i);
+      const focusM = body.match(/- \*\*Focus\*\*:\s*([^\n]+)/i);
+      const audM = body.match(/- \*\*Audience\*\*:\s*([^\n]+)/i);
+      const refM = body.match(/- \*\*Reference URL\*\*:\s*(https?:\/\/[^\s]+)/i);
+
+      pillars.push({
+        id,
+        title: titleM ? titleM[1].trim() : id,
+        badge: badgeM ? badgeM[1].trim() : id.toUpperCase(),
+        focus: focusM ? focusM[1].trim() : "",
+        audience: audM ? audM[1].trim() : "",
+        referenceUrl: refM ? refM[1].trim() : ""
+      });
+    }
+    return pillars;
   }
 
   getRaw(fileName) {
@@ -271,8 +399,72 @@ class KnowledgeEngine {
     if (entry && entry.parsed) {
       return entry.parsed;
     }
-    // Fallback if profiles.md parse failed
     return this.parseProfilesMarkdown(this.getRaw("profiles.md"));
+  }
+
+  getFounderInfo() {
+    this.loadAll();
+    const profiles = this.getOfficialProfiles();
+    const founderEntry = this.cache.get("founder.md");
+    const founderParsed = (founderEntry && founderEntry.parsed) || {};
+
+    const name = founderParsed.name || profiles.founder.name || "Founder & Lead Architect";
+    const role = founderParsed.role || profiles.founder.role || "Technical Architect & Builder";
+    const threadsUsername = founderParsed.threadsUsername || profiles.founder.threadsUsername || CONFIG.THREADS_USERNAME || "user";
+
+    return {
+      name,
+      role,
+      location: founderParsed.location || "Global",
+      linkedin: profiles.founder.linkedin || "",
+      github: profiles.founder.github || "",
+      instagram: profiles.founder.instagram || "",
+      facebook: profiles.founder.facebook || "",
+      threadsUsername,
+      primaryProfileUrl: profiles.founder.linkedin || profiles.founder.github || profiles.founder.instagram || ""
+    };
+  }
+
+  getCompanyInfo() {
+    this.loadAll();
+    const profiles = this.getOfficialProfiles();
+    const companyEntry = this.cache.get("company.md");
+    const companyParsed = (companyEntry && companyEntry.parsed) || {};
+
+    const name = companyParsed.name || profiles.company.name || "Software Solutions";
+    const shortName = name.split(/\s+/)[0] || "Company";
+    const badgeName = shortName.toUpperCase();
+    const website = profiles.company.website || (companyParsed.website ? (companyParsed.website.startsWith("http") ? companyParsed.website : `https://${companyParsed.website}`) : "");
+    const productUrl = profiles.company.pixelgo || "";
+    const description = companyParsed.type || "Custom software development, web platforms, and automated cloud systems.";
+
+    return {
+      name,
+      shortName,
+      badgeName,
+      website,
+      productUrl,
+      description,
+      flagship: companyParsed.flagship || "",
+      linkedin: profiles.company.linkedin || "",
+      instagram: profiles.company.instagram || "",
+      facebook: profiles.company.facebook || ""
+    };
+  }
+
+  getContentPillars() {
+    this.loadAll();
+    const entry = this.cache.get("pillars.md");
+    if (entry && entry.parsed && Array.isArray(entry.parsed) && entry.parsed.length > 0) {
+      return entry.parsed;
+    }
+    return [
+      { id: "pixelgo_hms", title: "Hospitality Tech & PMS Operations", badge: "HOSPITALITY TECH", focus: "Hotel & PMS tech operations, guest experience" },
+      { id: "builder_network", title: "Engineering Collaboration", badge: "BUILDER NETWORK", focus: "Full-stack software engineering, real client deliverables" },
+      { id: "founders_revolution", title: "Startup Lessons & SaaS Architecture", badge: "FOUNDER MINDSET", focus: "Hard lessons for SaaS founders, building simple before scaling" },
+      { id: "tech_mentorship", title: "Systems Architecture", badge: "ARCHITECTURE", focus: "Clean database design, resilient state management" },
+      { id: "agentic_ai", title: "Practical Agentic AI", badge: "AGENTIC AI", focus: "Practical AI workflows and enterprise automation" }
+    ];
   }
 
   /**
@@ -300,13 +492,15 @@ class KnowledgeEngine {
   resolveRequestedLink(userText = "") {
     const text = String(userText || "").toLowerCase();
     const profiles = this.getOfficialProfiles();
+    const company = this.getCompanyInfo();
 
     // Check if user requested ALL profiles
     if (
       (text.includes("all") || text.includes("every")) &&
       (text.includes("profile") || text.includes("social") || text.includes("link"))
     ) {
-      if (text.includes("codeair") || text.includes("company")) {
+      const compWord = (company.shortName || "company").toLowerCase();
+      if (text.includes(compWord) || text.includes("codeair") || text.includes("company") || text.includes("agency")) {
         return {
           target: "COMPANY",
           platform: "all",
@@ -320,8 +514,9 @@ class KnowledgeEngine {
       };
     }
 
-    // Check specific platform mentions with strict word boundaries
-    const isCompanyExplicit = /\b(codeair|company|agency|team)\b/i.test(text);
+    // Check specific platform mentions with dynamic company name matching
+    const compWord = (company.shortName || "company").toLowerCase();
+    const isCompanyExplicit = new RegExp(`\\b(${compWord}|codeair|company|agency|team)\\b`, "i").test(text);
 
     if (/\b(github|repo|repositories|repository|\bgit\b)\b/i.test(text)) {
       return {
@@ -376,16 +571,17 @@ class KnowledgeEngine {
       };
     }
 
-    // Hospitality & Hotel Systems reference request (PixelGo HMS)
+    // Hospitality & Hotel Systems reference request (PixelGo HMS / Flagship product)
     if (
       /\b(pixelgo|hms|hotel|hospitality|resort|restaurant)\b/i.test(text) &&
       /\b(link|website|site|demo|reference|system|app|software|url|portfolio)\b/i.test(text)
     ) {
+      const pUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
       return {
         target: "COMPANY",
         platform: "pixelgo",
-        url: profiles.company.pixelgo || "https://pixelgo.live",
-        text: `PixelGo HMS (Flagship Unified Hotel Management System): ${profiles.company.pixelgo || "https://pixelgo.live"}`
+        url: pUrl,
+        text: `Product Reference: ${pUrl}`
       };
     }
 

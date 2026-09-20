@@ -1316,6 +1316,7 @@ async function runAllTests() {
 
   await (require("./pillar-and-search-audit").runAudit());
   await (require("./cross-platform-audit").runCrossPlatformAudit());
+  await (require("./multi-brand-customization.test").runMultiBrandTest());
 
   if (failed > 0) {
     process.exit(1);
