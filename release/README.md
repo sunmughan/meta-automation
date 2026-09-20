@@ -1,6 +1,6 @@
-# Release Builds - Meta Automation v1.2.0 (Multi-Platform)
+# Release Builds - Meta Automation v1.2.2 (Multi-Platform)
 
-This directory contains official pre-built distribution packages for **Meta Automation v1.2.0** supporting **Linux**, **macOS**, **Windows**, and **Android (Termux + Termux:X11)**.
+This directory contains official pre-built distribution packages for **Meta Automation v1.2.2** supporting **Linux**, **macOS**, **Windows**, and **Android (Termux + Termux:X11)**.
 
 ---
 
@@ -8,12 +8,12 @@ This directory contains official pre-built distribution packages for **Meta Auto
 
 | File | Platform | Format | Size | Description |
 |---|---|---|---|---|
-| **`meta-automation-linux-x64.tar.gz`** | Linux | `.tar.gz` | ~186 KB | Optimized for Ubuntu, Debian, Zorin OS, Fedora, and Arch. |
-| **`meta-automation-macos-universal.tar.gz`** | macOS | `.tar.gz` | ~186 KB | Universal bundle for Apple Silicon (M1/M2/M3/M4) & Intel Macs. |
-| **`meta-automation-windows-x64.zip`** | Windows | `.zip` | ~223 KB | Complete Windows package with PowerShell & 1-click batch scripts. |
-| **`meta-automation-android-termux.tar.gz`** | Android | `.tar.gz` | ~186 KB | Termux + Termux:X11 pre-configured package with 1-tap launcher. |
-| **`meta-automation-universal-v1.2.0.zip`** | Universal | `.zip` | ~223 KB | All-in-one archive containing all platform scripts & installers. |
-| **`meta-automation-1.2.0.tgz`** | Node/npm | `.tgz` | ~1.2 MB | Standard npm distribution package. |
+| **`meta-automation-linux-x64.tar.gz`** | Linux | `.tar.gz` | ~1.4 MB | Optimized for Ubuntu, Debian, Zorin OS, Fedora, and Arch. |
+| **`meta-automation-macos-universal.tar.gz`** | macOS | `.tar.gz` | ~1.4 MB | Universal bundle for Apple Silicon (M1/M2/M3/M4) & Intel Macs. |
+| **`meta-automation-windows-x64.zip`** | Windows | `.zip` | ~1.4 MB | Complete Windows package with PowerShell & 1-click batch scripts. |
+| **`meta-automation-android-termux.tar.gz`** | Android | `.tar.gz` | ~1.4 MB | Termux + Termux:X11 pre-configured package with 1-tap launcher. |
+| **`meta-automation-universal-v1.2.2.zip`** | Universal | `.zip` | ~1.4 MB | All-in-one archive containing all platform scripts & installers. |
+| **`meta-automation-1.2.2.tgz`** | Node/npm | `.tgz` | ~210 KB | Standard npm distribution package. |
 | **`SHA256SUMS.txt`** | All | Text | ~600 B | Cryptographic SHA-256 verification hashes for all packages. |
 
 ---
