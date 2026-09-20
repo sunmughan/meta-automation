@@ -1,6 +1,0 @@
-dd1ecda69b6189abbea0f0c5a73b0d1922e67f968a0e850a30cff27688bf01b4  meta-automation-1.2.3.tgz
-fa37934efb738f67f05cbad42a26d3a2af9e340e61dd720893caac874217b0e2  meta-automation-android-termux.tar.gz
-fa37934efb738f67f05cbad42a26d3a2af9e340e61dd720893caac874217b0e2  meta-automation-linux-x64.tar.gz
-fa37934efb738f67f05cbad42a26d3a2af9e340e61dd720893caac874217b0e2  meta-automation-macos-universal.tar.gz
-92b8e7a6ecec588e42ceb023c96f2287d5400b70f7c2f8d84acf8ad850e862c8  meta-automation-universal-v1.2.3.zip
-92b8e7a6ecec588e42ceb023c96f2287d5400b70f7c2f8d84acf8ad850e862c8  meta-automation-windows-x64.zip
