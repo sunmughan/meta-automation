@@ -258,6 +258,30 @@ class AiDecisionEngine {
     }
 
     // -------------------------------------------------------------
+    // DISQUALIFIER 0.7: REAL ESTATE, PROPERTY & INVESTMENT DEALS
+    // (e.g. Kolkata & West Bengal real estate, residential, commercial)
+    // -------------------------------------------------------------
+    const isRealEstate =
+      /\b(real\s+estate|properties|property|residential|commercial\s+properties|plots?|flats?|apartments?|bhk|land\s+for\s+sale|houses?\s+for\s+sale|villa|realtors?|brokerage|real\s+estate\s+deals)\b/i.test(lower);
+
+    if (isRealEstate) {
+      return {
+        intent: "SERVICE_PROVIDER",
+        requirement: "Author promoting real estate properties or investment deals.",
+        target_entity: null,
+        service_match: false,
+        representation: "IGNORE",
+        decision: "IGNORED",
+        temperature: "IGNORE",
+        relevance_score: 0,
+        is_genuine_buyer: false,
+        should_reply: false,
+        lead_type: "SERVICE_PROVIDER",
+        reason: "Author is advertising real estate, properties, or investment deals, not hiring software engineering services."
+      };
+    }
+
+    // -------------------------------------------------------------
     // BUYER INTENT DETECTION (Semantic cues of client demand or hiring intent)
     // -------------------------------------------------------------
     const hasBuyerIntent =
@@ -672,10 +696,43 @@ class AiDecisionEngine {
    */
   normalizeAiResponse(aiRes, post) {
     const intent = (aiRes.intent || "").toUpperCase();
-    const isBuyer = intent === "BUYER" || intent === "PROJECT_BUYER" || intent === "INDUSTRY_LEAD" || aiRes.is_genuine_buyer === true;
+    const decision = (aiRes.decision || "").toUpperCase();
+    const isDisqualified =
+      decision === "IGNORED" ||
+      aiRes.is_genuine_buyer === false ||
+      aiRes.service_match === false ||
+      intent === "OUT_OF_SCOPE" ||
+      intent === "SERVICE_PROVIDER" ||
+      intent === "RECRUITMENT" ||
+      intent === "JOB_SEEKER" ||
+      intent === "CAREER_ADVICE" ||
+      intent === "LEAD_GENERATION_BUYER" ||
+      intent === "IRRELEVANT";
+
+    const isBuyer = !isDisqualified && (intent === "BUYER" || intent === "PROJECT_BUYER" || intent === "INDUSTRY_LEAD" || aiRes.is_genuine_buyer === true);
 
     if (isBuyer) {
-      const cap = aiRes.primary_capability || aiRes.primary_category || "Web Development";
+      let rawCap = aiRes.primary_capability || aiRes.primary_category || aiRes.matched_capability || "Web Development";
+      let cap = "Web Development";
+      const capLower = String(rawCap).toLowerCase();
+      if (/\b(hotels?|resorts?|hospitality|pms|pixelgo)\b/i.test(capLower)) {
+        cap = "Hospitality";
+      } else if (/\b(mobile|flutter|ios|android|react\s+native|mobile\s+apps?|apps?)\b/i.test(capLower)) {
+        cap = "Mobile Development";
+      } else if (/\b(saas|mvps?|platforms?)\b/i.test(capLower)) {
+        cap = "SaaS development";
+      } else if (/\b(ai|agents?|automations?|bots?|llms?|workflows?|machine\s+learning)\b/i.test(capLower)) {
+        cap = "AI & Automation";
+      } else if (/\b(crms?|erps?|dashboards?|admins?|portals?|business\s+systems?|internal\s+tools?)\b/i.test(capLower)) {
+        cap = "Business Systems";
+      } else if (/\b(backends?|apis?|databases?|postgres|servers?)\b/i.test(capLower)) {
+        cap = "Backend & APIs";
+      } else if (/\b(web|websites?|sites?|landing|frontend|fullstack|personal\s+brand)\b/i.test(capLower)) {
+        cap = "Web Development";
+      } else {
+        cap = rawCap;
+      }
+
       const isWarm = intent === "INDUSTRY_LEAD" || aiRes.temperature === "WARM";
       return {
         intent: intent || "BUYER",
@@ -907,6 +964,9 @@ class AiDecisionEngine {
     const profiles = knowledge.getOfficialProfiles();
 
     return `
+CRITICAL OPERATIONAL CONSTRAINT:
+You are acting as a pure text classifier and lead specialist. DO NOT invoke ANY tools (no view_file, no search, no run_command). You have all the context you need in this prompt. Output ONLY valid JSON matching the schema below.
+
 You are the autonomous AI Lead Specialist for CodeAir Software Solutions.
 Knowledge Base: Custom software, SaaS platforms, web applications, Flutter mobile apps, AI automations, hospitality systems (PixelGo HMS).
 Founder: Sunmughan Swamy (Founder & Technical Architect).
@@ -932,6 +992,7 @@ CRITICAL INSTRUCTIONS:
 1. Classify INTENT: BUYER | CAREER_ADVICE | LEAD_GENERATION_BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
 2. Genuine buyers are anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
 3. Strict Disqualifications (Zero Sales Pitch):
+   - REAL_ESTATE / PROPERTIES / INVESTMENTS: Anyone advertising, selling, buying, or promoting real estate properties, plots, apartments, or property developer services. Strictly classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - CAREER_ADVICE: Anyone asking about job titles, degrees, career transitions, WFH options, or resume feedback.
    - LEAD_GENERATION_BUYER: Anyone pitching lead generation data, cold email lists, or marketing databases.
    - JOB_SEEKER / RECRUITMENT: Anyone looking for employment or hiring salaried corporate employees.
