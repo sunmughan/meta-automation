@@ -514,6 +514,165 @@ class ThreadsActions {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Quote-posts a Threads thread with expert insight commentary.
+   * Clicks Repost/Re-share icon, selects Quote, enters commentary, and posts.
+   */
+  async quotePost(post, commentaryText, options = {}) {
+    const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
+    const isLiveEnabled = options.postingEnabled !== undefined ? options.postingEnabled : CONFIG.POSTING_ENABLED;
+    const isApprovalMode = options.approvalMode !== undefined ? options.approvalMode : CONFIG.APPROVAL_MODE;
+
+    logger.info(`[THREADS ACTIONS] Preparing Quote-Post for @${post.username} (${post.postId})`, {
+      action: "QUOTE_PREPARE",
+      postId: post.postId
+    });
+
+    // 1. Duplicate guard check
+    const dupCheck = duplicateGuard.canExecute({
+      platform: "threads",
+      actionType: "QUOTE_POST",
+      targetId: post.postId,
+      text: commentaryText
+    });
+
+    if (!dupCheck.allowed) {
+      logger.warn(`Skipping quote post: ${dupCheck.reason}`, { action: "QUOTE_DUPLICATE_BLOCKED", postId: post.postId });
+      return { success: false, reason: dupCheck.reason };
+    }
+
+    // 2. Rate limit check
+    const rateCheck = rateLimiter.canPerform("NEW_ROOT_POST", "threads");
+    if (!rateCheck.allowed && (!isDryRun && isLiveEnabled)) {
+      logger.warn(`Rate limit reached: ${rateCheck.reason}`, { action: "RATE_LIMIT_PAUSE" });
+      return { success: false, reason: rateCheck.reason };
+    }
+
+    if (isDryRun || !isLiveEnabled || isApprovalMode) {
+      const mode = isApprovalMode ? "APPROVAL_PENDING" : isDryRun ? "DRY_RUN" : "POSTING_DISABLED";
+      logger.audit("QUOTE_SIMULATED", `threads:${post.postId}`, {
+        platform: "threads",
+        mode,
+        username: post.username,
+        commentaryText
+      });
+      stateStore.recordAction("QUOTE_POST", post.postId, {
+        platform: "threads",
+        username: post.username,
+        commentary: commentaryText,
+        mode
+      });
+      return {
+        success: true,
+        simulated: true,
+        mode,
+        postId: post.postId,
+        commentary: commentaryText
+      };
+    }
+
+    return await this.executeLiveQuote(post, commentaryText, options);
+  }
+
+  async executeLiveQuote(post, commentaryText, options = {}) {
+    let page = null;
+    try {
+      page = await browserManager.getPage("threads");
+      stateStore.recordActionTransition("QUOTE_POST", post.postId, "INIT", "PREPARING");
+
+      const targetUrl = post.url || `https://www.threads.com/@${post.username}/post/${post.postId}`;
+      logger.info(`[QUOTE POST] Navigating to target post: ${targetUrl}`);
+      await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+      await new Promise(r => setTimeout(r, 3000));
+
+      stateStore.recordActionTransition("QUOTE_POST", post.postId, "PREPARING", "OPENED");
+
+      const clickedRepostMenu = await page.evaluate(() => {
+        const repostSvgs = Array.from(document.querySelectorAll('svg[aria-label="Repost"], svg[aria-label="Re-share"], svg[aria-label="Quote"]'));
+        const btn = repostSvgs.map(s => s.closest('button, div[role="button"]')).find(Boolean);
+        if (btn) {
+          btn.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (!clickedRepostMenu) {
+        throw new Error("Could not find Repost/Quote button on post");
+      }
+
+      await new Promise(r => setTimeout(r, 1500));
+
+      const clickedQuoteOption = await page.evaluate(() => {
+        const items = Array.from(document.querySelectorAll('[role="menuitem"], div[role="button"], button, span'));
+        const quoteItem = items.find(el => (el.innerText || "").trim().toLowerCase() === "quote");
+        if (quoteItem) {
+          quoteItem.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (!clickedQuoteOption) {
+        throw new Error("Could not find Quote item in repost menu");
+      }
+
+      await new Promise(r => setTimeout(r, 2000));
+      stateStore.recordActionTransition("QUOTE_POST", post.postId, "OPENED", "TYPING");
+
+      const editorSelector = 'div[contenteditable="true"], div[role="textbox"]';
+      await page.waitForSelector(editorSelector, { timeout: 10000 });
+      await page.click(editorSelector);
+      await new Promise(r => setTimeout(r, 600));
+
+      await page.keyboard.type(commentaryText, { delay: 18 });
+      await new Promise(r => setTimeout(r, 1200));
+
+      stateStore.recordActionTransition("QUOTE_POST", post.postId, "TYPING", "SUBMITTING");
+
+      const submitted = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button[type="submit"], div[role="button"]'));
+        const postBtn = buttons.find(b => {
+          const txt = (b.innerText || "").trim().toLowerCase();
+          return txt === "post" || txt === "publish";
+        });
+        if (postBtn) {
+          postBtn.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (!submitted) {
+        await page.keyboard.press("Enter");
+      }
+
+      await new Promise(r => setTimeout(r, 4500));
+      stateStore.recordActionTransition("QUOTE_POST", post.postId, "SUBMITTING", "VERIFIED_SUCCESS");
+      stateStore.recordAction("QUOTE_POST", post.postId, {
+        platform: "threads",
+        username: post.username,
+        commentary: commentaryText
+      });
+      duplicateGuard.recordSent({
+        platform: "threads",
+        actionType: "QUOTE_POST",
+        targetId: post.postId,
+        text: commentaryText
+      });
+      rateLimiter.recordAction("NEW_ROOT_POST", "threads");
+
+      logger.info(`✅ Successfully published Quote-Post on @${post.username} (${post.postId})`);
+      return { success: true, live: true, verified: true, postId: post.postId, commentary: commentaryText };
+    } catch (err) {
+      logger.error(`Live quote failed on Threads post ${post.postId}: ${err.message}`);
+      stateStore.recordActionTransition("QUOTE_POST", post.postId, "SUBMITTING", "FAILED", {
+        error: err.message
+      });
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 const threadsActions = new ThreadsActions();

@@ -66,7 +66,15 @@ Use when:
 - Someone asks for LinkedIn
 - Someone wants the founder's professional profile
 - Someone asks about professional background
-- Someone wants to connect professionally
+### WhatsApp
+https://wa.me/codeair
+
+Username:
+codeair
+
+Use when:
+- Someone asks to connect with the founder directly on WhatsApp or phone
+- Discovery call, consultation, or meeting booking requested
 
 # ============================================================
 # COMPANY
@@ -118,10 +126,16 @@ https://www.codeair.tech
 ### Flagship Hospitality Platform (PixelGo HMS)
 https://pixelgo.live
 
-Use when:
-- Someone asks about hotel software, hospitality operations, PMS, or restaurant systems
-- Someone asks for references/demos for hotel or hospitality products
+### Official WhatsApp (Direct Discovery & Project Consultations)
+https://wa.me/codeair
 
+Username:
+codeair
+
+Use when:
+- Direct discovery, consultation, or project timeline discussion is requested in DMs
+- Someone wants to book a quick call or discuss development requirements directly
+- Client asks for WhatsApp or direct phone connection
 
 # ============================================================
 # PROFILE SELECTION RULES

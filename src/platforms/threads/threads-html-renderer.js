@@ -510,6 +510,599 @@ class ThreadsHtmlRenderer {
   }
 
   /**
+   * Generates HTML markup for a dark-mode terminal code snippet card.
+   */
+  generateCodeCardHtml(spec) {
+    const accent = spec.accentColor || "#00F0FF";
+    const glow = spec.glowColor || "rgba(0, 240, 255, 0.15)";
+    const badge = spec.badge || "CODEAIR • ARCHITECTURE RUNTIME";
+    const title = spec.title || spec.code_title || "agent_orchestrator.ts";
+    const rawCode = spec.code || spec.code_snippet || `// CodeAir Autonomous Orchestration
+const orchestrator = new AgenticPipeline({
+  runtime: "gemini-3.8-flash-high",
+  guardrails: { maxRetries: 3, deterministicFSM: true },
+  async onEvent(event: StreamEvent): Promise<ActionVerdict> {
+    const sanitized = sanitizeDomPayload(event.payload);
+    return await verifyAndCommitAction(sanitized);
+  }
+});`;
+    const language = spec.language || spec.code_language || "TypeScript";
+    const author = spec.author || "Sunmughan Swamy • Founder";
+    const website = "www.codeair.tech";
+    const logoDataUri = getCodeAirLogoUri();
+
+    // Syntax formatting helper
+    const escapeHtml = (str) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const lines = rawCode.trim().split("\n");
+    const codeLinesHtml = lines.map((line, idx) => {
+      let l = escapeHtml(line);
+      if (l.trim().startsWith("//")) {
+        l = `<span style="color: #64748B; font-style: italic;">${l}</span>`;
+      } else {
+        l = l.replace(/(['"`])(.*?)\1/g, '<span style="color: #34D399;">$1$2$1</span>');
+        l = l.replace(/\b(async|await|const|let|var|function|return|class|new|import|export|from|if|else|try|catch|throw|interface|type)\b/g, '<span style="color: #F472B6; font-weight: 600;">$1</span>');
+        l = l.replace(/\b(Promise|StateStore|Agent|Router|Context|Client|Server|Array|Set|Map|String|Boolean|Number|AgenticPipeline|StreamEvent|ActionVerdict)\b/g, '<span style="color: #60A5FA;">$1</span>');
+        l = l.replace(/\b(\d+)\b/g, '<span style="color: #FBBF24;">$1</span>');
+      }
+      const num = String(idx + 1).padStart(2, "0");
+      return `<div class="code-line"><span class="line-num">${num}</span><span class="line-content">${l}</span></div>`;
+    }).join("");
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px;
+    height: 1080px;
+    background: #07090E;
+    color: #F3F4F6;
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 72px;
+  }
+  .glow-top-right {
+    position: absolute;
+    top: -120px;
+    right: -120px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, ${glow} 0%, rgba(99, 102, 241, 0.08) 40%, transparent 70%);
+    pointer-events: none;
+  }
+  .glow-bottom-left {
+    position: absolute;
+    bottom: -150px;
+    left: -150px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(121, 40, 202, 0.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .grid-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+  .header {
+    position: relative;
+    z-index: 10;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: ${accent};
+    margin-bottom: 20px;
+  }
+  .badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${accent};
+    box-shadow: 0 0 12px ${accent};
+  }
+  .headline {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    background: linear-gradient(180deg, #FFFFFF 15%, #CBD5E1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .terminal {
+    position: relative;
+    z-index: 10;
+    margin: 28px 0;
+    border-radius: 20px;
+    background: rgba(13, 17, 23, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 240, 255, 0.06);
+    overflow: hidden;
+  }
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .terminal-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .dot-red { background: #FF5F56; }
+  .dot-yellow { background: #FFBD2E; }
+  .dot-green { background: #27C93F; }
+  .terminal-title {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: #94A3B8;
+    letter-spacing: -0.01em;
+  }
+  .terminal-lang {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: ${accent};
+    text-transform: uppercase;
+    background: ${accent}15;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid ${accent}30;
+  }
+  .terminal-body {
+    padding: 26px 28px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 17px;
+    line-height: 1.7;
+    overflow: hidden;
+    color: #E2E8F0;
+  }
+  .code-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .line-num {
+    color: #475569;
+    user-select: none;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .line-content {
+    flex: 1;
+  }
+  .footer {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-logo-codeair {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    object-fit: contain;
+    box-shadow: 0 4px 14px rgba(0, 80, 255, 0.35);
+  }
+  .footer-brand-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .company-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #E2E8F0;
+  }
+  .website-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: ${accent};
+    letter-spacing: 0.04em;
+  }
+  .footer-author {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748B;
+  }
+  .footer-tag {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: ${accent};
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background: ${accent}12;
+    border: 1px solid ${accent}30;
+  }
+</style>
+</head>
+<body>
+  <div class="glow-top-right"></div>
+  <div class="glow-bottom-left"></div>
+  <div class="grid-pattern"></div>
+
+  <div class="header">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      ${badge}
+    </div>
+    <div class="headline">Deterministic Code & System Implementation</div>
+  </div>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dots">
+        <span class="dot dot-red"></span>
+        <span class="dot dot-yellow"></span>
+        <span class="dot dot-green"></span>
+      </div>
+      <div class="terminal-title">${title}</div>
+      <div class="terminal-lang">${language}</div>
+    </div>
+    <div class="terminal-body">
+      ${codeLinesHtml}
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-codeair" alt="CodeAir Logo" />` : ''}
+      <div class="footer-brand-info">
+        <span class="company-name">CODEAIR SOFTWARE SOLUTIONS</span>
+        <span class="website-tag">• ${website}</span>
+      </div>
+    </div>
+    <div class="footer-author">${author}</div>
+    <div class="footer-tag">PRODUCTION RUNTIME</div>
+  </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Generates HTML markup for a system architecture topology diagram card.
+   */
+  generateArchitectureCardHtml(spec) {
+    const accent = spec.accentColor || "#00F0FF";
+    const glow = spec.glowColor || "rgba(0, 240, 255, 0.16)";
+    const badge = spec.badge || "CODEAIR • TOPOLOGY BLUEPRINT";
+    const title = spec.title || spec.arch_title || "Distributed Agent Pipeline";
+    const subtitle = spec.subtitle || "Resilient multi-stage execution with deterministic guardrails";
+    const author = spec.author || "Sunmughan Swamy • Founder";
+    const website = "www.codeair.tech";
+    const logoDataUri = getCodeAirLogoUri();
+
+    const components = (spec.components || spec.arch_components || [
+      { name: "01. Ingestion Stream", role: "Multi-signal event capture & aggressive DOM token pruning", icon: "⚡" },
+      { name: "02. Autonomous Router", role: "Strict finite-state machine (Scan → Qualify → Propose → Execute)", icon: "🛡️" },
+      { name: "03. Gemini 3.8 Flash High", role: "Sub-second structured reasoning & schema-validated output", icon: "🧠" },
+      { name: "04. Verified Action Core", role: "Atomic Puppeteer/CDP mutation with strict multi-signal verification", icon: "🚀" }
+    ]);
+
+    const nodesHtml = components.map((comp, idx) => `
+      <div class="node-wrapper">
+        <div class="node-card">
+          <div class="node-icon-box">${comp.icon || "◆"}</div>
+          <div class="node-details">
+            <div class="node-title">${comp.name}</div>
+            <div class="node-role">${comp.role}</div>
+          </div>
+          <div class="node-step">0${idx + 1}</div>
+        </div>
+        ${idx < components.length - 1 ? `
+          <div class="node-connector">
+            <div class="connector-line"></div>
+            <div class="connector-arrow">▼</div>
+          </div>
+        ` : ''}
+      </div>
+    `).join("");
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px;
+    height: 1080px;
+    background: #07090E;
+    color: #F3F4F6;
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 72px;
+  }
+  .glow-top-right {
+    position: absolute;
+    top: -120px;
+    right: -120px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, ${glow} 0%, rgba(99, 102, 241, 0.08) 40%, transparent 70%);
+    pointer-events: none;
+  }
+  .glow-bottom-left {
+    position: absolute;
+    bottom: -150px;
+    left: -150px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(121, 40, 202, 0.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .grid-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+  }
+  .header {
+    position: relative;
+    z-index: 10;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: ${accent};
+    margin-bottom: 20px;
+  }
+  .badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${accent};
+    box-shadow: 0 0 12px ${accent};
+  }
+  .title {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    background: linear-gradient(180deg, #FFFFFF 20%, #B8C0CC 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 20px;
+    font-weight: 400;
+    color: #94A3B8;
+    line-height: 1.4;
+  }
+  .diagram-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    margin: 20px 0;
+  }
+  .node-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .node-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    position: relative;
+  }
+  .node-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: ${accent}18;
+    border: 1px solid ${accent}40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .node-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .node-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #F8FAFC;
+    letter-spacing: -0.02em;
+  }
+  .node-role {
+    font-size: 15px;
+    font-weight: 400;
+    color: #94A3B8;
+    line-height: 1.4;
+  }
+  .node-step {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: ${accent};
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: ${accent}15;
+    border: 1px solid ${accent}30;
+  }
+  .node-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 24px;
+    justify-content: center;
+    position: relative;
+  }
+  .connector-line {
+    width: 2px;
+    height: 12px;
+    background: linear-gradient(180deg, ${accent}80, ${accent}20);
+  }
+  .connector-arrow {
+    font-size: 9px;
+    color: ${accent};
+    line-height: 1;
+    margin-top: -2px;
+  }
+  .footer {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-logo-codeair {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    object-fit: contain;
+    box-shadow: 0 4px 14px rgba(0, 80, 255, 0.35);
+  }
+  .footer-brand-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .company-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #E2E8F0;
+  }
+  .website-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: ${accent};
+    letter-spacing: 0.04em;
+  }
+  .footer-author {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748B;
+  }
+  .footer-tag {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: ${accent};
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background: ${accent}12;
+    border: 1px solid ${accent}30;
+  }
+</style>
+</head>
+<body>
+  <div class="glow-top-right"></div>
+  <div class="glow-bottom-left"></div>
+  <div class="grid-pattern"></div>
+
+  <div class="header">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      ${badge}
+    </div>
+    <div class="title">${title}</div>
+    <div class="subtitle">${subtitle}</div>
+  </div>
+
+  <div class="diagram-container">
+    ${nodesHtml}
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">
+      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-codeair" alt="CodeAir Logo" />` : ''}
+      <div class="footer-brand-info">
+        <span class="company-name">CODEAIR SOFTWARE SOLUTIONS</span>
+        <span class="website-tag">• ${website}</span>
+      </div>
+    </div>
+    <div class="footer-author">${author}</div>
+    <div class="footer-tag">SYSTEM TOPOLOGY</div>
+  </div>
+</body>
+</html>`;
+  }
+
+  /**
    * Renders HTML to a 1080x1080 PNG file via Puppeteer page.
    */
   async renderHtmlToImage(html, outputPath) {

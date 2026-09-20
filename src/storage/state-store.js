@@ -463,6 +463,11 @@ class StateStore {
     return actions.filter(a => a.type === typeFilter);
   }
 
+  getRecentQuotePosts(windowHours = 24) {
+    const cutoff = Date.now() - (windowHours * 3600 * 1000);
+    return Object.values(this.state.actions).filter(a => a.type === "QUOTE_POST" && a.timestamp >= cutoff);
+  }
+
   getPendingApprovals() {
     const pending = [];
     for (const post of Object.values(this.state.posts)) {

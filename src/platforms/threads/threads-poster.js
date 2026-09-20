@@ -81,10 +81,17 @@ class ThreadsPoster {
       return "CAROUSEL";
     }
 
-    // Otherwise, alternate between single visual card and text-only
+    // High-substance technical pillars favor rich code snippets & architecture diagram cards
     const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
-    const lastPost = ourPosts[ourPosts.length - 1];
-    if (lastPost && lastPost.format === "SINGLE_CARD") {
+    const lastFormat = ourPosts[ourPosts.length - 1]?.format;
+
+    if (pillar === "agentic_ai" || pillar === "tech_mentorship") {
+      const techFormats = ["CODE_SNIPPET", "ARCHITECTURE_DIAGRAM", "SINGLE_CARD"];
+      const nextFormat = techFormats.find(f => f !== lastFormat) || "CODE_SNIPPET";
+      return nextFormat;
+    }
+
+    if (lastFormat === "SINGLE_CARD") {
       return "TEXT_ONLY";
     }
     return "SINGLE_CARD";
@@ -114,22 +121,29 @@ ${pillars.map(p => `  * ${p.id}: ${p.title} - ${p.description}`).join("\n")}
 
 Current Post Directive:
 - Selected Pillar: ${pillar}
-- Post Format: ${format} (options: TEXT_ONLY, SINGLE_CARD, CAROUSEL)
+- Post Format: ${format} (options: TEXT_ONLY, SINGLE_CARD, CAROUSEL, CODE_SNIPPET, ARCHITECTURE_DIAGRAM)
 
 INSTRUCTIONS:
 1. Generate an engaging, authentic, thought-provoking post for Threads:
    - Voice: ${founder.name} (${founder.role}, conversational, sharp, honest, no corporate fluff).
    - Hook: Catchy first 1-2 lines that stop the scroll.
    - Body: 1-2 insightful technical or operational sentences based on current industry/market trends.
-   - Discussion Question / CTA: End with an open, engaging question inviting founders, developers, or operators to comment.
-   - CRITICAL LENGTH CONSTRAINT: Threads enforces a strict 500-character maximum per post. The "caption" MUST be between 180 and 400 characters (NEVER exceed 420 characters). Keep it punchy and concise!
+   - Discussion Question & Soft Follower CTA: End with an open question inviting founders, developers, or operators to comment, plus a natural soft follow hook (e.g. "Follow @${founder.threadsUsername || "sunmughan"} for daily breakdowns on agentic AI & software architecture").
+   - CRITICAL LENGTH CONSTRAINT: Threads enforces a strict 500-character maximum per post. The "caption" MUST be between 180 and 420 characters. Keep it punchy and concise!
 2. If format is SINGLE_CARD:
    - Provide "quote": A punchy, memorable 1-2 sentence quote or perspective for a dark-mode visual card.
    - Provide "badge": A short 2-3 word topic tag (e.g. "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE", "INDUSTRY TECH").
 3. If format is CAROUSEL:
-   - Provide 5 slides for a mini-deck:
-     * title: punchy slide headline
-     * subtitle: clear explanation / takeaway
+   - Provide exactly 5 slides for a mini-deck:
+     * Slides 1-4: Core architecture, lessons, or operational breakdowns (title & subtitle).
+     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Ship Resilient Systems", subtitle: "Follow @${founder.threadsUsername || "sunmughan"} for daily systems & SaaS insights").
+4. If format is CODE_SNIPPET:
+   - Provide "code_title": Short title (e.g. "Agentic Concurrency Queue").
+   - Provide "code_snippet": 6-10 clean, realistic lines of TypeScript/Node.js architecture code.
+   - Provide "code_language": "javascript" or "typescript".
+5. If format is ARCHITECTURE_DIAGRAM:
+   - Provide "arch_title": System topology title (e.g. "Distributed Agent Pipeline").
+   - Provide "arch_components": Array of 3-4 components with name and role.
 
 OUTPUT STRICT JSON:
 {
@@ -138,6 +152,13 @@ OUTPUT STRICT JSON:
   "badge": "string",
   "carousel_slides": [
     { "title": "string", "subtitle": "string" }
+  ],
+  "code_title": "string or null",
+  "code_snippet": "string or null",
+  "code_language": "string or null",
+  "arch_title": "string or null",
+  "arch_components": [
+    { "name": "string", "role": "string" }
   ]
 }
 `;
@@ -238,6 +259,25 @@ OUTPUT STRICT JSON:
     } else if (format === "SINGLE_CARD") {
       logger.info(`[THREADS POSTER] Generating single visual card for ${pillar}...`);
       const cardPath = await threadsMedia.generatePillarQuoteCard(pillar, dynamicContent);
+      if (cardPath) mediaPaths.push(cardPath);
+    } else if (format === "CODE_SNIPPET") {
+      logger.info(`[THREADS POSTER] Generating dark-mode terminal code snippet card for ${pillar}...`);
+      const cardPath = await threadsMedia.generateCodeSnippetCard({
+        code_title: dynamicContent.code_title,
+        code_snippet: dynamicContent.code_snippet,
+        code_language: dynamicContent.code_language,
+        badge: dynamicContent.badge,
+        accentColor: "#00F0FF"
+      });
+      if (cardPath) mediaPaths.push(cardPath);
+    } else if (format === "ARCHITECTURE_DIAGRAM") {
+      logger.info(`[THREADS POSTER] Generating system architecture diagram card for ${pillar}...`);
+      const cardPath = await threadsMedia.generateArchitectureCard({
+        arch_title: dynamicContent.arch_title,
+        arch_components: dynamicContent.arch_components,
+        badge: dynamicContent.badge,
+        accentColor: "#00F0FF"
+      });
       if (cardPath) mediaPaths.push(cardPath);
     }
 

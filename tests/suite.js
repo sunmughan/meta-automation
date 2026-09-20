@@ -1317,6 +1317,74 @@ async function runAllTests() {
     assert(transitions.length >= 3, "Must record at least INIT, CONTEXT_VERIFIED, RESPONSE_GENERATED transitions");
   });
 
+  // 71. Knowledge Engine WhatsApp Profile Parsing & Retrieval
+  test("71. Knowledge Engine parses official WhatsApp URL and handles retrieval", () => {
+    const profiles = knowledge.getOfficialProfiles();
+    assert.strictEqual(profiles.founder.whatsapp, "https://wa.me/codeair", "Founder WhatsApp must be https://wa.me/codeair");
+    assert.strictEqual(knowledge.getWhatsAppUrl(), "https://wa.me/codeair", "getWhatsAppUrl helper must return https://wa.me/codeair");
+  });
+
+  // 72. DM Discovery Stage Response grounds on WhatsApp booking link
+  await test("72. AI Decision Engine grounds discovery call inquiries on WhatsApp link", async () => {
+    const context = {
+      conversationStage: "DISCOVERY_CALL",
+      participant: "serious_buyer_72",
+      incomingMessage: "Can we schedule a quick discovery call or phone consultation to discuss our project?",
+      matchedService: "Custom SaaS MVP"
+    };
+    const res = await aiDecisionEngine.generateConversationReply(context);
+    const text = res.response_message || res;
+    assert(text && text.length > 20, "Must generate thoughtful reply");
+    assert(text.includes("https://wa.me/codeair"), "Discovery call response must include https://wa.me/codeair");
+  });
+
+  // 73. Dark-mode Code Snippet Card HTML Renderer
+  await test("73. ThreadsHtmlRenderer generates dark-mode terminal code snippet card markup", () => {
+    const renderer = require("../src/platforms/threads/threads-html-renderer");
+    const html = renderer.generateCodeCardHtml({
+      code_title: "stream_router.ts",
+      code_snippet: "const stream = new EventStream();\nawait stream.publish({ id: 1 });",
+      code_language: "TypeScript",
+      badge: "CODEAIR • ARCHITECTURE"
+    });
+    assert(html.includes("stream_router.ts"), "HTML must contain code title");
+    assert(html.includes("terminal-dots"), "HTML must contain macOS terminal window dots");
+    assert(html.includes("CODEAIR SOFTWARE SOLUTIONS"), "HTML must include company branding");
+    assert(html.includes("1080px"), "HTML must define 1080x1080 square canvas");
+  });
+
+  // 74. Architecture Diagram Card HTML Renderer
+  await test("74. ThreadsHtmlRenderer generates topology diagram card markup with nodes and connectors", () => {
+    const renderer = require("../src/platforms/threads/threads-html-renderer");
+    const html = renderer.generateArchitectureCardHtml({
+      arch_title: "Enterprise Agent Pipeline",
+      subtitle: "Multi-agent autonomous flow",
+      components: [
+        { name: "Feed Ingestion", role: "Pruned DOM stream", icon: "⚡" },
+        { name: "State Guard", role: "Deterministic FSM", icon: "🛡️" }
+      ]
+    });
+    assert(html.includes("Enterprise Agent Pipeline"), "HTML must contain architecture title");
+    assert(html.includes("Feed Ingestion"), "HTML must contain node component");
+    assert(html.includes("node-connector"), "HTML must contain node connector lines");
+  });
+
+  // 75. Algorithmic Peak-Window Pacing
+  await test("75. isPeakEngagementWindow accurately identifies morning and evening global tech peak windows", () => {
+    const { isPeakEngagementWindow } = require("../threads-agent");
+    // 14:00 UTC = 9:00 AM EST (Morning Peak)
+    const morningPeak = new Date("2026-09-21T14:30:00Z");
+    assert.strictEqual(isPeakEngagementWindow(morningPeak), true, "14:30 UTC must be recognized as peak window");
+
+    // 00:30 UTC = 7:30 PM EST (Evening Peak)
+    const eveningPeak = new Date("2026-09-21T00:30:00Z");
+    assert.strictEqual(isPeakEngagementWindow(eveningPeak), true, "00:30 UTC must be recognized as peak window");
+
+    // 08:00 UTC = 3:00 AM EST (Off Peak)
+    const offPeak = new Date("2026-09-21T08:00:00Z");
+    assert.strictEqual(isPeakEngagementWindow(offPeak), false, "08:00 UTC must be recognized as off-peak");
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {

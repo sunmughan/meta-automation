@@ -42,6 +42,24 @@ class ThreadsMedia {
   }
 
   /**
+   * Generates a dark-mode terminal code snippet card.
+   */
+  async generateCodeSnippetCard(spec = {}, filename = `code_${Date.now()}.png`) {
+    const outPath = path.join(MEDIA_DIR, filename);
+    const html = renderer.generateCodeCardHtml(spec);
+    return await renderer.renderHtmlToImage(html, outPath);
+  }
+
+  /**
+   * Generates a system architecture topology diagram card.
+   */
+  async generateArchitectureCard(spec = {}, filename = `arch_${Date.now()}.png`) {
+    const outPath = path.join(MEDIA_DIR, filename);
+    const html = renderer.generateArchitectureCardHtml(spec);
+    return await renderer.renderHtmlToImage(html, outPath);
+  }
+
+  /**
    * Generates a full 5-slide carousel deck for a theme.
    * Returns array of absolute image paths.
    */
