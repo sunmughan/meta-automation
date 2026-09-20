@@ -260,7 +260,7 @@ class AiDecisionEngine {
     // BUYER INTENT DETECTION (Semantic cues of client demand or hiring intent)
     // -------------------------------------------------------------
     const hasBuyerIntent =
-      /\b((i|we)\s+need|need\s+(someone|somebody|a\s+|an?\s+|to\s+hire)|needing|looking\s+for\s+(a\s+|an?\s+|someone\s+to|somebody\s+to|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?|help\s+with)|looking\s+to\s+hire|(i|we)\s+want\s+(a\s+|an?\s+|to\s+build|to\s+create|to\s+develop|to\s+hire|to\s+redesign|someone|somebody)|seeking\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?)|hiring\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|hire\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|in\s+search\s+of\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|searching\s+for\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|can\s+(someone|anyone)(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign|with)?|who\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign)?|anyone\s+knows?\s+(a\s+|an?\s+|someone|how\s+to\s+build)|anyone\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code)?|does\s+anyone\s+(build|know\s+a\s+developer|know\s+a\s+designer)|recommend\s+(a\s+|an?\s+|developers?|designers?|agenc)|recommendations?\s+for\s+(a\s+|an?\s+|developers?|designers?|agenc|software|websites?|apps?)|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|proposals?))\b/i.test(lower);
+      /\b((i|we)\s+need|need\s+(someone|somebody|a\s+|an?\s+|to\s+hire)|needing|looking\s+for\s+(a\s+|an?\s+|someone\s+to|somebody\s+to|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?|help\s+with|a\s+co[- ]?founder|a\s+cto|a\s+technical\s+partner)|looking\s+to\s+hire|(i|we)\s+want\s+(a\s+|an?\s+|to\s+build|to\s+create|to\s+develop|to\s+hire|to\s+redesign|someone|somebody)|seeking\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?|a\s+co[- ]?founder|a\s+cto|a\s+technical\s+partner)|hiring\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|hire\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|in\s+search\s+of\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|searching\s+for\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|can\s+(someone|anyone)(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign|with)?|who\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign)?|anyone\s+knows?\s+(a\s+|an?\s+|someone|how\s+to\s+build)|anyone\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code)?|does\s+anyone\s+(build|know\s+a\s+developer|know\s+a\s+designer)|recommend\s+(a\s+|an?\s+|developers?|designers?|agenc)|recommendations?\s+for\s+(a\s+|an?\s+|developers?|designers?|agenc|software|websites?|apps?)|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|a\s+co[- ]?founder)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|proposals?))\b/i.test(lower);
 
     // -------------------------------------------------------------
     // DISQUALIFIER 1: JOB SEEKER (Candidate asking for employment)
@@ -395,13 +395,13 @@ class AiDecisionEngine {
     // "need an app for my business", "can someone develop this", "looking for a developer to build my platform"
 
     const hasTargetRoleOrEntity =
-      /\b(developer|dev|devs|programmer|coder|engineer|designer|web\s+designer|website\s+designer|web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|frontend\s+developer|backend\s+developer|ai\s+developer|ai\s+engineer|freelancer|contractor|agency|team|company|partner|firm|someone|somebody|expert|specialist)\b/i.test(lower);
+      /\b(developer|dev|devs|programmer|coder|engineer|designer|web\s+designer|website\s+designer|web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|frontend\s+developer|backend\s+developer|ai\s+developer|ai\s+engineer|co[- ]?founder|cto|technical\s+partner|tech\s+lead|consultant|freelancer|contractor|agency|team|company|partner|firm|someone|somebody|expert|specialist)\b/i.test(lower);
 
     const hasProjectTarget =
-      /\b(website|web\s+app|web\s+application|applications?|site|landing\s+page|store|online\s+store|ecommerce|e-commerce|mobile\s+app|ios\s+app|android\s+app|app|flutter\s+app|mvp|saas|platform|crm|erp|dashboard|admin\s+portal|internal\s+tool|hotel|resort|restaurant|pms|booking\s+system|reservation\s+system|hospitality\s+software|software|custom\s+software|system|tool|ai\s+chatbot|ai\s+agent|automation)\b/i.test(lower);
+      /\b(website|web\s+app|web\s+application|applications?|site|landing\s+page|store|online\s+store|ecommerce|e-commerce|mobile\s+app|ios\s+app|android\s+app|app|flutter\s+app|mvp|saas|platform|crm|erp|dashboard|admin\s+portal|internal\s+tool|hotel|resort|restaurant|pms|booking\s+system|reservation\s+system|hospitality\s+software|software|custom\s+software|system|tool|ai\s+chatbot|ai\s+agent|automation|co[- ]?founder|technical\s+partner|tech\s+consulting|architecture|mvp\s+build)\b/i.test(lower);
 
     const hasActionGoal =
-      /\b(build|develop|create|design|redesign|code|program|make|launch|integrate|automate|setup|set\s+up|overhaul|fix|finish|hire|hiring|portfolio|rates|quotes?|budget|estimate|charges|help|assist)\b/i.test(lower);
+      /\b(build|develop|create|design|redesign|code|program|make|launch|integrate|automate|setup|set\s+up|overhaul|fix|finish|hire|hiring|portfolio|rates|quotes?|budget|estimate|charges|help|assist|partner)\b/i.test(lower);
 
     // Identify and Match Capability against CodeAir Knowledge Base
     let matchedCapability = null;
@@ -436,6 +436,10 @@ class AiDecisionEngine {
       matchedCapability = "Mobile Development";
       matchedCategories = ["Mobile Development"];
       matchedServices = ["Mobile applications", "Flutter applications", "iOS applications", "Android applications"];
+    } else if (/\b(co[- ]?founder|cto|technical\s+partner|tech\s+consulting|architecture\s+guidance|tech\s+advisor)\b/i.test(lower)) {
+      matchedCapability = "Technical Co-Founder & Consulting";
+      matchedCategories = ["Web Development"];
+      matchedServices = ["Technical consulting", "Custom software architecture", "MVP development"];
     } else if (/\b(developer|programmer|coder|software|system|application|develop\s+this|build\s+this|code\s+this)\b/i.test(lower)) {
       matchedCapability = "Custom Software";
       matchedCategories = ["Web Development"];
@@ -446,10 +450,10 @@ class AiDecisionEngine {
     if (hasBuyerIntent && matchedCapability && (hasTargetRoleOrEntity || hasProjectTarget) && (hasActionGoal || hasProjectTarget)) {
       // 1. Determine Target Entity (INDIVIDUAL vs COMPANY vs EITHER)
       let targetEntity = "EITHER";
-      if (/\b(agency|company|team|firm|studio|partner)\b/i.test(lower)) {
-        targetEntity = "COMPANY";
-      } else if (/\b(freelancer?|contractor|developer|dev|designer|individual|founder|person|guy)\b/i.test(lower)) {
+      if (/\b(co[- ]?founder|cto|technical\s+partner|freelancer?|contractor|developer|dev|designer|individual|founder|person|guy)\b/i.test(lower)) {
         targetEntity = "INDIVIDUAL";
+      } else if (/\b(agency|company|team|firm|studio)\b/i.test(lower)) {
+        targetEntity = "COMPANY";
       }
 
       // 2. Extract Natural Language Requirement

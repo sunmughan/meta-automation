@@ -47,29 +47,29 @@ const PILLARS = [
 
 const PILLAR_CAPTIONS = {
   founders_revolution: [
-    "To all SaaS founders, developers, UI/UX designers, and startup builders:\n\nBuilding a great product comes down to 3 simple things:\n1. Clean design that users get in 5 seconds.\n2. Fast, reliable code that never crashes.\n3. Talking to real users every day.\n\nYou don't need 50 features to launch. Start small, launch fast, and iterate.\n\nWhat are you building this week? Let's connect below!",
-    "The fastest way to test a startup idea:\n\nDon't spend 6 months building in secret.\nBuild a simple working MVP in 2 to 3 weeks. Make the UI clean and easy. Put it in front of real users to see if they find it valuable.\n\nFounders, developers, and designers: what was the biggest lesson from your first launch?",
-    "A quick reminder for startup founders, engineers, and marketers:\n\nClear words beat fancy words.\nA simple product that solves one real problem beats a complicated tool with 20 features.\n\nWhat is one problem your project solves? Let's connect!"
+    "To SaaS founders and startup builders:\nWhat is the single biggest bottleneck slowing down your product launch right now?\nDrop it below, let's troubleshoot together!",
+    "Build your MVP in 3 weeks, not 6 months.\nA clean UI that solves one core problem beats 20 features nobody asked for.\nAgree or disagree?",
+    "Question for startup founders, builders, and consultants:\nWhat was the hardest lesson you learned from your very first product launch?\nShare your experience below!"
   ],
   builder_network: [
-    "Calling software engineers, developers, and UI/UX designers:\n\nAt CodeAir (www.codeair.tech), we love collaborating with builders on web apps, mobile apps, and SaaS projects with transparent revenue sharing.\n\nIf you love building clean, reliable software, say hi or drop your tech stack below!",
-    "To all developers, UI/UX designers, and tech enthusiasts:\n\nWhat is your favorite stack right now for building quick, clean web apps? Are you using Next.js, React, Node, Flutter, or something new?\n\nWhat tools are actually saving you time this year?",
-    "Great products are built by teams that care about user experience and solid code.\n\nWhether you write backend code, design screens, or generate leads—working together is how we all grow.\n\nWhat are you working on this month?"
+    "Looking to connect with 2-3 passionate full-stack or Flutter developers for upcoming client builds (rev-share).\nWhat are you currently building this week? Say hi below!",
+    "Software engineers and UI/UX designers: What tech stack are you enjoying the most right now?\nNext.js, Flutter, Node, or something else? Let's talk tech stacks below!",
+    "Great software is built by people who obsess over clean code and smooth user experience.\nWhat is one project you are proud of building recently? Drop a comment below!"
   ],
   agentic_ai: [
-    "AI tools are great, but the real secret is keeping things simple.\n\nInstead of trying to automate everything, find the one boring task that takes your team 2 hours every day—and automate just that.\n\nFounders, developers, and marketers: what task do you wish was automated in your work?",
-    "How smart teams use AI right now:\n1. Drafting simple customer replies\n2. Cleaning up leads and data\n3. Testing code and UI components\n\nKeep it simple, test everything, and keep a human in the loop.\n\nWhat is your favorite AI use case today?",
-    "For developers and startup founders exploring AI: Reliable systems beat flashy demos every time. Clean logic and good error handling make all the difference.\n\nWhat are you testing with AI this week?"
+    "The best AI automations don't replace people—they eliminate the repetitive 2-hour boring tasks so you can focus on building.\nWhat task in your workflow do you wish was automated today?",
+    "To engineers, marketers, and lead generation pros:\nHow are you using AI in your day-to-day work right now?\nDrop your favorite use case below!",
+    "Clean code, fast APIs, and reliable error handling beat flashy AI demos every single time.\nWhat is your biggest pet peeve with modern software tools?"
   ],
   tech_mentorship: [
-    "If you are a developer, designer, or early founder building your first product:\n\nDon't get stuck overthinking your tech stack. Keep your database simple, make your UI clean, and focus on helping users.\n\nNeed a second pair of eyes on your architecture or MVP scope? Drop a question below!\n\nWhat's the hardest part of building right now?",
-    "Advice for anyone learning development or starting a software business:\n\n1. Build real projects, not just tutorials.\n2. Keep code clean and readable.\n3. Ask for feedback early.\n\nWhat is one piece of advice you would give to someone starting today?",
-    "To all developers, designers, and startup consultants:\n\nSharing knowledge makes the whole community better. If anyone has questions on web dev, app building, or scaling, drop them below. Let's help each other grow!"
+    "Developers, designers, and tech enthusiasts:\nWhat is one tool or library you started using recently that you cannot live without?\nLet's share recommendations below.",
+    "The best advice for new software engineers:\nBuild real projects, keep your code simple, and ask for user feedback early.\nWhat advice would you give to someone starting today?",
+    "Need a quick second pair of eyes on your software architecture or MVP roadmap?\nDrop your tech question below, happy to help and brainstorm together!"
   ],
   pixelgo_hms: [
-    "Hotels often waste hours juggling separate tools for bookings, billing, and room management.\n\nWe built PixelGo HMS (pixelgo.live) to make hotel operations simple: one unified dashboard where everything stays in sync in real time.\n\nWhat industry do you think still needs simpler software?",
-    "When building software for real businesses, speed and simplicity matter most.\nStaff members want tools that are fast and intuitive.\n\nThat's the core focus behind PixelGo HMS (pixelgo.live).\n\nDesigners and developers: how do you keep your UI simple?",
-    "Building business software that works seamlessly 24/7 is an exciting challenge.\nWith PixelGo HMS (pixelgo.live), our goal is simple: zero double bookings and an easy experience for hotel teams.\n\nWhat is the most rewarding product you've built?"
+    "Hospitality founders: Juggling bookings, rooms, and payments across separate tools is a headache. That's why we built PixelGo HMS (pixelgo.live).\nWhat is the clunkiest piece of software your business uses daily?",
+    "When building business software, speed and a clean UI matter more than 50 complex buttons.\nWhat's one business tool you use that you wish was way simpler?",
+    "Building reliable software for real-world businesses is our passion at CodeAir (www.codeair.tech).\nWhat is your favorite product to build or work on?"
   ]
 };
 

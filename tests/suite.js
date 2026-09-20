@@ -26,7 +26,6 @@ process.env.NODE_ENV = process.env.NODE_ENV || "test";
 
 const assert = require("assert");
 const intentClassifier = require("../src/leads/intent-classifier");
-const serviceMatcher = require("../src/leads/service-matcher");
 const identityResolver = require("../src/conversations/identity-resolver");
 const commentGenerator = require("../src/engagement/comment-generator");
 const aiDecisionEngine = require("../src/ai/ai-decision-engine");
