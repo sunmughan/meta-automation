@@ -303,25 +303,30 @@ class AiDecisionEngine {
    * Dynamic context-aware reasoning replaces all static string fallbacks.
    */
   async generateConversationReply(context) {
-    const {
-      incomingMessage = "",
-      conversationStage = "DISCOVERY",
-      username = "user",
-      convId = null
-    } = context;
+    const incomingMessage = context.incomingMessage || context.incomingText || "";
+    const conversationStage = context.conversationStage || "DISCOVERY";
+    const username = context.username || context.participant || "user";
+    const convId = context.convId || null;
+    const normalizedContext = {
+      ...context,
+      incomingMessage,
+      conversationStage,
+      username,
+      convId
+    };
 
     // Check if human review escalation check is required (legal threats, lawsuits, extreme anger)
     const lower = incomingMessage.toLowerCase();
     const needsHumanReview = /\b(lawyer|sue|court|scam|fraud|police|nda|contract\s+dispute)\b/i.test(lower);
 
     try {
-      const prompt = this.buildConversationTurnPrompt(context);
+      const prompt = this.buildConversationTurnPrompt(normalizedContext);
       const aiRes = await aiRuntime.callAi(prompt, { taskType: "REPLY_GENERATION" });
 
       if (aiRes && aiRes.response_message) {
         let responseMessage = aiRes.response_message;
         // Enforce Relevance Gate on the proposed message
-        const gateCheck = this.evaluateRelevanceGate(responseMessage, { ...context, convId }, incomingMessage);
+        const gateCheck = this.evaluateRelevanceGate(responseMessage, { ...normalizedContext, convId }, incomingMessage);
         if (!gateCheck.approved) {
           logger.warn(`[AI Engine] Relevance gate blocked proposed response: ${gateCheck.reason}`);
           const company = knowledge.getCompanyInfo();
@@ -342,14 +347,20 @@ class AiDecisionEngine {
       throw new Error("AI returned empty conversation turn output");
     } catch (err) {
       logger.warn(`[AI Engine] Antigravity AI conversation turn reasoning failed: ${err.message}`);
+      const whatsappUrl = knowledge.getWhatsAppUrl() || "https://wa.me/codeair";
+      const isCallRequest = conversationStage === "DISCOVERY_CALL" || /\b(call|schedule|phone|meeting|consultation|whatsapp)\b/i.test(incomingMessage);
+      const fallbackMsg = isCallRequest
+        ? `We would be happy to discuss your project requirements! Feel free to connect directly via WhatsApp to book a discovery call: ${whatsappUrl}`
+        : "Thanks for reaching out! A member of our technical team will follow up with you shortly.";
+
       return {
-        intent: "AI_ERROR",
+        intent: isCallRequest ? "PROJECT_INQUIRY" : "AI_ERROR",
         identity: "COMPANY",
-        service_match: false,
-        conversation_stage: "HUMAN_REVIEW",
-        should_reply: false,
-        human_review_required: true,
-        response_message: "Thanks for reaching out! A member of our technical team will follow up with you shortly."
+        service_match: isCallRequest,
+        conversation_stage: isCallRequest ? "DISCOVERY_CALL" : "HUMAN_REVIEW",
+        should_reply: isCallRequest,
+        human_review_required: !isCallRequest,
+        response_message: fallbackMsg
       };
     }
   }
@@ -374,6 +385,7 @@ class AiDecisionEngine {
     const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "https://linkedin.com";
     const companyUrl = profiles.company.website || company.website || "https://www.codeair.tech";
     const productUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
+    const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company.whatsapp || profiles.founder.whatsapp || "https://wa.me/codeair";
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:
@@ -386,6 +398,7 @@ Positioning & Official Profiles:
   * Company Website: ${companyUrl}
   * Product/Specialty: ${productUrl}
   * Founder Profile: ${founderUrl}
+  * Official WhatsApp (Discovery & Meeting Booking): ${whatsappUrl}
 
 Approved Capabilities:
 ${approved.slice(0, 20).map(s => `- ${s}`).join("\n")}
@@ -402,6 +415,8 @@ Conversation Context:
 
 INSTRUCTIONS:
 1. Recipient Intent & Dynamic Response Generation:
+   - If recipient is ready to book a call, schedule a meeting, discuss timeline/scope directly, or asks for WhatsApp/phone/call link:
+     Warmly provide the direct WhatsApp consultation link (${whatsappUrl}) to connect directly with ${founder.name} / ${company.name} and discuss the project. Set intent: "PROJECT_INQUIRY", conversation_stage: "DISCOVERY_CALL".
    - If recipient is selling/offering B2B lead generation lists, scrapers, databases, or marketing outreach:
      Politely decline in natural conversational English. Clarify that ${company.name} specializes strictly in software development and does not purchase external lead batches or lead generation services. Never ask questions about software architecture, tech stacks, or project timelines when declining lead proposals. Set intent: "LEAD_GENERATION_DECLINED", service_match: false, conversation_stage: "CLOSED".
    - If recipient is asking for a job, internship, or employment:
@@ -519,6 +534,63 @@ OUTPUT STRICT JSON:
   "generated_comment": "string or null"
 }
 `;
+  }
+
+  /**
+   * Synthesizes high-leverage expert technical commentary for quote-posting
+   * a trending developer, AI builder, or founder thread.
+   *
+   * @param {Object} post - { text, username, postId }
+   * @returns {Promise<Object>} { commentary, shouldQuote, reason }
+   */
+  async generateQuoteCommentary(post) {
+    const founder = knowledge.getFounderInfo();
+    const company = knowledge.getCompanyInfo();
+    const prompt = `
+CRITICAL OPERATIONAL CONSTRAINT:
+You are acting as Chief Technical Architect ${founder.name} (${founder.role} at ${company.name}). DO NOT invoke ANY tools. Output ONLY valid JSON matching the schema below.
+
+Trending Thread to Quote:
+Author: @${post.username || "user"}
+Content:
+"""${post.text || ""}"""
+
+INSTRUCTIONS:
+1. Analyze whether this post represents a meaningful technical, startup, SaaS, or engineering insight worth quote-posting to our audience of software builders and founders.
+2. If YES (should_quote: true):
+   - Synthesize a sharp, authoritative 2-3 sentence commentary (under 280 characters).
+   - Voice: Seasoned systems builder (${founder.name}).
+   - Provide concrete technical or operational value (e.g. state management, API design, trade-offs, architecture choices).
+   - Zero generic praise ("Great post!", "Agree 100%"). Must contribute a distinct, practical insight.
+3. If NO (should_quote: false):
+   - General memes, unrelated topics, low-substance threads. Set commentary: null.
+
+OUTPUT STRICT JSON:
+{
+  "should_quote": boolean,
+  "commentary": "string or null",
+  "reason": "string"
+}
+`;
+
+    try {
+      const res = await aiRuntime.callAi(prompt, { taskType: "COMMENT_SYNTHESIS" });
+      if (res && res.should_quote && res.commentary) {
+        return res;
+      }
+      return {
+        should_quote: false,
+        commentary: null,
+        reason: res?.reason || "Thread not suitable for viral architectural quote."
+      };
+    } catch (err) {
+      logger.warn(`[AI Engine] Quote commentary generation failed on @${post?.username}: ${err.message}`);
+      return {
+        should_quote: false,
+        commentary: null,
+        reason: `AI reasoning error: ${err.message}`
+      };
+    }
   }
 }
 

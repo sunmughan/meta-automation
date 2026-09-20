@@ -163,12 +163,14 @@ class KnowledgeEngine {
         facebook: "",
         instagram: "",
         linkedin: "",
+        whatsapp: "",
         threadsUsername: ""
       },
       company: {
         name: "CodeAir Software Solutions",
         website: "",
         pixelgo: "",
+        whatsapp: "",
         facebook: "",
         instagram: "",
         linkedin: ""
@@ -228,6 +230,7 @@ class KnowledgeEngine {
         if (currentScope === "FOUNDER") {
           if (contextLine.includes("github") && !profiles.founder.github) profiles.founder.github = url;
           else if (contextLine.includes("linkedin") && !profiles.founder.linkedin) profiles.founder.linkedin = url;
+          else if ((contextLine.includes("whatsapp") || url.includes("wa.me") || url.includes("whatsapp.com")) && !profiles.founder.whatsapp) profiles.founder.whatsapp = url;
           else if (contextLine.includes("instagram") && !profiles.founder.instagram) profiles.founder.instagram = url;
           else if (contextLine.includes("facebook") && !profiles.founder.facebook) profiles.founder.facebook = url;
           else if ((contextLine.includes("threads") || url.includes("threads.com") || url.includes("threads.net")) && !profiles.founder.threadsUsername) {
@@ -237,6 +240,9 @@ class KnowledgeEngine {
         } else if (currentScope === "COMPANY") {
           if ((contextLine.includes("pixelgo") || contextLine.includes("product") || contextLine.includes("flagship") || contextLine.includes("demo")) && !profiles.company.pixelgo) {
             profiles.company.pixelgo = url;
+          }
+          else if ((contextLine.includes("whatsapp") || url.includes("wa.me") || url.includes("whatsapp.com")) && !profiles.company.whatsapp) {
+            profiles.company.whatsapp = url;
           }
           else if ((contextLine.includes("website") || contextLine.includes("site") || contextLine.includes("home") || contextLine.includes("domain") || contextLine.includes("codeair.tech")) && !profiles.company.website) {
             profiles.company.website = url.includes("codeair.tech") && !url.includes("www.")
@@ -420,6 +426,7 @@ class KnowledgeEngine {
       github: profiles.founder.github || "",
       instagram: profiles.founder.instagram || "",
       facebook: profiles.founder.facebook || "",
+      whatsapp: profiles.founder.whatsapp || "https://wa.me/codeair",
       threadsUsername,
       primaryProfileUrl: profiles.founder.linkedin || profiles.founder.github || profiles.founder.instagram || ""
     };
@@ -436,6 +443,7 @@ class KnowledgeEngine {
     const badgeName = shortName.toUpperCase();
     const website = profiles.company.website || (companyParsed.website ? (companyParsed.website.startsWith("http") ? companyParsed.website : `https://${companyParsed.website}`) : "");
     const productUrl = profiles.company.pixelgo || "";
+    const whatsapp = profiles.company.whatsapp || profiles.founder.whatsapp || "https://wa.me/codeair";
     const description = companyParsed.type || "Custom software development, web platforms, and automated cloud systems.";
 
     return {
@@ -444,12 +452,20 @@ class KnowledgeEngine {
       badgeName,
       website,
       productUrl,
+      whatsapp,
+      summary: description,
       description,
       flagship: companyParsed.flagship || "",
       linkedin: profiles.company.linkedin || "",
       instagram: profiles.company.instagram || "",
       facebook: profiles.company.facebook || ""
     };
+  }
+
+  getWhatsAppUrl() {
+    this.loadAll();
+    const profiles = this.getOfficialProfiles();
+    return profiles.company?.whatsapp || profiles.founder?.whatsapp || "https://wa.me/codeair";
   }
 
   getContentPillars() {

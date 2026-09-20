@@ -363,6 +363,19 @@ async function commandStatus() {
   return 0;
 }
 
+/**
+ * Algorithmic Peak-Window Pacing Helper.
+ * Peak windows for global tech / founder traffic:
+ * - Morning Window: 8:00 AM - 11:00 AM EST (13:00 - 16:00 UTC)
+ * - Evening Window: 6:00 PM - 9:00 PM EST (23:00 - 02:00 UTC)
+ */
+function isPeakEngagementWindow(date = new Date()) {
+  const utcHours = date.getUTCHours();
+  const isMorningPeak = utcHours >= 13 && utcHours < 16;
+  const isEveningPeak = utcHours >= 23 || utcHours < 2;
+  return isMorningPeak || isEveningPeak;
+}
+
 async function checkAndPublishScheduledPost(force = false) {
   const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
   const verifiedPosts = ourPosts.filter(p => p.status === "VERIFIED_PUBLISHED" || p.published === true);
@@ -379,14 +392,20 @@ async function checkAndPublishScheduledPost(force = false) {
     console.log(`[SCHEDULED POST] Recent post attempt failure recorded (${lastFailure.reason || "unverified"}). Cooldown active for ~${minWait} min.`);
     return null;
   }
+
   const postIntervalHours = CONFIG.POST_INTERVAL_HOURS || 6;
-  const postIntervalMs = postIntervalHours * 60 * 60 * 1000;
+  const minIntervalMs = 5 * 60 * 60 * 1000; // 5 hours minimum gap for peak windows
+  const maxIntervalMs = 7 * 60 * 60 * 1000; // 7 hours maximum gap (guarantees ~4 posts/24h)
   const elapsedMs = Date.now() - lastPostTime;
-  const isDue = force || elapsedMs >= postIntervalMs || lastPostTime === 0;
+  const inPeakWindow = isPeakEngagementWindow();
+
+  // Due if forced, first post ever, exceeded max gap, or inside peak window after min gap
+  const isDue = force || lastPostTime === 0 || elapsedMs >= maxIntervalMs || (elapsedMs >= minIntervalMs && inPeakWindow);
 
   if (isDue && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
     console.log("\n==============================================");
-    console.log(`  📝 PUBLISHING SCHEDULED ${postIntervalHours}-HOUR POST ON THREADS (4 POSTS / 24H)`);
+    console.log(`  📝 PUBLISHING SCHEDULED POST ON THREADS (4 POSTS / 24H)`);
+    console.log(`  Peak Window Status: ${inPeakWindow ? "ACTIVE (Peak Traffic Boost)" : "STANDARD INTERVAL"}`);
     console.log("==============================================");
     try {
       const res = await threadsPoster.publishEngagingPost();
@@ -402,9 +421,44 @@ async function checkAndPublishScheduledPost(force = false) {
       return null;
     }
   } else if (!isDue) {
-    const minutesRemaining = Math.max(1, Math.round((postIntervalMs - elapsedMs) / 60000));
-    console.log(`[SCHEDULED POST] Next post due in ~${minutesRemaining} min (Cadence: exactly 4 posts / 24h, every ${postIntervalHours}h).`);
+    const minutesToMin = Math.max(1, Math.round((minIntervalMs - elapsedMs) / 60000));
+    const minutesToMax = Math.max(1, Math.round((maxIntervalMs - elapsedMs) / 60000));
+    const peakInfo = inPeakWindow ? "Peak Window Active" : "Waiting for Next Peak Window";
+    console.log(`[SCHEDULED POST] Next post due in ~${minutesToMin}-${minutesToMax} min (${peakInfo}, ~4 posts / 24h).`);
     return null;
+  }
+}
+
+async function checkAndTriggerQuotePost() {
+  const recentQuotes = stateStore.getRecentQuotePosts ? stateStore.getRecentQuotePosts(24) : [];
+  if (recentQuotes.length >= 2) {
+    return; // Daily cap: max 2 quote-posts per 24h
+  }
+
+  // Look for high-substance posts in discovered pool (engineering, system design, AI agents)
+  const candidates = Object.values(stateStore.state.posts)
+    .filter(p => {
+      if (!p || !p.text || !p.postId) return false;
+      if (p.postId.includes("test_")) return false;
+      const text = p.text.toLowerCase();
+      const hasTechIntent = /\b(architecture|distributed systems|agentic ai|microservices|postgresql|database|concurrency|fullstack|saas|system design|latency)\b/i.test(text);
+      const isNotSelf = p.username !== (CONFIG.THREADS_USERNAME || "sunmughan");
+      return hasTechIntent && isNotSelf && !stateStore.hasCommented(p.postId, p.platform);
+    })
+    .sort((a, b) => (b.text.length || 0) - (a.text.length || 0));
+
+  const targetPost = candidates[0];
+  if (!targetPost) return;
+
+  try {
+    console.log(`\n[QUOTE POSTING ENGINE] Evaluating trending builder thread from @${targetPost.username}...`);
+    const commentary = await aiDecisionEngine.generateQuoteCommentary(targetPost);
+    if (commentary && commentary.length > 30) {
+      console.log(`[QUOTE POSTING ENGINE] Synthesized expert insight for @${targetPost.username}: "${commentary}"`);
+      await threadsActions.quotePost(targetPost, commentary);
+    }
+  } catch (err) {
+    logger.warn(`Quote post evaluation failed: ${err.message}`);
   }
 }
 
@@ -467,6 +521,12 @@ async function commandRun() {
       // 4. Lead qualification & live commenting on prioritized leads (buyers + target audience)
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
       await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
+
+      // 4b. Viral Quote-Posting Engine (Cycle 2, then every 12 cycles ~ 10-12 min)
+      // Leverages Threads 4-5x non-follower recommendation multiplier on high-substance posts
+      if (cycle === 2 || cycle % 12 === 0) {
+        await checkAndTriggerQuotePost();
+      }
 
       // 5. Check Activity / Replies continuously (Cycle 1 and every 3 cycles)
       if (cycle === 1 || cycle % 3 === 0) {
@@ -709,5 +769,8 @@ module.exports = {
   commandReplies,
   commandDms,
   commandStatus,
-  commandOnboard
+  commandOnboard,
+  isPeakEngagementWindow,
+  checkAndPublishScheduledPost,
+  checkAndTriggerQuotePost
 };
