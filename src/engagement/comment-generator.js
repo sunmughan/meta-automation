@@ -72,24 +72,25 @@ class CommentGenerator {
     const isHospitality = knowledge.isHospitalityQuery(cleanText) || matchedCategories.includes("Hospitality");
 
     // ============================================================
+    // ============================================================
     // MODE 1: NEUTRAL (Pure Technical Value, Zero Promotional Links)
     // ============================================================
     if (identity === "NEUTRAL") {
       if (cleanText.includes("mobile") || cleanText.includes("app") || cleanText.includes("flutter")) {
         return this.pickVariation([
-          `${greeting}When architecting a mobile app from scratch, deciding between a cross-platform engine like Flutter versus fully native Swift/Kotlin usually comes down to whether you have heavy background hardware sensor requirements. What core features are you building first?`,
-          `${greeting}For a cross-platform mobile build, structuring clean state management and decoupling offline storage from network layers early on will save massive refactoring down the line. Are you planning for both iOS and Android from day one?`
+          `${greeting}When building a mobile app from scratch, choosing Flutter lets you launch on both iOS and Android with one clean codebase. What features are you building first?`,
+          `${greeting}For a mobile app build, keeping your database and offline storage simple early on will save weeks of refactoring later. Are you launching on both iOS and Android?`
         ]);
       }
       if (cleanText.includes("ai") || cleanText.includes("llm") || cleanText.includes("bot")) {
         return this.pickVariation([
-          `${greeting}For production AI workflows, combining deterministic fallback logic with strict context retrieval guardrails is essential to prevent hallucinations and latency spikes. What specific operational task are you looking to automate?`,
-          `${greeting}The biggest ROI in AI automation usually comes from structuring clean API pipelines and prompt guardrails before scaling. Are you looking to integrate with an existing database or CRM?`
+          `${greeting}When building AI workflows, clear prompt rules and testing with real data are what make it reliable in production. What specific task are you looking to automate?`,
+          `${greeting}The biggest win in AI automation comes from keeping your APIs clean and testing edge cases early. Are you connecting this to a database or a CRM?`
         ]);
       }
       return this.pickVariation([
-        `${greeting}Clean architecture, responsive mobile layouts, and snappy load times are the foundational pillars of any modern web platform. What is your target timeline and preferred tech stack for this project?`,
-        `${greeting}Structuring database schemas and API boundaries cleanly from day one makes future feature scaling much smoother. What specific functionality are you aiming to launch with your MVP?`
+        `${greeting}Clean design, fast loading, and smooth mobile layouts are the most important parts of any modern web app. What is your target timeline and tech stack?`,
+        `${greeting}Keeping your database and code simple early on is the best way to ship fast. What core features are you planning for your first version?`
       ]);
     }
 
@@ -100,29 +101,29 @@ class CommentGenerator {
     if (identity === "FOUNDER") {
       if (isHospitality) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I'm Sunmughan, software architect and founder behind CodeAir. We specialize in custom web and management systems, and engineered PixelGo HMS specifically for unified hotel PMS and POS operations. You can explore our hospitality system at ${pixelgoUrl} or feel free to message me here with your property requirements!`,
-          `${greeting}For hospitality operations, having unified reservations, front-desk dispatch, and billing without third-party middleware lag is crucial. I designed PixelGo HMS (${pixelgoUrl}) for modern property management. Feel free to connect directly if you'd like a quick walkthrough!`
+          `${greeting}I'm Sunmughan, founder and tech architect behind CodeAir. We built PixelGo HMS (${pixelgoUrl}) to help hotel and resort owners manage bookings, front desk, and billing in one simple system. Feel free to connect directly if you'd like a quick walkthrough!`,
+          `${greeting}For hotel operations, having bookings, check-ins, and billing all in one clean tool saves hours every day. I designed PixelGo HMS (${pixelgoUrl}) for simple property management. Message me anytime!`
         ]), pixelgoUrl);
       }
 
       if (cleanText.includes("mobile") || cleanText.includes("flutter")) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I can definitely help guide or build this out for you. As a technical architect, I specialize in full-stack product engineering and unified cross-platform mobile apps with Flutter. You can connect with me directly on LinkedIn at ${founderLinkedin} or send over a DM with your app specifications!`,
-          `${greeting}Developing a smooth mobile experience with Flutter ensures high performance across both iOS and Android from a single clean codebase. Connect with me on LinkedIn at ${founderLinkedin} and let's discuss your project scope and milestones!`
+          `${greeting}I can definitely help you build this! I'm Sunmughan, software engineer and founder at CodeAir. We build fast Flutter mobile apps for both iOS and Android. Connect with me on LinkedIn at ${founderLinkedin} or send a DM with your app idea!`,
+          `${greeting}Building a mobile app with Flutter gives you great performance on both iOS and Android from one codebase. Connect with me on LinkedIn at ${founderLinkedin} and let's talk through your project!`
         ]), founderLinkedin);
       }
 
       if (cleanText.includes("ai") || cleanText.includes("agent") || cleanText.includes("automation")) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I specialize in building production-grade AI automations, autonomous agent workflows, and LLM integrations with strict reliability guardrails. Feel free to connect with me directly on LinkedIn at ${founderLinkedin} to talk through your architecture and use case!`,
-          `${greeting}Architecting resilient AI workflows and business automations is my primary focus as a technical founder. You can review my background and connect with me at ${founderLinkedin}. What specific manual bottlenecks are you looking to automate?`
+          `${greeting}I build custom AI automations and reliable workflows for businesses. Let's connect on LinkedIn at ${founderLinkedin} to talk through what you want to automate!`,
+          `${greeting}Building reliable AI automations and simple workflows is my main focus as a founder. Connect with me on LinkedIn at ${founderLinkedin}. What repetitive tasks are you looking to automate?`
         ]), founderLinkedin);
       }
 
       // Founder general web / software development
       return this.enforceSingleUrl(this.pickVariation([
-        `${greeting}I'd be glad to assist you with this! I'm Sunmughan, technical founder and software architect. I help businesses design and engineer high-performance web applications and custom digital platforms. Feel free to connect with me directly on LinkedIn at ${founderLinkedin} or DM me with your project requirements!`,
-        `${greeting}If you're looking for an experienced technical engineer to bring this project to life with clean architecture and fast delivery, let's talk. You can reach me directly on LinkedIn at ${founderLinkedin}. What are your primary goals and timeline for this build?`
+        `${greeting}I'd love to help you with this! I'm Sunmughan, founder and software engineer at CodeAir. We build fast web apps, mobile apps, and custom platforms. Feel free to connect on LinkedIn at ${founderLinkedin} or send over a DM!`,
+        `${greeting}If you're looking for a developer to build this with clean code and fast delivery, let's connect! You can reach me directly on LinkedIn at ${founderLinkedin}. What are your main goals and timeline?`
       ]), founderLinkedin);
     }
 
@@ -133,37 +134,37 @@ class CommentGenerator {
     if (identity === "COMPANY") {
       if (isHospitality) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}For hotel and hospitality operations, having real-time synchronized room inventory, front desk PMS, POS, and guest check-ins makes all the difference. At CodeAir Software Solutions, our flagship platform PixelGo HMS is built specifically for unified property management. Explore the system at ${pixelgoUrl}. What type of property are you managing?`,
-          `${greeting}Hospitality operations run best on a synchronized operational engine without middleware lag. At CodeAir Software Solutions, we engineered PixelGo HMS (${pixelgoUrl}) to power unified front-desk, reservation, and billing workflows. Feel free to send over a DM to explore tailored setup options!`
+          `${greeting}For hotel and resort operations, having bookings, rooms, and payments all sync in real time saves so much headache. At CodeAir Software Solutions, we built PixelGo HMS (${pixelgoUrl}) to make property management simple. What type of property do you run?`,
+          `${greeting}Hotel operations run best when your front desk, bookings, and billing are all in one system. At CodeAir Software Solutions, our platform PixelGo HMS (${pixelgoUrl}) was built for exactly that. Feel free to send a DM for a quick demo!`
         ]), pixelgoUrl);
       }
 
       if (cleanText.includes("mobile") || cleanText.includes("flutter")) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}Cross-platform mobile apps built with Flutter offer native performance while keeping your codebase unified across iOS and Android. At CodeAir Software Solutions, we engineer responsive mobile apps with clean state management and secure backends. Check our company work at ${companyWebsite}. Are you planning for both mobile platforms from day one?`,
-          `${greeting}Over at CodeAir Software Solutions, mobile app engineering is one of our core specialties. We build scalable iOS and Android apps with Flutter, focusing on responsive UI and reliable APIs. Explore our portfolio at ${companyWebsite}. What are the primary mobile features you're planning?`
+          `${greeting}Building mobile apps with Flutter lets you run smoothly on both iOS and Android with one codebase. At CodeAir Software Solutions, we build fast, clean mobile apps. Check our work at ${companyWebsite}. Are you launching on both platforms?`,
+          `${greeting}Over at CodeAir Software Solutions, we build custom iOS and Android mobile apps using Flutter. We focus on clean design and fast APIs. See our portfolio at ${companyWebsite}. What features are you planning first?`
         ]), companyWebsite);
       }
 
       if (cleanText.includes("ai") || cleanText.includes("automation")) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}Building a reliable AI workflow hinges on how cleanly you structure context retrieval, latency, and prompt guardrails. Over at CodeAir Software Solutions, we engineer deterministic multi-agent systems and custom LLM integrations. You can review our company solutions at ${companyWebsite}. What specific operational bottlenecks are you looking to automate?`,
-          `${greeting}At CodeAir Software Solutions, we architect custom AI automations and autonomous workflows designed for zero hallucination and high reliability. Explore our company solutions at ${companyWebsite}. Feel free to drop us a DM with your workflow details!`
+          `${greeting}A reliable AI workflow needs clean prompt rules and simple fallback checks. Over at CodeAir Software Solutions, we build reliable AI automations for real businesses. Review our solutions at ${companyWebsite}. What tasks are you looking to automate?`,
+          `${greeting}At CodeAir Software Solutions, we build custom AI automations and workflows designed to run reliably without errors. Check our company work at ${companyWebsite}. Feel free to drop us a DM with your workflow details!`
         ]), companyWebsite);
       }
 
       if (cleanText.includes("saas") || cleanText.includes("mvp")) {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}Building a scalable SaaS foundation early on saves massive refactoring headaches later—especially around tenant data isolation, role-based access control, and billing lifecycle events. Over at CodeAir Software Solutions, we architect high-throughput multi-tenant SaaS platforms and MVPs. Review our work at ${companyWebsite}. What core workflows are you building?`,
-          `${greeting}At CodeAir Software Solutions, full-cycle product engineering and scalable SaaS architecture are our primary focus. Explore our company credentials at ${companyWebsite}. What is your target launch timeline and scope?`
+          `${greeting}Keeping your code and database simple early on saves months of headache later. At CodeAir Software Solutions, we build scalable SaaS platforms and MVPs for founders. Check our work at ${companyWebsite}. What core features are you building first?`,
+          `${greeting}At CodeAir Software Solutions, full-cycle product engineering and fast SaaS builds are our main focus. See our company work at ${companyWebsite}. What is your target launch date?`
         ]), companyWebsite);
       }
 
       // Company general web / software development
       return this.enforceSingleUrl(this.pickVariation([
-        `${greeting}Over at CodeAir Software Solutions, we design and develop custom, modern websites and high-performance web applications in React, Next.js, and modern CSS. Fast loading times, clean mobile responsiveness, and structured SEO are standard in every build. You can review our work and case studies at ${companyWebsite}. What type of website are you looking to create?`,
-        `${greeting}If you need a dedicated software engineering team to turn this into reality, we'd be glad to assist! At CodeAir Software Solutions, we specialize in robust full-stack web development and clean modern interfaces. You can view our company credentials at ${companyWebsite}. Feel free to send over a DM with your project requirements!`,
-        `${greeting}We engineer custom websites, scalable web platforms, and mobile apps over at CodeAir Software Solutions. We focus on clean code, responsive UI, and solid database architecture. Explore our company portfolio at ${companyWebsite}. Let's connect via DM to discuss details!`
+        `${greeting}Over at CodeAir Software Solutions, we design and develop custom, modern websites and web apps. Fast loading, clean design, and great mobile support come standard. Review our work at ${companyWebsite}. What type of website or app are you planning?`,
+        `${greeting}If you need a dedicated software team to build this, we'd be glad to help! At CodeAir Software Solutions, we build fast web platforms and clean user interfaces. See our work at ${companyWebsite}. Send us a DM anytime!`,
+        `${greeting}We build custom websites, scalable web apps, and mobile apps over at CodeAir Software Solutions. We focus on clean code and reliable design. See our work at ${companyWebsite}. Let's chat via DM!`
       ]), companyWebsite);
     }
 
@@ -172,14 +173,14 @@ class CommentGenerator {
     // ============================================================
     if (isHospitality) {
       return this.enforceSingleUrl(
-        `${greeting}For hotel and hospitality operations, our engineering team at CodeAir Software Solutions built PixelGo HMS to unify real-time room sync, front desk PMS, POS, and billing. You can explore the platform at ${pixelgoUrl}. Feel free to reach out via DM with your property requirements!`,
+        `${greeting}For hotel and hospitality operations, our engineering team at CodeAir Software Solutions built PixelGo HMS to combine room bookings, front desk, and billing into one clean system. See the platform at ${pixelgoUrl}. Feel free to reach out via DM!`,
         pixelgoUrl
       );
     }
 
     return this.enforceSingleUrl(this.pickVariation([
-      `${greeting}Over at CodeAir Software Solutions, our dedicated engineering team handles full-cycle product development—from architectural design through deployment. Review our work and case studies at ${companyWebsite}. What is your target timeline and preferred tech stack for this project?`,
-      `${greeting}If you're seeking an experienced engineering team with direct founder-led technical oversight, CodeAir Software Solutions builds production-grade web and software systems. Check out our work at ${companyWebsite}. Feel free to send a DM to discuss your milestones!`
+      `${greeting}Over at CodeAir Software Solutions, our engineering team handles full-cycle development from design to launch. Check our work at ${companyWebsite}. What is your timeline and preferred tech stack?`,
+      `${greeting}If you're looking for an experienced engineering team with direct founder oversight, CodeAir Software Solutions builds reliable web and software systems. See our work at ${companyWebsite}. Send a DM anytime to chat!`
     ]), companyWebsite);
   }
 }

@@ -62,6 +62,31 @@ async function runAudit() {
     passed++;
   }
 
+  // 5. Audit Target Audience Engagement (SaaS founders, Devs, UI/UX, AI, Lead Gen)
+  const aiDecisionEngine = require("../src/ai/ai-decision-engine");
+  const audiencePosts = [
+    { text: "What tech stack are you SaaS founders using to build your MVP this year?", expectedAudience: "SaaS Founders" },
+    { text: "Hey developers, what is your go-to backend framework for building fast APIs?", expectedAudience: "Developers & Engineers" },
+    { text: "UI/UX designers: what is the most important thing for high converting landing page design?", expectedAudience: "UI/UX Designers" },
+    { text: "What AI tools or automation workflows are saving you the most time in your business?", expectedAudience: "AI & Tech Enthusiasts" },
+    { text: "To all marketing experts and lead generation pros: what outreach strategy is working best for you?", expectedAudience: "Marketing & Lead Experts" }
+  ];
+
+  for (const post of audiencePosts) {
+    const res = aiDecisionEngine.evaluateGroundedSemantics({ text: post.text, username: "test_target" });
+    assert.strictEqual(res.decision, "QUALIFIED", `Expected qualified for audience post: "${post.text}"`);
+    assert.strictEqual(res.temperature, "WARM");
+    assert.strictEqual(res.is_genuine_buyer, true);
+    assert(res.generated_comment && res.generated_comment.length > 20, "Expected generated comment");
+    // Verify zero complicated dictionary words
+    const lowerComment = res.generated_comment.toLowerCase();
+    assert(!lowerComment.includes("deterministic"), "Comment should not contain 'deterministic'");
+    assert(!lowerComment.includes("guardrails"), "Comment should not contain 'guardrails'");
+    assert(!lowerComment.includes("hallucinations"), "Comment should not contain 'hallucinations'");
+    console.log(`  ✓ PASS: Qualified target audience post [${post.expectedAudience}] -> Simple comment: "${res.generated_comment.slice(0, 60)}..."`);
+    passed++;
+  }
+
   console.log("\n--------------------------------------------------");
   console.log(`Audit Summary: ${passed} Passed, 0 Failed`);
   console.log("--------------------------------------------------\n");
