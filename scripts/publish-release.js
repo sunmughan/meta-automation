@@ -51,11 +51,56 @@ const fs = require("fs");
       }
     }
 
-    // 2. Set Title
+    // 2. Set Title & Body
     const titleInput = await ghPage.$("#release_name") || await ghPage.$("input[name=\"release[name]\"]");
     if (titleInput) {
       await titleInput.click({ clickCount: 3 });
-      await titleInput.type(`${tag} - Enterprise Social Discovery, AI Lead Qualification & Growth Engine`, { delay: 5 });
+      await titleInput.type(`${tag} - WhatsApp Booking, Viral Quote-Posting & Rich Technical Cards`, { delay: 5 });
+    }
+
+    const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
+    if (bodyTextarea) {
+      const releaseNotes = `## What's New in v1.2.6
+
+### 🚀 WhatsApp Direct Discovery Call Link
+- Added official **WhatsApp Meeting Booking Link** (\`https://wa.me/codeair\`, username: \`codeair\`) into founder and company profiles.
+- Dynamically parsed by the Knowledge Engine and grounded by the Antigravity AI Cognitive Brain when prospects in DMs request direct calls, scheduling, or phone consultation.
+- Strict single-URL discipline ensures high conversion without link clutter.
+
+### ⚡ Viral Quote-Posting Engine
+- Leverages the Threads algorithm's **4–5x non-follower recommendation multiplier** on high-substance engineering posts.
+- Synthesizes authoritative 2–3 sentence technical commentary on trending builder/founder threads.
+- Visibly types and submits quotes live via Brave browser CDP with strict rate limiting (max 1–2 per 24h).
+
+### 🎨 Dark-Mode Code Snippets & Architecture Diagram Cards
+- **Dark-Mode Terminal Code Cards**: 1080x1080 square visuals with macOS traffic lights, syntax token highlighting, and CodeAir branding.
+- **System Architecture Topology Diagrams**: Node cards and connector arrows detailing deterministic state machines and AI pipelines.
+- Rotated automatically into high-substance technical pillars (\`agentic_ai\`, \`tech_mentorship\`).
+
+### ⏰ Algorithmic Peak-Window Pacing
+- Posts are intelligently timed to hit global developer/founder peak traffic windows:
+  - **Morning Window**: 8:00 AM – 11:00 AM EST (13:00 – 16:00 UTC)
+  - **Evening Window**: 6:00 PM – 9:00 PM EST (23:00 – 02:00 UTC)
+- Maintains exactly 4 strategic posts per 24 hours with flexible 5–7h pacing.
+
+### 📈 Soft Follower-Conversion CTAs
+- Natural follow hooks integrated into Slide 5 of carousels and deep discussion captions (\`"Follow @sunmughan for daily breakdowns on agentic AI & software architecture"\`).
+
+---
+
+### 📦 Checksums
+\`\`\`
+${fs.readFileSync(path.resolve(__dirname, "../release/SHA256SUMS.txt"), "utf8")}
+\`\`\``;
+
+      await ghPage.evaluate((notes) => {
+        const ta = document.querySelector("#release_body, textarea[name=\"release[body]\"]");
+        if (ta) {
+          ta.value = notes;
+          ta.dispatchEvent(new Event("input", { bubbles: true }));
+          ta.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }, releaseNotes);
     }
 
     // 3. Upload Assets
