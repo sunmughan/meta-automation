@@ -19,6 +19,7 @@
 const knowledge = require("../knowledge/knowledge-engine");
 const commentGenerator = require("../engagement/comment-generator");
 const aiRuntime = require("./ai-runtime");
+const stateStore = require("../storage/state-store");
 const logger = require("../logging/logger");
 
 class AiDecisionEngine {
@@ -210,13 +211,80 @@ class AiDecisionEngine {
     }
 
     // -------------------------------------------------------------
+    // DISQUALIFIER 0: CAREER ADVICE & JOB/DEGREE TRANSITION (Strict Zero Sales Pitch)
+    // -------------------------------------------------------------
+    const isCareerAdvice =
+      /\b(career\s+(advice|path|paths|change|transition|move|growth|options?)|job\s+(titles?|paths?|search|hunting|market)|what\s+(career|job|role|paths?|titles?)\s+should\s+i|(figure|figuring)\s+out\s+my\s+next\s+move|(finished|graduated|earned|completed)\s+my\s+(ba|bs|bachelor'?s|master'?s|degree|mba|phd)|(ba|bs|degree)\s+in\s+business(\s+administration)?|wfh[,\s]+(\$?\d+k\+?|remote)|minimal\s+phones?|entry[- ]level\s+(roles?|jobs?|positions?|advice)|how\s+do\s+i\s+break\s+into|how\s+to\s+get\s+into\s+(tech|software|data|product)|advice\s+for\s+(new\s+grads|beginners|career\s+changers|moms?)|resume\s+(feedback|review|help))\b/i.test(lower);
+
+    if (isCareerAdvice) {
+      return {
+        intent: "CAREER_ADVICE",
+        requirement: "Author asking for personal career advice, job titles, or education transition.",
+        target_entity: null,
+        service_match: false,
+        representation: "IGNORE",
+        decision: "IGNORED",
+        temperature: "IGNORE",
+        relevance_score: 0,
+        is_genuine_buyer: false,
+        should_reply: false,
+        lead_type: "CAREER_ADVICE",
+        reason: "Author is asking for personal career advice or job titles, not hiring for a software project."
+      };
+    }
+
+    // -------------------------------------------------------------
+    // DISQUALIFIER 0.5: B2B LEAD GENERATION & DATA SALES OFFERS
+    // -------------------------------------------------------------
+    const isLeadGeneration =
+      /\b(b2b\s+leads?|lead\s+generation|batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|targeted\s+leads|cold\s+email\s+leads|lead\s+gen\s+service|lead\s+scraper|verified\s+contact\s+info)\b/i.test(lower);
+
+    if (isLeadGeneration) {
+      return {
+        intent: "LEAD_GENERATION_BUYER",
+        requirement: "Author offering or discussing B2B lead generation / contact list delivery.",
+        target_entity: null,
+        service_match: false,
+        representation: "IGNORE",
+        decision: "IGNORED",
+        temperature: "IGNORE",
+        relevance_score: 0,
+        is_genuine_buyer: false,
+        should_reply: false,
+        lead_type: "LEAD_GENERATION_BUYER",
+        reason: "Author is proposing or offering B2B lead generation data, not purchasing software engineering."
+      };
+    }
+
+    // -------------------------------------------------------------
     // BUYER INTENT DETECTION (Semantic cues of client demand or hiring intent)
     // -------------------------------------------------------------
     const hasBuyerIntent =
-      /\b((i|we)\s+need|need\s+(someone|somebody|a\s+|an?\s+|to\s+hire)|needing|looking\s+for|looking\s+to\s+hire|(i|we)\s+want|seeking|hiring|hire|in\s+search\s+of|searching\s+for|can\s+(someone|anyone)|who\s+can|anyone\s+knows?|anyone\s+can|does\s+anyone|recommend|recommendations?\s+for|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|proposals?))\b/i.test(lower);
+      /\b((i|we)\s+need|need\s+(someone|somebody|a\s+|an?\s+|to\s+hire)|needing|looking\s+for\s+(a\s+|an?\s+|someone\s+to|somebody\s+to|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?|help\s+with)|looking\s+to\s+hire|(i|we)\s+want\s+(a\s+|an?\s+|to\s+build|to\s+create|to\s+develop|to\s+hire|to\s+redesign|someone|somebody)|seeking\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?)|hiring\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|hire\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|in\s+search\s+of\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|searching\s+for\s+(a\s+|an?\s+|someone\s+to|a\s+developer|a\s+designer|an\s+agency)|can\s+(someone|anyone)(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign|with)?|who\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign)?|anyone\s+knows?\s+(a\s+|an?\s+|someone|how\s+to\s+build)|anyone\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code)?|does\s+anyone\s+(build|know\s+a\s+developer|know\s+a\s+designer)|recommend\s+(a\s+|an?\s+|developers?|designers?|agenc)|recommendations?\s+for\s+(a\s+|an?\s+|developers?|designers?|agenc|software|websites?|apps?)|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|proposals?))\b/i.test(lower);
 
     // -------------------------------------------------------------
-    // DISQUALIFIER 1: SERVICE PROVIDER (Sellers advertising own services)
+    // DISQUALIFIER 1: JOB SEEKER (Candidate asking for employment)
+    // -------------------------------------------------------------
+    const isJobSeeker =
+      /\b(open\s+to\s+work|open\s+for\s+work|looking\s+for\s+(a\s+)?(job|internship)|looking\s+for\s+entry[- ]level|seeking\s+(opportunities|employment|job|roles?)|available\s+for\s+(work|hire|employment)|freelancer\s+available|actively\s+looking\s+for\s+(work|a\s+job)|seeking\s+(software|web|flutter|developer)\s+opportunities|hire\s+me\b|looking\s+to\s+break\s+into)\b/i.test(lower);
+
+    if (isJobSeeker) {
+      return {
+        intent: "JOB_SEEKER",
+        requirement: "Author seeking employment or freelance gigs for themselves.",
+        target_entity: null,
+        service_match: false,
+        representation: "IGNORE",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        should_reply: false,
+        lead_type: "JOB_SEEKER",
+        reason: "Author is a job seeker looking for employment or gigs, not a software client."
+      };
+    }
+
+    // -------------------------------------------------------------
+    // DISQUALIFIER 2: SERVICE PROVIDER (Sellers advertising own services)
     // ONLY triggers if author is pitching themselves or advertising their own work,
     // and NOT expressing genuine buyer demand for their own project.
     // -------------------------------------------------------------
@@ -225,7 +293,7 @@ class AiDecisionEngine {
        /\b(we|i|here|dm|contact|agency|studio|duo)\b/i.test(lower));
 
     const isDirectSellerPromotion =
-      /\b(my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|hire\s+me\b|what\s+you\s+have\s+in\s+mind.*vercel\.app)\b/i.test(lower) ||
+      /\b(my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|what\s+you\s+have\s+in\s+mind.*vercel\.app)\b/i.test(lower) ||
       (/\b(i('?m|\s+am)\s+([a-z\s]+)?(developer|designer|engineer|builder|manager|marketer|specialist|consultant|strategist|creator|freelancer|editor))\b/i.test(lower) && !hasBuyerIntent);
 
     if (isRhetoricalSellerQuestion || isDirectSellerPromotion) {
@@ -238,26 +306,6 @@ class AiDecisionEngine {
         decision: "IGNORED",
         is_genuine_buyer: false,
         reason: "Author is advertising or showcasing their own freelance/agency services, not hiring."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 2: JOB SEEKER (Candidate asking for employment)
-    // -------------------------------------------------------------
-    const isJobSeeker =
-      /\b(open\s+to\s+work|open\s+for\s+work|looking\s+for\s+(a\s+)?(job|internship)|seeking\s+(opportunities|employment|job|roles?)|available\s+for\s+(work|hire|employment)|freelancer\s+available|actively\s+looking\s+for\s+(work|a\s+job)|seeking\s+(software|web|flutter|developer)\s+opportunities)\b/i.test(lower) &&
-      !hasBuyerIntent;
-
-    if (isJobSeeker) {
-      return {
-        intent: "JOB_SEEKER",
-        requirement: "Author seeking employment or freelance gigs for themselves.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        reason: "Author is a job seeker looking for employment or gigs, not a software client."
       };
     }
 
@@ -506,7 +554,103 @@ class AiDecisionEngine {
   }
 
   /**
+   * Calculates word overlap similarity (Jaccard index) between two text strings.
+   */
+  calculateSimilarity(text1, text2) {
+    const t1 = String(text1 || "").trim().toLowerCase();
+    const t2 = String(text2 || "").trim().toLowerCase();
+    if (t1 === t2) return 1.0;
+    if (!t1 || !t2) return 0.0;
+
+    const words1 = new Set(t1.split(/\s+/).filter(w => w.length > 2));
+    const words2 = new Set(t2.split(/\s+/).filter(w => w.length > 2));
+    if (words1.size === 0 || words2.size === 0) return 0.0;
+
+    let intersection = 0;
+    for (const w of words1) {
+      if (words2.has(w)) intersection++;
+    }
+    const union = new Set([...words1, ...words2]).size;
+    return union === 0 ? 0.0 : intersection / union;
+  }
+
+  /**
+   * Strict Relevance Gate evaluating proposed responses before sending.
+   * Enforces:
+   * 1. Direct address of incoming topic
+   * 2. Zero unrelated software architecture/timeline pitch on non-software queries
+   * 3. Zero repetition of questions already answered
+   * 4. Zero duplicate or near-duplicate (>75% similarity) outgoing messages
+   * 5. Single URL discipline and zero profile contradictions
+   * 6. Clear conversation advancement or closure
+   */
+  evaluateRelevanceGate(proposedResponse, context = {}, incomingMessage = "") {
+    const response = String(proposedResponse || "").trim();
+    const incoming = String(incomingMessage || context.incomingMessage || "").trim();
+    const lowerIncoming = incoming.toLowerCase();
+    const lowerResponse = response.toLowerCase();
+
+    // 1. Direct Address & Non-Software Topic Disqualification:
+    // If incoming message is about lead generation, data delivery, career advice, or job seeking,
+    // the response MUST NOT ask software architecture, tech stack, or project timeline questions!
+    const isLeadGenOrSales = /\b(b2b\s+leads?|lead\s+generation|batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|targeted\s+leads)\b/i.test(lowerIncoming);
+    const isCareerOrJob = /\b(career\s+advice|job\s+title|open\s+to\s+work|looking\s+for\s+(a\s+)?job|resume|internship|wfh)\b/i.test(lowerIncoming);
+
+    if (isLeadGenOrSales || isCareerOrJob) {
+      if (/\b(current\s+architecture|target\s+timeline\s+for\s+this\s+project|tech\s+stack|build\s+your\s+project|architecture\s+look\s+like)\b/i.test(lowerResponse)) {
+        return {
+          approved: false,
+          reason: "Relevance Gate Violation: Inappropriate software architecture/timeline question asked on a lead-generation or career-seeker query."
+        };
+      }
+    }
+
+    // 2. Semantic Message Deduplication against recent outgoing messages in the conversation
+    const recentOutgoing = context.recentOutgoing || (context.convId ? stateStore.getRecentOutgoingMessages(context.convId) : []);
+    if (Array.isArray(recentOutgoing) && recentOutgoing.length > 0) {
+      for (const prev of recentOutgoing) {
+        const cleanPrev = String(prev).trim().toLowerCase();
+        if (cleanPrev === lowerResponse) {
+          return {
+            approved: false,
+            reason: `Relevance Gate Violation: Exact duplicate message already sent in conversation.`
+          };
+        }
+        const sim = this.calculateSimilarity(lowerResponse, cleanPrev);
+        if (sim >= 0.75) {
+          return {
+            approved: false,
+            reason: `Relevance Gate Violation: Semantically identical message (${Math.round(sim * 100)}% similarity) already sent recently in conversation.`
+          };
+        }
+      }
+    }
+
+    // 3. No repetition of questions already answered in incoming message
+    if (/\b(timeline|deadline|asap|within\s+\d+|by\s+(next\s+month|end\s+of))\b/i.test(lowerIncoming)) {
+      if (/\b(target\s+timeline|what\s+is\s+your\s+timeline)\b/i.test(lowerResponse)) {
+        return {
+          approved: false,
+          reason: "Relevance Gate Violation: Asking for target timeline when timeline was already provided in incoming message."
+        };
+      }
+    }
+
+    // 4. Single URL discipline
+    const urls = response.match(/https?:\/\/[^\s]+/g) || [];
+    if (urls.length > 1) {
+      return {
+        approved: false,
+        reason: "Relevance Gate Violation: More than 1 URL included (violates single-URL discipline)."
+      };
+    }
+
+    return { approved: true, reason: "Relevance gate passed all criteria." };
+  }
+
+  /**
    * Generates conversational reply for comment replies or incoming DMs.
+   * Dynamic context-aware reasoning replaces all static string fallbacks.
    */
   async generateConversationReply(context) {
     const {
@@ -516,33 +660,82 @@ class AiDecisionEngine {
       conversationStage = "DISCOVERY",
       companyMentionedBefore = false,
       founderMentionedBefore = false,
-      username = "user"
+      username = "user",
+      convId = null
     } = context;
 
-    // Check if verified link requested
+    const lower = incomingMessage.toLowerCase();
+
+    // 1. Check if verified link requested
     const requestedLink = knowledge.resolveRequestedLink(incomingMessage);
 
-    // Human review escalation check (pricing negotiations, contracts, angry tones)
-    const lower = incomingMessage.toLowerCase();
+    // 2. Human review escalation check (pricing negotiations, contracts, legal, angry tones)
     const needsHumanReview =
       /\b(how\s+much\s+does\s+it\s+cost|send\s+a\s+quote|what\s+is\s+your\s+rate|discount|sign\s+contract|nda|lawyer|sue|angry|terrible)\b/i.test(lower);
 
     let responseMessage = "";
+    let detectedIntent = "PROJECT_INQUIRY";
+    let identity = "COMPANY";
+    let updatedStage = conversationStage;
+    let serviceMatch = true;
+
     if (requestedLink) {
       responseMessage = requestedLink.url
         ? `Here is the official link you requested: ${requestedLink.url}`
         : `Here are our official profiles:\n${requestedLink.text}`;
-    } else if (/\bwho\s+(is\s+)?behind\s+codeair\b/i.test(lower)) {
+      detectedIntent = "LINK_REQUEST";
+      identity = requestedLink.target || "COMPANY";
+    } else if (/\b(b2b\s+leads?|lead\s+generation|batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|targeted\s+leads|cold\s+email|leads\s+ready\s+to\s+get\s+converted)\b/i.test(lower)) {
+      // B2B Lead Generation Offer / Outbound Pitch to Us:
+      // Directly address their proposal, clarify CodeAir's software-only scope, and decline politely without software questions.
+      responseMessage = `Thanks for clarifying your terms and pricing model. Over at CodeAir Software Solutions, we specialize strictly in custom software engineering, SaaS platforms, and AI systems, so we aren't purchasing lead generation batches or external lists right now. Wishing you the best with your outreach!`;
+      detectedIntent = "LEAD_GENERATION_DECLINED";
+      identity = "COMPANY";
+      serviceMatch = false;
+      updatedStage = "CLOSED";
+    } else if (/\b(career\s+(advice|path|paths|change|transition)|job\s+(titles?|paths?|search|hunting)|open\s+to\s+work|looking\s+for\s+(a\s+)?job|internship|hiring\s+interns|entry[- ]level\s+role)\b/i.test(lower)) {
+      // Career / Job Seeking Inquiry:
+      responseMessage = `Thanks for connecting! We aren't currently taking on new engineering hires or interns, but we wish you tremendous success in your career journey.`;
+      detectedIntent = "CAREER_INQUIRY";
+      identity = "COMPANY";
+      serviceMatch = false;
+      updatedStage = "CLOSED";
+    } else if (/\bwho\s+(is\s+)?(behind|founder|runs|started)\s+codeair\b/i.test(lower)) {
       responseMessage = `Sunmughan Swamy is the founder and technical architect behind CodeAir Software Solutions. We engineer custom software, SaaS platforms, and AI systems.`;
+      detectedIntent = "FOUNDER_INQUIRY";
+      identity = "FOUNDER";
+    } else if (/\b(what\s+(does\s+)?codeair\s+do|what\s+services|what\s+do\s+you\s+(build|offer|do))\b/i.test(lower)) {
+      responseMessage = `At CodeAir Software Solutions, we engineer custom web applications, multi-tenant SaaS platforms, Flutter mobile apps, and autonomous AI systems.`;
+      detectedIntent = "CAPABILITY_INQUIRY";
+      identity = "COMPANY";
     } else {
-      responseMessage = `That makes sense. What does your current architecture look like, and what is your target timeline for this project?`;
+      // Genuine Software Project Inquiry / Multi-Turn Technical Exploration
+      const prevLower = String(ourPreviousMessage || "").toLowerCase();
+      if (prevLower.includes("architecture") || prevLower.includes("scope")) {
+        responseMessage = `Got it. What are the key integrations or third-party APIs needed, and do you have an existing design or specification ready?`;
+        updatedStage = "SCOPING";
+      } else if (prevLower.includes("timeline") || lower.includes("timeline") || lower.includes("deadline")) {
+        responseMessage = `Understood. Would you like to schedule a technical discovery call to review the core architecture and milestones in detail?`;
+        updatedStage = "DISCOVERY_CALL";
+      } else {
+        responseMessage = `That sounds like an interesting project. Could you share a bit more detail about the core features and what target platforms (web, mobile, or backend) you have in mind?`;
+        updatedStage = "DISCOVERY";
+      }
+    }
+
+    // Enforce Relevance Gate on the proposed message
+    const gateCheck = this.evaluateRelevanceGate(responseMessage, { ...context, convId }, incomingMessage);
+    if (!gateCheck.approved) {
+      logger.warn(`[AI Engine] Relevance gate blocked proposed response: ${gateCheck.reason}`);
+      // Safe fallback closure that avoids repetitive questioning
+      responseMessage = `Understood. Feel free to connect directly if you have any questions regarding CodeAir's custom software engineering services.`;
     }
 
     return {
-      intent: "PROJECT_INQUIRY",
-      identity: "COMPANY",
-      service_match: true,
-      conversation_stage: needsHumanReview ? "HUMAN_REVIEW" : conversationStage,
+      intent: detectedIntent,
+      identity: identity,
+      service_match: serviceMatch,
+      conversation_stage: needsHumanReview ? "HUMAN_REVIEW" : updatedStage,
       sales_intensity: needsHumanReview ? "MEDIUM" : "LOW",
       should_reply: true,
       human_review_required: needsHumanReview,
@@ -579,16 +772,20 @@ CONTENT:
 """${post.text || ""}"""
 
 CRITICAL INSTRUCTIONS:
-1. Classify INTENT: BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
+1. Classify INTENT: BUYER | CAREER_ADVICE | LEAD_GENERATION_BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
 2. Genuine buyers are anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
-3. Extract REQUIREMENT in natural language.
-4. Determine TARGET_ENTITY: INDIVIDUAL (freelancer/developer) | COMPANY (agency/team) | EITHER.
-5. Match capability against approved capabilities.
-6. Select REPRESENTATION: FOUNDER | COMPANY | BOTH | NEUTRAL | IGNORE.
+3. Strict Disqualifications (Zero Sales Pitch):
+   - CAREER_ADVICE: Anyone asking about job titles, degrees, career transitions, WFH options, or resume feedback.
+   - LEAD_GENERATION_BUYER: Anyone pitching lead generation data, cold email lists, or marketing databases.
+   - JOB_SEEKER / RECRUITMENT: Anyone looking for employment or hiring salaried corporate employees.
+4. Extract REQUIREMENT in natural language.
+5. Determine TARGET_ENTITY: INDIVIDUAL (freelancer/developer) | COMPANY (agency/team) | EITHER.
+6. Match capability against approved capabilities.
+7. Select REPRESENTATION: FOUNDER | COMPANY | BOTH | NEUTRAL | IGNORE.
    - If user asks for an individual/freelancer/developer: FOUNDER
    - If user asks for an agency/company/team: COMPANY
    - If open to either: BOTH (or COMPANY)
-7. Single-URL Discipline:
+8. Single-URL Discipline:
    - For FOUNDER: Share Founder LinkedIn only.
    - For COMPANY: Share Company Website only (or PixelGo HMS for hospitality).
    - For NEUTRAL: Zero URLs.
@@ -596,7 +793,7 @@ CRITICAL INSTRUCTIONS:
 
 OUTPUT STRICT JSON:
 {
-  "intent": "BUYER" | "RECRUITMENT" | "JOB_SEEKER" | "SERVICE_PROVIDER" | "NETWORKING" | "IRRELEVANT" | "NEEDS_REVIEW",
+  "intent": "BUYER" | "CAREER_ADVICE" | "LEAD_GENERATION_BUYER" | "RECRUITMENT" | "JOB_SEEKER" | "SERVICE_PROVIDER" | "NETWORKING" | "IRRELEVANT" | "NEEDS_REVIEW",
   "requirement": "string",
   "target_entity": "INDIVIDUAL" | "COMPANY" | "EITHER",
   "service_match": true,

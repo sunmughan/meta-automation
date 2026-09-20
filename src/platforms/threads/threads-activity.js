@@ -113,31 +113,57 @@ class ThreadsActivityWatcher {
         // Load existing conversation state to maintain multi-turn continuity
         const convId = `threads:${item.username}`;
         const existingConv = stateStore.getConversation(convId, "threads") || {};
+        const recentOutgoing = stateStore.getRecentOutgoingMessages(convId, 5, "threads");
 
         // Generate contextual reply via AI decision engine
         const replyDecision = await aiDecisionEngine.generateConversationReply({
           platform: "threads",
+          convId,
           username: item.username,
           originalPost: existingConv.originalPost || "",
           ourPreviousMessage: existingConv.lastResponse || "",
           incomingMessage: item.text,
           conversationStage: existingConv.conversationStage || "DISCOVERY",
           companyMentionedBefore: existingConv.companyIntroduced,
-          founderMentionedBefore: existingConv.founderIntroduced
+          founderMentionedBefore: existingConv.founderIntroduced,
+          recentOutgoing
         });
+
+        // Enforce duplicate guard on proposed outgoing message
+        const msgDupCheck = duplicateGuard.canSendChatMessage(convId, replyDecision.response_message, "threads");
+        if (!msgDupCheck.allowed) {
+          logger.warn(`Skipping reply for @${item.username}: ${msgDupCheck.reason}`);
+          continue;
+        }
+
+        // Enforce strict relevance gate
+        const relevanceCheck = aiDecisionEngine.evaluateRelevanceGate(
+          replyDecision.response_message,
+          { convId, recentOutgoing },
+          item.text
+        );
+        if (!relevanceCheck.approved) {
+          logger.warn(`Skipping reply for @${item.username}: ${relevanceCheck.reason}`);
+          continue;
+        }
 
         // Update persistent conversation state
         stateStore.saveConversation({
           platform: "threads",
           conversationId: convId,
+          participant: item.username,
           user: item.username,
           username: item.username,
           postId: item.url,
+          incomingText: item.text,
+          lastIncomingMessage: item.text,
+          detectedIntent: replyDecision.intent,
           identifiedIntent: replyDecision.intent,
           identityUsed: replyDecision.identity,
           companyIntroduced: replyDecision.identity === "COMPANY" || replyDecision.identity === "BOTH" || existingConv.companyIntroduced,
           founderIntroduced: replyDecision.identity === "FOUNDER" || replyDecision.identity === "BOTH" || existingConv.founderIntroduced,
           lastResponse: replyDecision.response_message,
+          lastOutgoingMessage: replyDecision.response_message,
           conversationStage: replyDecision.conversation_stage || "DISCOVERY",
           previousMessages: [
             ...(existingConv.previousMessages || []),
@@ -352,7 +378,8 @@ class ThreadsActivityWatcher {
             platform: "threads",
             actionType: "REPLY",
             targetId: item.id,
-            text: item.text
+            text: replyDecision.response_message,
+            username: item.username
           });
 
           logger.info(`✅ Verified live reply to @${item.username}: "${replyDecision.response_message.slice(0, 50)}..."`);

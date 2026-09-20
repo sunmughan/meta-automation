@@ -1550,3 +1550,42 @@ STATUS: COMPLETED (Phase 1 to Current Operational Phase)
       - Pillar & Search Audit: 15 Passed, 0 Failed
       - Cross-Platform & Browser Audit: 17 Passed, 0 Failed
       - Total Tests: 91 Passed, 0 Failed (100% Success Rate)
+
+9. PHASE 7: CONTEXT INTELLIGENCE REPAIR, RELEVANCE GATE & MULTI-TURN DEDUPLICATION (v1.2.2):
+   ✓ Status: COMPLETED & VERIFIED WITH 100% PASS RATE ACROSS ALL 102 AUTOMATED AUDITS
+
+   A. Production Context Failures Diagnosed & Resolved:
+      1. Screenshot 1 (@mrsjortizx3 Career Advice Post received CodeAir SaaS Sales Pitch):
+         - Root Cause: In `src/ai/ai-decision-engine.js`, `hasBuyerIntent` matched `(i|we)\s+want` against "I want WFH", flagging `hasBuyerIntent = true`. The candidate filter had `&& !hasBuyerIntent` which bypassed it. No `CAREER_ADVICE` filter existed, falsely qualifying the user as a software buyer.
+         - Fix: Implemented strict `CAREER_ADVICE_PATTERNS` and `CAREER_ADVICE` intent state in `src/leads/intent-classifier.js` and `src/ai/ai-decision-engine.js`. Refined `hasBuyerIntent` to require concrete software project targets. Evaluated candidate and career advice disqualifiers first with zero promotional comments (`is_genuine_buyer: false`, `decision: "IGNORED"`, `should_reply: false`).
+      2. Screenshot 2 (@anasshaikh.biz Lead Generation Proposal received repeated Architecture Questions):
+         - Root Cause 1: `resolveRequestedLink` in `src/knowledge/knowledge-engine.js` matched substring `"git"` without word boundaries, causing `"digital"` in "outsource or go digital" to trigger an unprompted GitHub URL.
+         - Root Cause 2: `generateConversationReply` in `src/ai/ai-decision-engine.js` line 538 had a hardcoded fallback string: *"That makes sense. What does your current architecture look like, and what is your target timeline for this project?"*.
+         - Root Cause 3: In `dm-monitor.js` and `threads-activity.js`, `duplicateGuard.recordExecuted` passed `dmItem.lastMessage` (the counterpart's text) instead of our outgoing message text, so outgoing responses were never deduplicated.
+         - Fix:
+           - Converted `resolveRequestedLink` to strict word-boundary regexes (`\b(github|repo|\bgit\b)\b`), completely preventing substring false positives.
+           - Replaced hardcoded fallback in `generateConversationReply` with dynamic context-aware reasoning that detects B2B lead generation/payment terms, acknowledges them directly, and politely declines without asking software architecture or timeline questions.
+           - Added `canSendChatMessage(convId, text)` in `src/safety/duplicate-guard.js` blocking exact duplicates and near-duplicates (>75% token similarity) in the same thread.
+           - Added `evaluateRelevanceGate` in `src/ai/ai-decision-engine.js` enforcing 6 mandatory criteria (direct address, no unrelated software pitch on non-software topics, no repetition, no answered questions, single URL discipline, conversation advancement).
+           - Wired relevance gate and duplicate guard across `dm-monitor.js`, `reply-monitor.js`, and `threads-activity.js`.
+           - Added `getRecentOutgoingMessages(convId)` and `sanitizeConversation(convId)` to `src/storage/state-store.js` and pruned corrupted historical records.
+
+   B. Automated Regression & Adversarial Verification (Scenarios 60-70 Added):
+      - Scenario 60: Career Advice post (@mrsjortizx3) -> `CAREER_ADVICE`, `IGNORED`, `should_reply: false`, zero promotional comment.
+      - Scenario 61: B2B Lead Gen DM (@anasshaikh.biz) -> `LEAD_GENERATION_DECLINED`, `service_match: false`, declines without architecture/timeline pitch, "digital" does not trigger git.
+      - Scenario 62: Exact message deduplication blocks identical outgoing message in same thread.
+      - Scenario 63: Semantic deduplication blocks near-duplicate (>75% similarity) message in same thread.
+      - Scenario 64: Relevance gate rejects software architecture pitch on non-software proposal.
+      - Scenario 65: Job seeker candidate post strictly ignored without sales pitch.
+      - Scenario 66: Corporate salaried recruitment ad strictly ignored.
+      - Scenario 67: Freelancer advertising own services strictly ignored.
+      - Scenario 68: Genuine software buyer qualifies with custom grounded comment.
+      - Scenario 69: StateStore persists enriched conversation schema with commercial context.
+      - Scenario 70: DM Monitor executes complete transaction lifecycle transitions.
+
+   C. Complete Verification Suite Results:
+      - Command: `npm test`
+      - Main Test Suite: 70 Passed, 0 Failed
+      - Pillar & Search Discovery Audit: 15 Passed, 0 Failed
+      - Cross-Platform & Browser Audit: 17 Passed, 0 Failed
+      - Total Validations: 102 Passed, 0 Failed (100% Pass Rate)

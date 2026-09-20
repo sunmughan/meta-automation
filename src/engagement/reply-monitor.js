@@ -43,18 +43,35 @@ class ReplyMonitor {
     // 2. Load existing conversation state if any
     const convId = `${platform}:${replyData.postId || replyData.username}`;
     const existingConv = stateStore.getConversation(convId, platform) || {};
+    const recentOutgoing = stateStore.getRecentOutgoingMessages(convId, 5, platform);
 
     // 3. Generate contextual AI response
     const decision = await aiDecisionEngine.generateConversationReply({
       platform,
+      convId,
       username: replyData.username,
       originalPost: existingConv.originalPost || "",
       ourPreviousMessage: replyData.ourPreviousComment || existingConv.lastResponse || "",
       incomingMessage: replyData.incomingText,
       conversationStage: existingConv.conversationStage || "DISCOVERY",
       companyMentionedBefore: existingConv.companyIntroduced,
-      founderMentionedBefore: existingConv.founderIntroduced
+      founderMentionedBefore: existingConv.founderIntroduced,
+      recentOutgoing
     });
+
+    // 3.1 Check conversation duplicate guard
+    const msgDupCheck = duplicateGuard.canSendChatMessage(convId, decision.response_message, platform);
+    if (!msgDupCheck.allowed) {
+      logger.warn(`[REPLY MONITOR] Duplicate guard blocked reply to @${replyData.username}: ${msgDupCheck.reason}`);
+      return { success: false, reason: msgDupCheck.reason };
+    }
+
+    // 3.2 Check relevance gate
+    const relevanceCheck = aiDecisionEngine.evaluateRelevanceGate(decision.response_message, { convId, recentOutgoing }, replyData.incomingText);
+    if (!relevanceCheck.approved) {
+      logger.warn(`[REPLY MONITOR] Relevance gate blocked reply to @${replyData.username}: ${relevanceCheck.reason}`);
+      return { success: false, reason: relevanceCheck.reason };
+    }
 
     // 4. Update Conversation State
     const updatedConv = stateStore.saveConversation({

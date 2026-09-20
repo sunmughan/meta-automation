@@ -320,10 +320,10 @@ class KnowledgeEngine {
       };
     }
 
-    // Check specific platform mentions
-    const isCompanyExplicit = text.includes("codeair") || text.includes("company");
+    // Check specific platform mentions with strict word boundaries
+    const isCompanyExplicit = /\b(codeair|company|agency|team)\b/i.test(text);
 
-    if (text.includes("github") || text.includes("repo") || text.includes("git")) {
+    if (/\b(github|repo|repositories|repository|\bgit\b)\b/i.test(text)) {
       return {
         target: "FOUNDER",
         platform: "github",
@@ -331,7 +331,7 @@ class KnowledgeEngine {
       };
     }
 
-    if (text.includes("linkedin")) {
+    if (/\blinkedin\b/i.test(text)) {
       if (isCompanyExplicit) {
         return {
           target: "COMPANY",
@@ -346,7 +346,7 @@ class KnowledgeEngine {
       };
     }
 
-    if (text.includes("instagram") || text.includes("insta")) {
+    if (/\b(instagram|insta)\b/i.test(text)) {
       if (isCompanyExplicit) {
         return {
           target: "COMPANY",
@@ -361,7 +361,7 @@ class KnowledgeEngine {
       };
     }
 
-    if (text.includes("facebook") || text.includes("fb")) {
+    if (/\b(facebook|fb)\b/i.test(text)) {
       if (isCompanyExplicit) {
         return {
           target: "COMPANY",
@@ -389,7 +389,7 @@ class KnowledgeEngine {
       };
     }
 
-    if (text.includes("website") || text.includes("site") || text.includes("portfolio")) {
+    if (/\b(website|portfolio)\b/i.test(text) || (/\bsite\b/i.test(text) && /\b(link|url|your|web|visit)\b/i.test(text))) {
       return {
         target: "COMPANY",
         platform: "website",
