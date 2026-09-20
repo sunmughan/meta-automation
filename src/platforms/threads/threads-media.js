@@ -44,8 +44,22 @@ class ThreadsMedia {
    * Generates a full 5-slide carousel deck for a theme.
    * Returns array of absolute image paths.
    */
-  async generateCarouselDeck(theme = "pixelgo_hms") {
-    const deckSpecs = this.getDeckSpecs(theme);
+  async generateCarouselDeck(theme = "pixelgo_hms", dynamicSlides = null) {
+    let deckSpecs = [];
+    if (dynamicSlides && Array.isArray(dynamicSlides) && dynamicSlides.length >= 2) {
+      const baseSpecs = this.getDeckSpecs(theme);
+      const base0 = baseSpecs[0] || {};
+      deckSpecs = dynamicSlides.map((s, idx) => ({
+        badge: s.badge || base0.badge || "CODEAIR • ARCHITECTURE",
+        accentColor: base0.accentColor || "#00F0FF",
+        glowColor: base0.glowColor || "rgba(0, 240, 255, 0.12)",
+        title: s.title || `Key Insight #${idx + 1}`,
+        subtitle: s.subtitle || "",
+        footerTag: base0.footerTag || "TECH ARCHITECTURE"
+      }));
+    } else {
+      deckSpecs = this.getDeckSpecs(theme);
+    }
     const generatedPaths = [];
     const timestamp = Date.now();
 
@@ -71,8 +85,13 @@ class ThreadsMedia {
   /**
    * Generates a single visual quote/perspective card for any pillar.
    */
-  async generatePillarQuoteCard(pillar = "builder_network") {
-    const spec = this.getPillarQuoteSpec(pillar);
+  async generatePillarQuoteCard(pillar = "builder_network", dynamicSpec = {}) {
+    const baseSpec = this.getPillarQuoteSpec(pillar);
+    const spec = {
+      ...baseSpec,
+      quote: dynamicSpec?.quote || baseSpec.quote,
+      badge: dynamicSpec?.badge || baseSpec.badge
+    };
     const filename = `quote_${pillar}_${Date.now()}.png`;
     return await this.generateSingleCard(spec, filename);
   }
