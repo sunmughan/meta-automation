@@ -1208,7 +1208,7 @@ async function runAllTests() {
       postId: "test_job_post_65",
       text: "Recent graduate looking for entry-level software engineer roles or internship. Hire me! Available for work."
     };
-    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    const decision = await aiDecisionEngine.qualifyPost(post);
     assert.strictEqual(decision.is_genuine_buyer, false, "Job seeker must not be qualified as buyer");
     assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
     assert.strictEqual(decision.intent, "JOB_SEEKER", "Intent must be JOB_SEEKER");
@@ -1222,7 +1222,7 @@ async function runAllTests() {
       postId: "test_recruitment_post_66",
       text: "We are hiring a full-time Senior React Developer. Salary $120k-$150k with 401k and healthcare. Send resume to careers@acme.com"
     };
-    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    const decision = await aiDecisionEngine.qualifyPost(post);
     assert.strictEqual(decision.is_genuine_buyer, false, "Corporate HR must not be qualified as buyer");
     assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
     assert.strictEqual(decision.intent, "RECRUITMENT", "Intent must be RECRUITMENT");
@@ -1236,7 +1236,7 @@ async function runAllTests() {
       postId: "test_seller_post_67",
       text: "Check out my latest client website built with Next.js and Tailwind! Accepting new clients, DM me for rates."
     };
-    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    const decision = await aiDecisionEngine.qualifyPost(post);
     assert.strictEqual(decision.is_genuine_buyer, false, "Freelancer must not be qualified as buyer");
     assert.strictEqual(decision.decision, "IGNORED", "Decision must be IGNORED");
     assert.strictEqual(decision.intent, "SERVICE_PROVIDER", "Intent must be SERVICE_PROVIDER");
@@ -1250,7 +1250,7 @@ async function runAllTests() {
       postId: "test_buyer_post_68",
       text: "Looking for an agency or developer to build a custom SaaS platform with Stripe billing and multi-tenancy. Who should I talk to?"
     };
-    const decision = await aiDecisionEngine.qualifyPost(post, { useAiCall: false });
+    const decision = await aiDecisionEngine.qualifyPost(post);
     assert.strictEqual(decision.is_genuine_buyer, true, "Genuine SaaS buyer must be qualified");
     assert.strictEqual(decision.decision, "QUALIFIED", "Decision must be QUALIFIED");
     assert.strictEqual(decision.should_reply, true, "should_reply must be true");

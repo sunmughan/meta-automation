@@ -20,6 +20,8 @@ const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const threadsMedia = require("./threads-media");
 const logger = require("../../logging/logger");
+const aiRuntime = require("../../ai/ai-runtime");
+const knowledge = require("../../knowledge/knowledge-engine");
 
 async function captureDiagnosticScreenshot(page, prefix) {
   try {
@@ -45,85 +47,73 @@ const PILLARS = [
   "agentic_ai"
 ];
 
-const PILLAR_CAPTIONS = {
-  founders_revolution: [
-    "To all SaaS founders, startup builders, and consultants:\nWhat is the hardest part for you right now — finding customers, building the product, or designing the UI?\nLet's connect and help each other out in the comments!",
-    "Building a startup or SaaS product?\nKeep it simple: 1 clean landing page, 1 core feature that works fast, and talk to your users every day.\nWhat product or tool are you launching this month?",
-    "Question for startup founders, developers, and tech consultants:\nWhat is the biggest mistake you made when building your first MVP or SaaS product?\nShare your experience below!"
-  ],
-  builder_network: [
-    "Calling all software engineers, developers, and UI/UX designers 👋\nWhat tech stack are you building with this week? Next.js, Flutter, Node.js, or something else?\nDrop your stack and side projects below!",
-    "To full-stack developers, mobile app engineers, and UI/UX designers:\nWe are collaborating with builders on client projects with fair revenue share at CodeAir (www.codeair.tech).\nWhat are you working on right now? Say hi below!",
-    "To all software engineers and UI/UX designers:\nWhat is the #1 tool or library in your workflow that saves you the most time?\nLet's share our favorites below!"
-  ],
-  agentic_ai: [
-    "To developers, tech enthusiasts, and marketing pros:\nWhat is one repetitive task in your daily work that you wish an AI agent could do for you automatically?\nLet's talk workflow automation below!",
-    "To marketers, lead generation experts, and tech founders:\nHow are you using AI tools right now to find and close qualified leads?\nShare what is working best for you below!",
-    "Building real software automations comes down to clean code, fast APIs, and reliable execution.\nWhat is the coolest AI tool or workflow you tested recently?"
-  ],
-  tech_mentorship: [
-    "To engineers, UI/UX designers, and tech enthusiasts:\nWhat is the single best advice you would give to someone learning to code or design products today?\nDrop your advice below!",
-    "If you are a developer, designer, or early founder stuck on app architecture, database setup, or clean UI:\nFeel free to ask your tech question below. Happy to help you brainstorm!",
-    "To SaaS founders and engineers: Clean UI and simple user flows beat 50 complicated features every time.\nWhat is one app that has your favorite user interface?"
-  ],
-  pixelgo_hms: [
-    "To hotel owners, hospitality founders, and business operators:\nManaging bookings, rooms, and payments across 5 different apps is a headache. That's why we built PixelGo HMS (pixelgo.live).\nWhat is the most annoying software you use in your business daily?",
-    "Business software should be fast, clean, and easy to use for everyone on the team.\nWhat is one software tool in your work that you wish was 10x simpler?",
-    "At CodeAir (www.codeair.tech), we build reliable web apps, mobile apps, and custom software for real businesses.\nWhat kind of product is your business planning to build next?"
-  ]
-};
-
-
 class ThreadsPoster {
   /**
-   * Selects the next pillar in rotation.
-   * Ensures PixelGo HMS is highlighted every 2-3 days.
+   * Generates dynamic post content, discussion captions, and visual specs
+   * using the live Antigravity IDE Gemini 3.8 Flash High agent session.
+   * Eliminates all hardcoded static caption dictionaries.
    */
-  selectNextPillar() {
-    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
-    const twoDaysAgo = Date.now() - (48 * 60 * 60 * 1000);
-    const hasRecentPixelGo = ourPosts.some(p => p.pillar === "pixelgo_hms" && new Date(p.publishedAt).getTime() > twoDaysAgo);
+  async generateDynamicPostContent(pillar, format = "TEXT_ONLY") {
+    const profiles = knowledge.getOfficialProfiles();
+    const approved = knowledge.getApprovedServices();
 
-    if (!hasRecentPixelGo) {
-      return "pixelgo_hms";
+    const prompt = `
+CRITICAL OPERATIONAL CONSTRAINT:
+You are acting as the Chief Content Strategist & Technical Architect for Sunmughan Swamy (Founder of CodeAir Software Solutions). DO NOT invoke ANY tools. Output ONLY valid JSON matching the schema below.
+
+Brand & Context:
+- Founder: Sunmughan Swamy (Technical Architect, Builder, Systems Thinker)
+- Company: CodeAir Software Solutions (Custom Software, SaaS MVPs, Flutter Mobile Apps, AI Workflows, PixelGo HMS Hotel Management)
+- Target Pillars:
+  * pixelgo_hms: Hotel & hospitality tech operations, reservation systems, PMS simplicity (mention pixelgo.live naturally if relevant).
+  * builder_network: Collaboration with engineers, developers, and UI/UX designers, building real client projects with fair revenue share (mention www.codeair.tech naturally if relevant).
+  * founders_revolution: Hard lessons for SaaS founders, startup MVPs, building simple before scaling, product feedback.
+  * tech_mentorship: Systems architecture, clean database design, frontend/backend engineering advice for builders.
+  * agentic_ai: Practical AI workflows, enterprise agentic systems, deterministic engineering vs hype.
+
+Current Post Directive:
+- Selected Pillar: ${pillar}
+- Post Format: ${format} (options: TEXT_ONLY, SINGLE_CARD, CAROUSEL)
+
+INSTRUCTIONS:
+1. Generate an engaging, authentic, thought-provoking post for Threads:
+   - Voice: Sunmughan Swamy (experienced technical founder, conversational, sharp, honest, no corporate fluff).
+   - Hook: Catchy first 1-2 lines that stop the scroll.
+   - Body: 1-2 insightful technical or operational sentences based on current SaaS/tech trends.
+   - Discussion Question / CTA: End with an open, engaging question inviting founders, developers, or operators to comment.
+2. If format is SINGLE_CARD:
+   - Provide "quote": A punchy, memorable 1-2 sentence engineering/founder quote for a dark-mode visual card.
+   - Provide "badge": A short 2-3 word topic tag (e.g. "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE", "HOSPITALITY TECH").
+3. If format is CAROUSEL:
+   - Provide 5 slides for a mini-deck:
+     * title: punchy slide headline
+     * subtitle: clear explanation / takeaway
+
+OUTPUT STRICT JSON:
+{
+  "caption": "string",
+  "quote": "string",
+  "badge": "string",
+  "carousel_slides": [
+    { "title": "string", "subtitle": "string" }
+  ]
+}
+`;
+
+    try {
+      const res = await aiRuntime.callAi(prompt, { taskType: "COMMENT_SYNTHESIS" });
+      if (res && res.caption) {
+        return res;
+      }
+      throw new Error("Empty post content returned from AI");
+    } catch (e) {
+      logger.warn(`[THREADS POSTER] AI post generation failed (${e.message}), generating emergency dynamic fallback`);
+      return {
+        caption: `Building real software comes down to clean architecture, fast iterations, and talking to users every day. What are you building this week?`,
+        quote: "Clean architecture and fast shipping create real market value.",
+        badge: "CODEAIR • BUILDER"
+      };
     }
-
-    // Pick pillar least recently used
-    const recentPillars = ourPosts.slice(-4).map(p => p.pillar);
-    const candidate = PILLARS.find(pil => !recentPillars.includes(pil)) || PILLARS[Math.floor(Math.random() * PILLARS.length)];
-    return candidate;
-  }
-
-  /**
-   * Determines whether this post should be a 5-slide carousel, single card, or text-only.
-   */
-  determinePostFormat(pillar) {
-    const lastCarouselDate = stateStore.state.lastCarouselDate ? new Date(stateStore.state.lastCarouselDate).getTime() : 0;
-    const hoursSinceLastCarousel = (Date.now() - lastCarouselDate) / (1000 * 60 * 60);
-
-    // Alternate days rule: If last carousel was >= 40 hours ago, generate a full 5-slide carousel deck!
-    if (hoursSinceLastCarousel >= 40 || lastCarouselDate === 0) {
-      return "CAROUSEL";
-    }
-
-    // Otherwise, alternate between single visual card and text-only
-    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
-    const lastPost = ourPosts[ourPosts.length - 1];
-    if (lastPost && lastPost.format === "SINGLE_CARD") {
-      return "TEXT_ONLY";
-    }
-    return "SINGLE_CARD";
-  }
-
-  /**
-   * Gets engaging caption text for a pillar.
-   */
-  getCaptionForPillar(pillar) {
-    const captions = PILLAR_CAPTIONS[pillar] || PILLAR_CAPTIONS.builder_network;
-    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
-    const usedTexts = ourPosts.map(p => p.text);
-
-    return captions.find(c => !usedTexts.includes(c)) || captions[Math.floor(Math.random() * captions.length)];
   }
 
   /**
@@ -168,7 +158,10 @@ class ThreadsPoster {
   async publishEngagingPost(options = {}) {
     const pillar = options.pillar || this.selectNextPillar();
     const format = options.format || this.determinePostFormat(pillar);
-    const postText = options.text || this.getCaptionForPillar(pillar);
+
+    // Dynamically generate fresh post content & visual specs via Antigravity AI
+    const dynamicContent = await this.generateDynamicPostContent(pillar, format);
+    const postText = options.text || dynamicContent.caption;
     const ourPostId = `our_post_${Date.now()}`;
 
     stateStore.recordActionTransition("OWN_POST", ourPostId, "INIT", "PREPARING", {
@@ -187,10 +180,10 @@ class ThreadsPoster {
     let mediaPaths = [];
     if (format === "CAROUSEL") {
       logger.info(`[THREADS POSTER] Generating 5-slide Stripe-grade carousel deck for ${pillar}...`);
-      mediaPaths = await threadsMedia.generateCarouselDeck(pillar);
+      mediaPaths = await threadsMedia.generateCarouselDeck(pillar, dynamicContent.carousel_slides);
     } else if (format === "SINGLE_CARD") {
       logger.info(`[THREADS POSTER] Generating single visual card for ${pillar}...`);
-      const cardPath = await threadsMedia.generatePillarQuoteCard(pillar);
+      const cardPath = await threadsMedia.generatePillarQuoteCard(pillar, dynamicContent);
       if (cardPath) mediaPaths.push(cardPath);
     }
 

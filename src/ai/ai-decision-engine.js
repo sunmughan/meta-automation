@@ -42,10 +42,13 @@ class AiDecisionEngine {
     // 3. Format complete decision object
     if (analysis.decision === "QUALIFIED" && analysis.is_genuine_buyer) {
       // Determine representation if not already set
-      let rep = analysis.representation || "COMPANY";
-      if (analysis.target_entity === "INDIVIDUAL") rep = "FOUNDER";
-      else if (analysis.target_entity === "COMPANY") rep = "COMPANY";
-      else if (analysis.target_entity === "EITHER") rep = "BOTH";
+      let rep = analysis.representation;
+      if (!rep || rep === "IGNORE") {
+        if (analysis.target_entity === "INDIVIDUAL") rep = "FOUNDER";
+        else if (analysis.target_entity === "COMPANY") rep = "COMPANY";
+        else if (analysis.target_entity === "EITHER") rep = "BOTH";
+        else rep = "COMPANY";
+      }
 
       // Synthesize high-quality personalized comment
       const comment = analysis.generated_comment || commentGenerator.generateEngagingComment({
@@ -117,566 +120,27 @@ class AiDecisionEngine {
       };
     }
 
-    // 1. Attempt LLM Semantic Reasoning via Antigravity AI Runtime
-    // Options defaults useAiCall to true unless explicitly disabled
-    const isTestEnv = process.env.NODE_ENV === "test";
-    const shouldCallAi = options.useAiCall !== false && !options.offlineSimulation;
-
-    if (shouldCallAi) {
-      try {
-        const prompt = this.buildFullSemanticPrompt(post);
-        const aiRes = await aiRuntime.callAi(prompt, { taskType: "POST_ANALYSIS" });
-        if (aiRes && (aiRes.intent || aiRes.decision)) {
-          return this.normalizeAiResponse(aiRes, post);
-        }
-      } catch (err) {
-        logger.warn(`Antigravity AI model call failed: ${err.message}`);
-        // ARCHITECTURAL HARDENING (v1.1.8):
-        // Zero Heuristic Guessing on AI Failure in production.
-        // "A delayed decision is vastly superior to an erroneous AI decision."
-        const allowFallback = options.allowLocalFallback === true || (isTestEnv && options.allowLocalFallback !== false);
-        if (!allowFallback) {
-          logger.warn(`[AI Engine] Quarantining post ${post?.postId || "unknown"} due to AI runtime failure. Zero heuristic guessing.`);
-          return {
-            intent: "AI_ERROR",
-            decision: "IGNORED",
-            lead_type: "QUARANTINED",
-            quarantined: true,
-            service_match: false,
-            representation: "IGNORE",
-            is_genuine_buyer: false,
-            should_reply: false,
-            reason: `Antigravity AI reasoning failed (${err.message}). Quarantined to avoid heuristic hallucination.`
-          };
-        }
+    try {
+      const prompt = this.buildFullSemanticPrompt(post);
+      const aiRes = await aiRuntime.callAi(prompt, { taskType: "POST_ANALYSIS" });
+      if (aiRes && (aiRes.intent || aiRes.decision)) {
+        return this.normalizeAiResponse(aiRes, post);
       }
-    }
-
-    // 2. Offline Simulation / Grounded Semantic Reasoning Engine
-    return this.evaluateGroundedSemantics(post);
-  }
-
-  /**
-   * Primary Grounded Semantic Reasoning Engine.
-   * Evaluates communicative intent, requirement, target entity, and knowledge base matches.
-   *
-   * @param {Object} post
-   * @returns {Object} Semantic analysis output
-   */
-  evaluateGroundedSemantics(post) {
-    const text = String(post.text || "");
-    const lower = text.toLowerCase();
-
-    // -------------------------------------------------------------
-    // DIRECT INQUIRIES (CodeAir Capabilities & Founder Identity)
-    // -------------------------------------------------------------
-    if (/\bwho\s+(is\s+)?(behind|founded|started|runs)\s+codeair\b/i.test(lower)) {
+      throw new Error("AI returned empty classification response");
+    } catch (err) {
+      logger.warn(`[AI Engine] Antigravity AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
       return {
-        intent: "BUYER",
-        requirement: "User asking about the founder of CodeAir Software Solutions.",
-        target_entity: "INDIVIDUAL",
-        service_match: true,
-        matched_capability: "Technical Leadership & Custom Architecture",
-        matched_services: ["Custom software architecture", "Technical consulting"],
-        matched_categories: ["Web Development"],
-        representation: "FOUNDER",
-        decision: "QUALIFIED",
-        temperature: "HOT",
-        relevance_score: 95,
-        is_genuine_buyer: true,
-        should_reply: true,
-        reason: "User specifically asking about founder identity and leadership.",
-        generated_comment: `@${post.username || "user"} Sunmughan Swamy is the founder and technical architect behind CodeAir Software Solutions. We build custom software, SaaS platforms, and AI automations. Connect on LinkedIn at https://www.linkedin.com/in/sunmughan/!`
-      };
-    }
-
-    if (/\bwhat\s+(does\s+)?codeair\s+do\b/i.test(lower)) {
-      return {
-        intent: "BUYER",
-        requirement: "User asking about CodeAir Software Solutions capabilities and services.",
-        target_entity: "COMPANY",
-        service_match: true,
-        matched_capability: "Full-Cycle Software Engineering",
-        matched_services: ["Custom software development", "Web applications", "SaaS platforms", "AI automation"],
-        matched_categories: ["Web Development"],
-        representation: "COMPANY",
-        decision: "QUALIFIED",
-        temperature: "HOT",
-        relevance_score: 95,
-        is_genuine_buyer: true,
-        should_reply: true,
-        reason: "User explicitly asking about CodeAir company capabilities.",
-        generated_comment: `@${post.username || "user"} Over at CodeAir Software Solutions, we engineer custom web applications, multi-tenant SaaS platforms, Flutter mobile apps, and autonomous AI systems. Explore our portfolio at https://www.codeair.tech and connect with our founder at https://www.linkedin.com/in/sunmughan/.`
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 0: CAREER ADVICE & JOB/DEGREE TRANSITION (Strict Zero Sales Pitch)
-    // -------------------------------------------------------------
-    const isCareerAdvice =
-      /\b(career\s+(advice|path|paths|change|transition|move|growth|options?)|job\s+(titles?|paths?|search|hunting|market)|what\s+(career|job|role|paths?|titles?)\s+should\s+i|(figure|figuring)\s+out\s+my\s+next\s+move|(finished|graduated|earned|completed)\s+my\s+(ba|bs|bachelor'?s|master'?s|degree|mba|phd)|(ba|bs|degree)\s+in\s+business(\s+administration)?|wfh[,\s]+(\$?\d+k\+?|remote)|minimal\s+phones?|entry[- ]level\s+(roles?|jobs?|positions?|advice)|how\s+do\s+i\s+break\s+into|how\s+to\s+get\s+into\s+(tech|software|data|product)|advice\s+for\s+(new\s+grads|beginners|career\s+changers|moms?)|resume\s+(feedback|review|help))\b/i.test(lower);
-
-    if (isCareerAdvice) {
-      return {
-        intent: "CAREER_ADVICE",
-        requirement: "Author asking for personal career advice, job titles, or education transition.",
-        target_entity: null,
+        intent: "AI_ERROR",
+        decision: "IGNORED",
+        lead_type: "QUARANTINED",
+        quarantined: true,
         service_match: false,
         representation: "IGNORE",
-        decision: "IGNORED",
-        temperature: "IGNORE",
-        relevance_score: 0,
         is_genuine_buyer: false,
         should_reply: false,
-        lead_type: "CAREER_ADVICE",
-        reason: "Author is asking for personal career advice or job titles, not hiring for a software project."
+        reason: `Antigravity AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
       };
     }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 0.5: B2B LEAD GENERATION & DATA SALES OFFERS
-    // -------------------------------------------------------------
-    const isLeadSalesOffer =
-      /\b(batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|lead\s+scraper|verified\s+contact\s+info|selling\s+leads|providing\s+b2b\s+leads|b2b\s+lead\s+lists?|buy\s+leads)\b/i.test(lower) ||
-      (/\b(b2b\s+leads?|lead\s+generation|targeted\s+leads|cold\s+email\s+leads)\b/i.test(lower) && /\b(i\s+can\s+provide|charge|rate|per\s+lead|payment|deliver|sample\s+data|database)\b/i.test(lower));
-
-    if (isLeadSalesOffer) {
-      return {
-        intent: "LEAD_GENERATION_BUYER",
-        requirement: "Author offering or discussing B2B lead generation / contact list delivery.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        temperature: "IGNORE",
-        relevance_score: 0,
-        is_genuine_buyer: false,
-        should_reply: false,
-        lead_type: "LEAD_GENERATION_BUYER",
-        reason: "Author is proposing or offering B2B lead generation data, not purchasing software engineering."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 0.7: REAL ESTATE, PROPERTY & INVESTMENT DEALS
-    // (e.g. Kolkata & West Bengal real estate, residential, commercial)
-    // -------------------------------------------------------------
-    const isRealEstate =
-      /\b(real\s+estate|properties|property|residential|commercial\s+properties|plots?|flats?|apartments?|bhk|land\s+for\s+sale|houses?\s+for\s+sale|villa|realtors?|brokerage|real\s+estate\s+deals)\b/i.test(lower);
-
-    if (isRealEstate) {
-      return {
-        intent: "SERVICE_PROVIDER",
-        requirement: "Author promoting real estate properties or investment deals.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        temperature: "IGNORE",
-        relevance_score: 0,
-        is_genuine_buyer: false,
-        should_reply: false,
-        lead_type: "SERVICE_PROVIDER",
-        reason: "Author is advertising real estate, properties, or investment deals, not hiring software engineering services."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // BUYER INTENT DETECTION (Semantic cues of client demand or hiring intent)
-    // -------------------------------------------------------------
-    const hasBuyerIntent =
-      /\b((i|we)\s+need|need\s+(someone(\s+who)?|somebody(\s+who)?|a\s+|an?\s+|to\s+hire)|needing|looking\s+for\s+(a\s+|an?\s+|someone(\s+who|\s+to)|somebody(\s+who|\s+to)|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?|help\s+with|a\s+co[- ]?founder|a\s+cto|a\s+technical\s+partner)|looking\s+to\s+hire|(i|we)\s+want\s+(a\s+|an?\s+|to\s+build|to\s+create|to\s+develop|to\s+hire|to\s+redesign|someone|somebody)|seeking\s+(a\s+|an?\s+|someone(\s+who|\s+to)|a\s+developer|a\s+designer|an\s+agency|proposals?|recommendations?|a\s+co[- ]?founder|a\s+cto|a\s+technical\s+partner)|hiring\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|hire\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|in\s+search\s+of\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|in\s+need\s+of\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|a\s+website|an?\s+app)|searching\s+for\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|an\s+agency|a\s+co[- ]?founder)|can\s+(someone|anyone)(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign|with)?|who\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code|redesign)?|anyone\s+knows?\s+(a\s+|an?\s+|someone|how\s+to\s+build)|anyone\s+can(\s+help(\s+to)?)?\s*(build|develop|create|design|code)?|does\s+anyone\s+(build|know\s+a\s+developer|know\s+a\s+designer)|recommend\s+(a\s+|an?\s+|developers?|designers?|agenc)|recommendations?\s+for\s+(a\s+|an?\s+|developers?|designers?|agenc|software|websites?|apps?)|help\s+(me|us)\s*(to\s+)?(build|create|develop|design|code|redesign)|where\s+can\s+i\s+(find|hire)\s+(a\s+|an?\s+|someone|a\s+developer|a\s+designer|a\s+co[- ]?founder)|dm\s+(me\s+)?(your\s+)?(portfolio|rates|quotes?|pricing|charges|proposals?))\b/i.test(lower);
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 1: JOB SEEKER (Candidate asking for employment)
-    // -------------------------------------------------------------
-    const isJobSeeker =
-      /\b(open\s+to\s+work|open\s+for\s+work|looking\s+for\s+(a\s+)?(job|internship)|looking\s+for\s+entry[- ]level|seeking\s+(opportunities|employment|job|roles?)|available\s+for\s+(work|hire|employment)|freelancer\s+available|actively\s+looking\s+for\s+(work|a\s+job)|seeking\s+(software|web|flutter|developer)\s+opportunities|hire\s+me\b|looking\s+to\s+break\s+into)\b/i.test(lower);
-
-    if (isJobSeeker) {
-      return {
-        intent: "JOB_SEEKER",
-        requirement: "Author seeking employment or freelance gigs for themselves.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        should_reply: false,
-        lead_type: "JOB_SEEKER",
-        reason: "Author is a job seeker looking for employment or gigs, not a software client."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 2: SERVICE PROVIDER (Sellers advertising own services)
-    // ONLY triggers if author is pitching themselves or advertising their own work,
-    // and NOT expressing genuine buyer demand for their own project.
-    // -------------------------------------------------------------
-    const isRhetoricalSellerQuestion =
-      (/\blooking\s+for\s+a\s+(website|web|app|mobile|software)?\s*(designer|developer|agency)\s*\?/i.test(lower) &&
-       /\b(we|i|here|dm|contact|agency|studio|duo)\b/i.test(lower));
-
-    const isDirectSellerPromotion =
-      /\b(my\s+portfolio|check\s+(out\s+)?my\s+(work|portfolio|recent\s+project)|my\s+latest\s+(build|project|design|website)|built\s+this\s+(website|app|for\s+a\s+client)|taking\s+on\s+new\s+clients|accepting\s+new\s+clients|open\s+for\s+clients|dm\s+(me\s+)?for\s+(rates|pricing|inquiries|quotes?|orders?)|starting\s+at\s+[\$₹€£]\d+|[\$₹€£]\d+\s+per\s+(page|website|project)|link\s+in\s+bio|calendly\.com|i\s+build\s+(websites|apps|software)\s+for|we\s+build\s+(websites|apps|software)\s+for|i\s+can\s+help\s+you\s+(build|launch|turn\s+your\s+idea)|we\s+(design|build|create|develop)\s+(and\s+(build|design|develop)\s+)?(modern|custom|stunning|responsive|high[- ]converting)?\s*(websites|apps|software)|we\s+are\s+here|is\s+here\s*!\s*we|our\s+(agency|team|studio|services)|dm\s+(us|me)\s+to\s+(work|start|book|get\s+started)|booking\s+(open|now\s+for)|partner\s+up\s+with\s+me|work\s+with\s+(me|us)|let('?s|\s+us)\s+(start\s+)?work(ing)?\s+together|what\s+you\s+have\s+in\s+mind.*vercel\.app|looking\s+for\s+(\d+\s+)?(businesses|clients|companies|brands|startups|people)\s+(that|who)\s+(need|want)|independent\s+(web\s+developer|developer|designer|engineer))\b/i.test(lower) ||
-      (/\b(i('?m|\s+am)\s+([a-z\s]+)?(developer|designer|engineer|builder|manager|marketer|specialist|consultant|strategist|creator|freelancer|editor))\b/i.test(lower) && !hasBuyerIntent);
-
-    if (isRhetoricalSellerQuestion || isDirectSellerPromotion) {
-      return {
-        intent: "SERVICE_PROVIDER",
-        requirement: "Author offering/advertising their own development or design services.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        reason: "Author is advertising or showcasing their own freelance/agency services, not hiring."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 3: CORPORATE HR RECRUITMENT (Salaried 9-5 employee ads)
-    // -------------------------------------------------------------
-    const isCorporateHr =
-      /\b((submit|send)\s+(your\s+)?(cv|resume)|(cv|resume)\s+(to|at)\s+[a-z0-9._%+-]+@|apply\s+(at|via|to|online)\s*[:\s]*(https?:\/\/|careers?|greenhouse|lever|workday)|careers?@[a-z0-9.-]+\.[a-z]{2,}|(base\s+)?salary\s*[:\s]*[\$€£₹]\s*\d+|annual\s+salary|compensation\s+package|benefits\s*(package|\(401k|health\s+insurance)|(full[- ]?time|part[- ]?time)\s+(employee|salaried\s+role|permanent\s+position|w2)|talent\s+acquisition|job\s+opening\s+at|internships?|interns?\b|stipend|freshers?\s+welcome)\b/i.test(lower);
-
-    if (isCorporateHr) {
-      return {
-        intent: "RECRUITMENT",
-        requirement: "Corporate salaried employee job opening with formal application/resume intake.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        reason: "Corporate recruitment / salaried job opening, not a contract software buyer."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 3.5: EDUCATIONAL ARTICLES, COMPARISONS, & RHETORICAL ADVICE
-    // (e.g. "When you need a website, the first decision...", "Website development vs website builder")
-    // -------------------------------------------------------------
-    const isEducationalOrComparison =
-      /\b(((if|when|why|before|how)\s+you\s+need)|((do|are)\s+you\s+need)|((if|when)\s+you('?re|\s+are)\s+(looking|building|trying|planning))|(should\s+you\s+(hire|build|choose))|(which\s+is\s+(better|best))|(\bvs\b.*(which|better|difference))|(pros\s+and\s+cons)|(guide\s+to)|(tips\s+for)|(here('?s|\s+is)\s+(how|why|what)))\b/i.test(lower);
-
-    const hasFirstPersonBuyerStatement =
-      /\b((i|we)\s+need|looking\s+to\s+hire|hire\s+someone|looking\s+for\s+(a|someone)|dm\s+me\s+your\s+(rates|portfolio))\b/i.test(lower) &&
-      !/\b((if|when|why|before)\s+(i|we)\s+need)\b/i.test(lower);
-
-    if (isEducationalOrComparison && !hasFirstPersonBuyerStatement) {
-      return {
-        intent: "EDUCATIONAL_CONTENT",
-        requirement: "Author sharing an educational comparison, blog article, or rhetorical advice for readers.",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        should_reply: false,
-        reason: "Author is sharing educational advice or product comparison for readers, not seeking software services for themselves."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 4: IRRELEVANT LIFESTYLE / MEMES / CELEBRITY
-    // -------------------------------------------------------------
-    const isIrrelevant =
-      /\b(happy\s+birthday|rest\s+in\s+peace|\brip\b|beach|vacation|sunset|sunrise|traveling|ootd|workout|gym|recipe|dinner|concert|album|song|movie|cinema|dating|relationship|crush|horoscope|zodiac|meme|memes|funny\s+video|weather|raining)\b/i.test(lower);
-
-    if (isIrrelevant) {
-      return {
-        intent: "IRRELEVANT",
-        requirement: null,
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        reason: "Post is personal lifestyle, celebrity, entertainment, or irrelevant content."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 5: GENERAL CASUAL NETWORKING
-    // -------------------------------------------------------------
-    const isNetworking =
-      /\b(expand\s+my\s+network|chat\s+and\s+connect|happy\s+(monday|friday|weekend)|good\s+morning\s+(threads|everyone|all)|shy\s+businesses\s+stay\s+small)\b/i.test(lower);
-
-    if (isNetworking && !/\b(need|looking|hire|hiring|build|developer|website|app)\b/i.test(lower)) {
-      return {
-        intent: "NETWORKING",
-        requirement: null,
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        reason: "General non-technical networking chatter without a project requirement."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // DISQUALIFIER 6: OUT OF SCOPE / NON-SOFTWARE SERVICES
-    // (Graphic design, logos, video editing, accounting, legal)
-    // -------------------------------------------------------------
-    const isOutOfScope =
-      /\b(logo\s+design|graphic\s+design(er)?|video\s+edit(or|ing)?|banner\s+design|flyer\s+design|accounting|tax\s+filing|bookkeeping|lawyer|legal\s+advice)\b/i.test(lower) &&
-      !/\b(software|website|web\s+app|app|mobile|flutter|saas|platform|code|develop(er)?|pms|hotel)\b/i.test(lower);
-
-    if (isOutOfScope) {
-      return {
-        intent: "OUT_OF_SCOPE",
-        requirement: "Non-software service request (graphic design, accounting, video editing, etc.).",
-        target_entity: null,
-        service_match: false,
-        representation: "IGNORE",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        reason: "Request is for non-software / out-of-scope services (logo/graphics/accounting) outside CodeAir capabilities."
-      };
-    }
-
-    // -------------------------------------------------------------
-    // QUALIFIER: BUYER / CLIENT PROJECT DEMAND (Semantic Analysis)
-    // -------------------------------------------------------------
-    // Checks for genuine client demand across natural phrasing:
-    // "I need a website designer", "looking for someone to help with my website",
-    // "need an app for my business", "can someone develop this", "looking for a developer to build my platform"
-
-    const hasTargetRoleOrEntity =
-      /\b(developer|dev|devs|programmer|coder|engineer|designer|web\s+designer|website\s+designer|web\s+developer|app\s+developer|flutter\s+developer|full[- ]?stack\s+developer|frontend\s+developer|backend\s+developer|ai\s+developer|ai\s+engineer|co[- ]?founder|cto|technical\s+partner|tech\s+lead|consultant|freelancer|contractor|agency|team|company|partner|firm|someone|somebody|expert|specialist)\b/i.test(lower);
-
-    const hasProjectTarget =
-      /\b(websites?|web\s+apps?|web\s+applications?|applications?|sites?|landing\s+pages?|stores?|online\s+stores?|ecommerce|e-commerce|shopify|mobile\s+apps?|ios\s+apps?|android\s+apps?|apps?|flutter\s+apps?|mvps?|saas|platforms?|crms?|erps?|dashboards?|admin\s+portals?|internal\s+tools?|hotels?|resorts?|restaurants?|pms|booking\s+systems?|reservation\s+systems?|hospitality\s+software|software|custom\s+software|systems?|tools?|ai\s+chatbots?|ai\s+agents?|automations?|co[- ]?founder|technical\s+partner|tech\s+consulting|architecture|mvp\s+build)\b/i.test(lower);
-
-    const hasActionGoal =
-      /\b(build|building|develop|developing|development|create|creating|creation|design|designing|redesign|redesigning|code|coding|program|programming|make|making|launch|launching|integrate|integrating|automate|automating|setup|set\s+up|overhaul|fix|fixing|finish|finishing|hire|hiring|portfolio|rates|quotes?|budget|estimate|charges|help|helping|assist|assisting|partner|partnering|specializ(e|es|ing)\s+in)\b/i.test(lower);
-
-    // Identify and Match Capability against CodeAir Knowledge Base
-    let matchedCapability = null;
-    let matchedCategories = [];
-    let matchedServices = [];
-
-    if (/\b(hotel|resort|restaurant|hospitality|motel|vacation\s+rental|guest\s+house|pms|reservation\s+system)\b/i.test(lower)) {
-      matchedCapability = "Hospitality";
-      matchedCategories = ["Hospitality"];
-      matchedServices = ["Hotel management software (PixelGo HMS)", "Hospitality booking platforms"];
-    } else if (/\b(saas|multi[- ]?tenant|mvps?|platforms?)\b/i.test(lower)) {
-      matchedCapability = "SaaS development";
-      matchedCategories = ["SaaS development"];
-      matchedServices = ["SaaS development", "MVP development", "Scalable cloud architecture"];
-    } else if (/\b(ai|llm|chatbots?|rag|agents?|voice\s+ai|calling\s+agent|business\s+automation|workflow\s+automation)\b/i.test(lower)) {
-      matchedCapability = "AI & Automation";
-      matchedCategories = ["AI & Automation"];
-      matchedServices = ["AI applications", "AI agents", "AI chatbots", "Workflow automation"];
-    } else if (/\b(crms?|erps?|pos|dashboards?|admin\s+portals?|internal\s+tools?|inventory|billing\s+systems?)\b/i.test(lower)) {
-      matchedCapability = "Business Systems";
-      matchedCategories = ["Business Systems"];
-      matchedServices = ["CRM systems", "ERP systems", "Admin dashboards", "Custom business portals"];
-    } else if (/\b(backend|api|apis|databases?|postgres|node\.?js|laravel)\b/i.test(lower)) {
-      matchedCapability = "Backend & APIs";
-      matchedCategories = ["Backend & APIs"];
-      matchedServices = ["Backend development", "Node.js engineering", "REST APIs", "Database architecture"];
-    } else if (/\b(websites?|web\s+apps?|web\s+applications?|sites?|landing\s+pages?|stores?|online\s+stores?|ecommerce|e-commerce|shopify|web\s+designers?|web\s+developers?|frontend|full[- ]?stack)\b/i.test(lower)) {
-      matchedCapability = "Web Development";
-      matchedCategories = ["Web Development"];
-      matchedServices = ["Custom web application development", "Business websites"];
-    } else if (/\b(mobile|flutter|ios|android|react\s+native|mobile\s+apps?|apps?|app\s+developers?|app\s+development)\b/i.test(lower)) {
-      matchedCapability = "Mobile Development";
-      matchedCategories = ["Mobile Development"];
-      matchedServices = ["Mobile applications", "Flutter applications", "iOS applications", "Android applications"];
-    } else if (/\b(co[- ]?founder|cto|technical\s+partner|tech\s+consulting|architecture\s+guidance|tech\s+advisor)\b/i.test(lower)) {
-      matchedCapability = "Technical Co-Founder & Consulting";
-      matchedCategories = ["Web Development"];
-      matchedServices = ["Technical consulting", "Custom software architecture", "MVP development"];
-    } else if (/\b(developers?|programmers?|coders?|software|systems?|applications?|develop\s+this|build\s+this|code\s+this)\b/i.test(lower)) {
-      matchedCapability = "Custom Software";
-      matchedCategories = ["Web Development"];
-      matchedServices = ["Custom software development", "Application engineering"];
-    }
-
-    // Strict Buyer Qualification: Buyer Intent + Software Capability + (Target Entity OR Project Target) + Action Goal
-    if (hasBuyerIntent && matchedCapability && (hasTargetRoleOrEntity || hasProjectTarget) && (hasActionGoal || hasProjectTarget)) {
-      // 1. Determine Target Entity (INDIVIDUAL vs COMPANY vs EITHER)
-      let targetEntity = "EITHER";
-      if (/\b(co[- ]?founder|cto|technical\s+partner|freelancer?|contractor|developer|dev|designer|individual|founder|person|guy)\b/i.test(lower)) {
-        targetEntity = "INDIVIDUAL";
-      } else if (/\b(agency|company|team|firm|studio)\b/i.test(lower)) {
-        targetEntity = "COMPANY";
-      }
-
-      // 2. Extract Natural Language Requirement
-      const requirement = this.extractNaturalRequirement(text, matchedCapability);
-
-      // 4. Determine Representation based on targetEntity & capability
-      let representation = "COMPANY";
-      if (targetEntity === "INDIVIDUAL") {
-        representation = "FOUNDER";
-      } else if (targetEntity === "COMPANY") {
-        representation = "COMPANY";
-      } else {
-        representation = "BOTH";
-      }
-
-      return {
-        intent: "BUYER",
-        requirement: requirement,
-        target_entity: targetEntity,
-        service_match: true,
-        matched_capability: matchedCapability,
-        matched_categories: matchedCategories,
-        matched_services: matchedServices,
-        representation: representation,
-        decision: "QUALIFIED",
-        temperature: "HOT",
-        relevance_score: 95,
-        is_genuine_buyer: true,
-        should_reply: true,
-        reason: `Genuine buyer requesting ${matchedCapability} (${targetEntity.toLowerCase()} representation).`
-      };
-    }
-
-    // -------------------------------------------------------------
-    // TIER 2: INDUSTRY LEAD & AUDIENCE ENGAGEMENT (SaaS Founders, Devs, Designers, Consultants, Marketers)
-    // Captures high-value engagement posts from our core target audiences in simple English.
-    // -------------------------------------------------------------
-    const isTargetAudienceTopic =
-      /\b(saas|startup|startups|bootstrapped|indiehacker|mvp|co[- ]?founder|founder|software|web\s+app|mobile\s+app|developer|developers|engineer|engineers|programmer|frontend|backend|fullstack|flutter|react|next\.?js|node\.?js|tech\s+stack|codebase|apis?|ui\/ux|ui\s+ux|product\s+design|web\s+design|landing\s+page|figma|user\s+experience|startup\s+consultant|tech\s+consultant|growth\s+advisor|tech\s+enthusiast|ai\s+agents?|ai\s+tools?|ai\s+workflows?|automation|lead\s+generation|lead\s+gen|client\s+acquisition)\b/i.test(lower);
-
-    const isConversationalOrQuestion =
-      lower.includes("?") ||
-      /\b(what\s+(are\s+you|is|tech|do\s+you|would\s+you|tools?|app)|how\s+(do\s+you|to|did\s+you)|thoughts\s+on|feedback\s+on|struggling\s+with|share\s+your|drop\s+your|built\s+this|launched|working\s+on|advice\s+for|anyone\s+(else|using|know))\b/i.test(lower);
-
-    if (isTargetAudienceTopic && isConversationalOrQuestion && text.length >= 25) {
-      let targetAudience = "Tech & Startup Community";
-      if (/\b(saas|startup|mvp|founder|co[- ]?founder)\b/i.test(lower)) targetAudience = "SaaS Founders";
-      else if (/\b(developer|dev|engineer|flutter|react|next\.?js|backend|fullstack)\b/i.test(lower)) targetAudience = "Developers & Engineers";
-      else if (/\b(ui\/ux|ui\s+ux|product\s+design|web\s+design|figma|landing\s+page)\b/i.test(lower)) targetAudience = "UI/UX Designers";
-      else if (/\b(ai\s+agents?|ai\s+tools?|automation|workflows?)\b/i.test(lower)) targetAudience = "AI & Tech Enthusiasts";
-      else if (/\b(lead\s+generation|lead\s+gen|acquisition|marketing)\b/i.test(lower)) targetAudience = "Marketing & Lead Experts";
-      else if (/\b(consultant|advisor)\b/i.test(lower)) targetAudience = "Startup Consultants";
-
-      const capability = matchedCapability || "Web Development";
-      const comment = this.generateIndustryComment({
-        text,
-        username: post.username,
-        targetAudience,
-        capability
-      });
-
-      return {
-        intent: "INDUSTRY_LEAD",
-        requirement: `${targetAudience} discussion: "${text.slice(0, 80).replace(/\s+/g, " ")}..."`,
-        target_entity: "INDIVIDUAL",
-        service_match: true,
-        matched_capability: capability,
-        matched_categories: matchedCategories.length ? matchedCategories : ["Web Development"],
-        matched_services: matchedServices.length ? matchedServices : ["Custom software development"],
-        representation: "FOUNDER",
-        decision: "QUALIFIED",
-        temperature: "WARM",
-        relevance_score: 85,
-        is_genuine_buyer: true,
-        should_reply: true,
-        lead_type: "INDUSTRY_LEAD",
-        reason: `Target ${targetAudience} discussion directly relevant to CodeAir services and audience.`,
-        generated_comment: comment
-      };
-    }
-
-    // Unmatched general technology or ambiguous discussion
-    return {
-      intent: "NEEDS_REVIEW",
-      requirement: "General technical discussion or ambiguous context.",
-      target_entity: null,
-      service_match: false,
-      representation: "NEUTRAL",
-      decision: "IGNORED",
-      temperature: "IGNORE",
-      relevance_score: 30,
-      is_genuine_buyer: false,
-      should_reply: false,
-      reason: "General discussion without explicit client project demand or hiring intent."
-    };
-  }
-
-  /**
-   * Generates simple, friendly English comments for target audience engagement.
-   * Zero complicated dictionary words. Friendly, human, and encouraging.
-   */
-  generateIndustryComment(params) {
-    const { text = "", username = "", targetAudience = "", capability = "Web Development" } = params;
-    const lower = text.toLowerCase();
-    const handle = username ? `@${username}` : "";
-    const greeting = handle ? (Math.random() > 0.5 ? `${handle} ` : `Hey ${handle}, `) : "";
-
-    // 1. Asking what people are building or working on
-    if (/\b(what('?s|\s+is|\s+are)\s+(everyone|you(\s+all)?|people)\s+(building|creating|working\s+on|shipping)|what\s+are\s+you\s+building)\b/i.test(lower)) {
-      const answers = [
-        `${greeting}We're building custom web apps, SaaS platforms, and mobile apps over at CodeAir (www.codeair.tech). What project are you focused on this week?`,
-        `${greeting}At CodeAir (www.codeair.tech), we build custom software and hotel management systems (PixelGo HMS). Love seeing builders ship. What are you working on?`,
-        `${greeting}I'm Sunmughan, building full-stack web platforms and Flutter apps with our team at CodeAir. What are you building right now?`
-      ];
-      return answers[Math.floor(Math.random() * answers.length)];
-    }
-
-    // 2. SaaS Founders & MVPs
-    if (targetAudience === "SaaS Founders" || /\b(saas|mvp|startup)\b/i.test(lower)) {
-      const saasReplies = [
-        `${greeting}Keeping your first version simple and launching fast is key. Don't build 50 features before talking to your first 20 users. What core problem is your product solving?`,
-        `${greeting}The biggest trap with early SaaS is over-complicating the tech stack. A clean PostgreSQL database and simple frontend will take you surprisingly far. What are you launching with?`,
-        `${greeting}Clean UI and fast onboarding win every time. If users don't get the value in 10 seconds, they bounce. What has been your biggest feedback from users so far?`
-      ];
-      return saasReplies[Math.floor(Math.random() * saasReplies.length)];
-    }
-
-    // 3. UI/UX Designers
-    if (targetAudience === "UI/UX Designers" || /\b(ui\/ux|design|figma|landing\s+page)\b/i.test(lower)) {
-      const designReplies = [
-        `${greeting}Clean visual hierarchy and fast loading beat fancy animations every single time. If the user can find what they need in 2 clicks, you win. Great points here!`,
-        `${greeting}Simple user flows and clear buttons always convert best. A lot of apps over-design when simple and clean works so much better. What tool did you design this in?`,
-        `${greeting}Navigation clarity and mobile responsiveness are where most products drop the ball. Clean spacing makes a huge difference. Love this perspective!`
-      ];
-      return designReplies[Math.floor(Math.random() * designReplies.length)];
-    }
-
-    // 4. Developers & Engineers
-    if (targetAudience === "Developers & Engineers" || /\b(developer|flutter|react|next|backend|api)\b/i.test(lower)) {
-      const devReplies = [
-        `${greeting}Clean database design and simple APIs save weeks of refactoring later. Keeping the architecture modular from day one is always worth it. What tech stack are you using?`,
-        `${greeting}Fast load times and reliable error handling make a huge difference in user experience. What is your go-to frontend framework these days?`,
-        `${greeting}Simple code that is easy to read and maintain beats clever code every time. What features are you currently building this week?`
-      ];
-      return devReplies[Math.floor(Math.random() * devReplies.length)];
-    }
-
-    // 5. AI & Tech Enthusiasts
-    if (targetAudience === "AI & Tech Enthusiasts" || /\b(ai|agent|automation|workflow)\b/i.test(lower)) {
-      const aiReplies = [
-        `${greeting}When building AI automations, testing on real data and having clean fallback rules is what makes them reliable in production. What specific task are you automating?`,
-        `${greeting}AI works best when it handles repetitive tasks while human logic handles edge cases. What tools or models are you experimenting with right now?`,
-        `${greeting}Keeping prompt instructions simple and testing edge cases early saves so much headache. What is the coolest automation you've set up so far?`
-      ];
-      return aiReplies[Math.floor(Math.random() * aiReplies.length)];
-    }
-
-    // 6. Marketing & Lead Experts
-    if (targetAudience === "Marketing & Lead Experts" || /\b(lead|acquisition|outreach|marketing)\b/i.test(lower)) {
-      const marketingReplies = [
-        `${greeting}Real conversations and genuine value always convert better than generic automated messages. What channels have brought you the highest quality leads?`,
-        `${greeting}Clean positioning and direct communication make lead generation so much easier. When your offer is clear, people respond. What is working best for you right now?`,
-        `${greeting}Understanding your customer's exact pain point is 90% of marketing. When the product solves a real headache, the sale follows naturally. Great insight!`
-      ];
-      return marketingReplies[Math.floor(Math.random() * marketingReplies.length)];
-    }
-
-    // Fallback simple English comment
-    const generalReplies = [
-      `${greeting}Keeping things clean, simple, and reliable is always the best approach. What are you working on this week?`,
-      `${greeting}Great insight! Focus and simplicity beat complexity every time. What project is keeping you busy right now?`
-    ];
-    return generalReplies[Math.floor(Math.random() * generalReplies.length)];
   }
 
   /**
@@ -709,7 +173,15 @@ class AiDecisionEngine {
       intent === "LEAD_GENERATION_BUYER" ||
       intent === "IRRELEVANT";
 
-    const isBuyer = !isDisqualified && (intent === "BUYER" || intent === "PROJECT_BUYER" || intent === "INDUSTRY_LEAD" || aiRes.is_genuine_buyer === true);
+    const isBuyer = !isDisqualified && (
+      intent === "BUYER" ||
+      intent === "PROJECT_BUYER" ||
+      intent === "INDUSTRY_LEAD" ||
+      intent === "BRAND_INQUIRY" ||
+      intent === "FOUNDER_INQUIRY" ||
+      intent === "CAPABILITY_INQUIRY" ||
+      aiRes.is_genuine_buyer === true
+    );
 
     if (isBuyer) {
       let rawCap = aiRes.primary_capability || aiRes.primary_category || aiRes.matched_capability || "Web Development";
@@ -863,99 +335,129 @@ class AiDecisionEngine {
   }
 
   /**
-   * Generates conversational reply for comment replies or incoming DMs.
+   * Generates conversational reply for comment replies or incoming DMs using Antigravity AI.
    * Dynamic context-aware reasoning replaces all static string fallbacks.
    */
   async generateConversationReply(context) {
     const {
       incomingMessage = "",
-      originalPost = "",
-      ourPreviousMessage = "",
       conversationStage = "DISCOVERY",
-      companyMentionedBefore = false,
-      founderMentionedBefore = false,
       username = "user",
       convId = null
     } = context;
 
+    // Check if human review escalation check is required (legal threats, lawsuits, extreme anger)
     const lower = incomingMessage.toLowerCase();
+    const needsHumanReview = /\b(lawyer|sue|court|scam|fraud|police|nda|contract\s+dispute)\b/i.test(lower);
 
-    // 1. Check if verified link requested
-    const requestedLink = knowledge.resolveRequestedLink(incomingMessage);
+    try {
+      const prompt = this.buildConversationTurnPrompt(context);
+      const aiRes = await aiRuntime.callAi(prompt, { taskType: "REPLY_GENERATION" });
 
-    // 2. Human review escalation check (pricing negotiations, contracts, legal, angry tones)
-    const needsHumanReview =
-      /\b(how\s+much\s+does\s+it\s+cost|send\s+a\s+quote|what\s+is\s+your\s+rate|discount|sign\s+contract|nda|lawyer|sue|angry|terrible)\b/i.test(lower);
+      if (aiRes && aiRes.response_message) {
+        let responseMessage = aiRes.response_message;
+        // Enforce Relevance Gate on the proposed message
+        const gateCheck = this.evaluateRelevanceGate(responseMessage, { ...context, convId }, incomingMessage);
+        if (!gateCheck.approved) {
+          logger.warn(`[AI Engine] Relevance gate blocked proposed response: ${gateCheck.reason}`);
+          responseMessage = `Understood. Feel free to connect directly if you have any questions regarding CodeAir's custom software engineering services.`;
+        }
 
-    let responseMessage = "";
-    let detectedIntent = "PROJECT_INQUIRY";
-    let identity = "COMPANY";
-    let updatedStage = conversationStage;
-    let serviceMatch = true;
-
-    if (requestedLink) {
-      responseMessage = requestedLink.url
-        ? `Here is the official link you requested: ${requestedLink.url}`
-        : `Here are our official profiles:\n${requestedLink.text}`;
-      detectedIntent = "LINK_REQUEST";
-      identity = requestedLink.target || "COMPANY";
-    } else if (/\b(b2b\s+leads?|lead\s+generation|batch\s+of\s+leads|deliver(ing)?\s+the\s+leads|budget\s+per\s+lead|decision[- ]maker\s+leads|sample\s+sheet|payment[- ]based\s+deal|flat\s+rate\s+per\s+batch|flat\s+rate\s+per\s+lead|targeted\s+leads|cold\s+email|leads\s+ready\s+to\s+get\s+converted)\b/i.test(lower)) {
-      // B2B Lead Generation Offer / Outbound Pitch to Us:
-      // Directly address their proposal, clarify CodeAir's software-only scope, and decline politely without software questions.
-      responseMessage = `Thanks for clarifying your terms and pricing model. Over at CodeAir Software Solutions, we specialize strictly in custom software engineering, SaaS platforms, and AI systems, so we aren't purchasing lead generation batches or external lists right now. Wishing you the best with your outreach!`;
-      detectedIntent = "LEAD_GENERATION_DECLINED";
-      identity = "COMPANY";
-      serviceMatch = false;
-      updatedStage = "CLOSED";
-    } else if (/\b(career\s+(advice|path|paths|change|transition)|job\s+(titles?|paths?|search|hunting)|open\s+to\s+work|looking\s+for\s+(a\s+)?job|internship|hiring\s+interns|entry[- ]level\s+role)\b/i.test(lower)) {
-      // Career / Job Seeking Inquiry:
-      responseMessage = `Thanks for connecting! We aren't currently taking on new engineering hires or interns, but we wish you tremendous success in your career journey.`;
-      detectedIntent = "CAREER_INQUIRY";
-      identity = "COMPANY";
-      serviceMatch = false;
-      updatedStage = "CLOSED";
-    } else if (/\bwho\s+(is\s+)?(behind|founder|runs|started)\s+codeair\b/i.test(lower)) {
-      responseMessage = `Sunmughan Swamy is the founder and technical architect behind CodeAir Software Solutions. We engineer custom software, SaaS platforms, and AI systems.`;
-      detectedIntent = "FOUNDER_INQUIRY";
-      identity = "FOUNDER";
-    } else if (/\b(what\s+(does\s+)?codeair\s+do|what\s+services|what\s+do\s+you\s+(build|offer|do))\b/i.test(lower)) {
-      responseMessage = `At CodeAir Software Solutions, we engineer custom web applications, multi-tenant SaaS platforms, Flutter mobile apps, and autonomous AI systems.`;
-      detectedIntent = "CAPABILITY_INQUIRY";
-      identity = "COMPANY";
-    } else {
-      // Genuine Software Project Inquiry / Multi-Turn Technical Exploration
-      const prevLower = String(ourPreviousMessage || "").toLowerCase();
-      if (prevLower.includes("architecture") || prevLower.includes("scope")) {
-        responseMessage = `Got it. What are the key integrations or third-party APIs needed, and do you have an existing design or specification ready?`;
-        updatedStage = "SCOPING";
-      } else if (prevLower.includes("timeline") || lower.includes("timeline") || lower.includes("deadline")) {
-        responseMessage = `Understood. Would you like to schedule a technical discovery call to review the core architecture and milestones in detail?`;
-        updatedStage = "DISCOVERY_CALL";
-      } else {
-        responseMessage = `That sounds like an interesting project. Could you share a bit more detail about the core features and what target platforms (web, mobile, or backend) you have in mind?`;
-        updatedStage = "DISCOVERY";
+        return {
+          intent: aiRes.intent || "PROJECT_INQUIRY",
+          identity: aiRes.identity || "COMPANY",
+          service_match: aiRes.service_match !== false,
+          conversation_stage: needsHumanReview ? "HUMAN_REVIEW" : (aiRes.conversation_stage || conversationStage),
+          sales_intensity: needsHumanReview ? "MEDIUM" : "LOW",
+          should_reply: true,
+          human_review_required: needsHumanReview,
+          response_message: responseMessage
+        };
       }
+      throw new Error("AI returned empty conversation turn output");
+    } catch (err) {
+      logger.warn(`[AI Engine] Antigravity AI conversation turn reasoning failed: ${err.message}`);
+      return {
+        intent: "AI_ERROR",
+        identity: "COMPANY",
+        service_match: false,
+        conversation_stage: "HUMAN_REVIEW",
+        should_reply: false,
+        human_review_required: true,
+        response_message: "Thanks for reaching out! A member of our technical team will follow up with you shortly."
+      };
     }
+  }
 
-    // Enforce Relevance Gate on the proposed message
-    const gateCheck = this.evaluateRelevanceGate(responseMessage, { ...context, convId }, incomingMessage);
-    if (!gateCheck.approved) {
-      logger.warn(`[AI Engine] Relevance gate blocked proposed response: ${gateCheck.reason}`);
-      // Safe fallback closure that avoids repetitive questioning
-      responseMessage = `Understood. Feel free to connect directly if you have any questions regarding CodeAir's custom software engineering services.`;
-    }
+  /**
+   * Constructs prompt for multi-turn DM or reply conversation turn.
+   */
+  buildConversationTurnPrompt(context) {
+    const {
+      incomingMessage = "",
+      originalPost = "",
+      ourPreviousMessage = "",
+      conversationStage = "DISCOVERY",
+      username = "user"
+    } = context;
 
-    return {
-      intent: detectedIntent,
-      identity: identity,
-      service_match: serviceMatch,
-      conversation_stage: needsHumanReview ? "HUMAN_REVIEW" : updatedStage,
-      sales_intensity: needsHumanReview ? "MEDIUM" : "LOW",
-      should_reply: true,
-      human_review_required: needsHumanReview,
-      requested_link: requestedLink,
-      response_message: responseMessage
-    };
+    const profiles = knowledge.getOfficialProfiles();
+    const approved = knowledge.getApprovedServices();
+    const excluded = knowledge.getExcludedServices();
+
+    return `
+CRITICAL OPERATIONAL CONSTRAINT:
+You are acting as the autonomous Lead Conversations Specialist for CodeAir Software Solutions. DO NOT invoke ANY tools (no view_file, no search, no run_command). Output ONLY valid JSON matching the schema below.
+
+Positioning & Official Profiles:
+- Founder & Chief Architect: Sunmughan Swamy (Founder of CodeAir Software Solutions)
+- Company: CodeAir Software Solutions (Custom Web Applications, SaaS MVPs, Flutter Mobile Apps, AI Automations, PixelGo HMS Hotel Management)
+- Official URLs:
+  * Company Website: ${profiles.company.website || "https://www.codeair.tech"}
+  * PixelGo HMS: ${profiles.company.pixelgo || "https://pixelgo.live"}
+  * Founder LinkedIn: ${profiles.founder.linkedin || "https://linkedin.com/in/sunmughan"}
+
+Approved Software Capabilities:
+${approved.slice(0, 20).map(s => `- ${s}`).join("\n")}
+
+Excluded Non-Software Capabilities:
+${excluded.slice(0, 10).map(s => `- ${s}`).join("\n")}
+
+Conversation Context:
+- User Handle: @${username}
+- Original Post / Thread Context: """${originalPost || "None"}"""
+- Our Previous Message: """${ourPreviousMessage || "None"}"""
+- Incoming Message from Recipient: """${incomingMessage}"""
+- Current Conversation Stage: ${conversationStage}
+
+INSTRUCTIONS:
+1. Recipient Intent & Dynamic Response Generation:
+   - If recipient is selling/offering B2B lead generation lists, scrapers, databases, or marketing outreach:
+     Politely decline in natural conversational English. Clarify that CodeAir specializes strictly in custom software engineering and does not purchase external lead batches. Set intent: "LEAD_GENERATION_DECLINED", service_match: false, conversation_stage: "CLOSED".
+   - If recipient is asking for a job, internship, or employment:
+     Politely decline and wish them the best in their career journey, noting CodeAir is not hiring currently. Set intent: "CAREER_INQUIRY", service_match: false, conversation_stage: "CLOSED".
+   - If recipient is asking about Sunmughan Swamy or who is behind CodeAir:
+     Introduce Sunmughan Swamy as founder & technical architect, and share Founder LinkedIn. Set identity: "FOUNDER", intent: "FOUNDER_INQUIRY".
+   - If recipient is asking what CodeAir does or provides:
+     Describe CodeAir's custom software, SaaS, mobile apps, and PixelGo HMS. Share Company Website. Set identity: "COMPANY", intent: "CAPABILITY_INQUIRY".
+   - If recipient is discussing a project, app, software requirement, or technical question:
+     Respond like an experienced software architect. Acknowledge their project, provide a brief technical insight, and ask 1-2 focused questions about their scope, stack, or timeline. Set intent: "PROJECT_INQUIRY", conversation_stage: "SCOPING" or "DISCOVERY".
+   - If recipient asked for a link:
+     Provide the relevant verified official link. Set intent: "LINK_REQUEST".
+
+2. Tone & Constraints:
+   - Natural, conversational, friendly, professional English. Zero canned copy-paste clichés.
+   - Single-URL Discipline: Maximum 1 URL across the entire response.
+
+OUTPUT STRICT JSON:
+{
+  "response_message": "string",
+  "intent": "PROJECT_INQUIRY" | "LEAD_GENERATION_DECLINED" | "CAREER_INQUIRY" | "FOUNDER_INQUIRY" | "CAPABILITY_INQUIRY" | "LINK_REQUEST" | "GENERAL",
+  "identity": "FOUNDER" | "COMPANY" | "NEUTRAL",
+  "conversation_stage": "DISCOVERY" | "SCOPING" | "DISCOVERY_CALL" | "CLOSED",
+  "service_match": boolean
+}
+`;
   }
 
   buildFullSemanticPrompt(post) {
@@ -989,8 +491,12 @@ CONTENT:
 """${post.text || ""}"""
 
 CRITICAL INSTRUCTIONS:
-1. Classify INTENT: BUYER | CAREER_ADVICE | LEAD_GENERATION_BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
-2. Genuine buyers are anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
+1. Classify INTENT: BUYER | BRAND_INQUIRY | FOUNDER_INQUIRY | CAPABILITY_INQUIRY | CAREER_ADVICE | LEAD_GENERATION_BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
+2. Genuine buyers and direct brand inquiries qualify (is_genuine_buyer: true, decision: "QUALIFIED"):
+   - Anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
+   - Anyone directly asking about CodeAir or founder Sunmughan Swamy (e.g. "Who is behind CodeAir?", "What does CodeAir do?"):
+     * If asking about founder / who is behind CodeAir: set intent: "FOUNDER_INQUIRY", representation: "FOUNDER", target_entity: "INDIVIDUAL", generated_comment must introduce Sunmughan Swamy (Founder & Technical Architect) and include Founder LinkedIn (${profiles.founder.linkedin || "https://linkedin.com/in/sunmughan"}).
+     * If asking about company / what CodeAir does: set intent: "CAPABILITY_INQUIRY", representation: "COMPANY", target_entity: "COMPANY", generated_comment must describe CodeAir custom software engineering capabilities and include Company Website (${profiles.company.website || "https://www.codeair.tech"}).
 3. Strict Disqualifications (Zero Sales Pitch):
    - REAL_ESTATE / PROPERTIES / INVESTMENTS: Anyone advertising, selling, buying, or promoting real estate properties, plots, apartments, or property developer services. Strictly classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - CAREER_ADVICE: Anyone asking about job titles, degrees, career transitions, WFH options, or resume feedback.
@@ -1004,14 +510,20 @@ CRITICAL INSTRUCTIONS:
    - If user asks for an agency/company/team: COMPANY
    - If open to either: BOTH (or COMPANY)
 8. Single-URL Discipline:
-   - For FOUNDER: Share Founder LinkedIn only.
-   - For COMPANY: Share Company Website only (or PixelGo HMS for hospitality).
+   - For FOUNDER: Share Founder LinkedIn only (${profiles.founder.linkedin || "https://linkedin.com/in/sunmughan"}). Never include company website.
+   - For COMPANY: Share Company Website only (${profiles.company.website || "https://www.codeair.tech"}, or ${profiles.company.pixelgo || "https://pixelgo.live"} for hospitality). Never include founder personal link.
    - For NEUTRAL: Zero URLs.
-   - Maximum 1 URL total.
+   - Maximum 1 URL total across the comment.
+9. Bespoke Comment Synthesis (generated_comment):
+   - If genuine buyer or brand inquiry, generate a bespoke 2-3 sentence comment addressing the author's exact project, stack, or question.
+   - If user asks for an individual/freelancer/developer/co-founder or asks who is behind CodeAir: Speak as Sunmughan Swamy (Founder & Technical Architect) and share Founder LinkedIn only.
+   - If user asks for an agency/team/company or asks what CodeAir does: Speak as CodeAir Software Solutions and share Company Website only.
+   - Zero canned clichés. Directly helpful, authentic, and engaging.
+   - If post is disqualified (not a genuine buyer or brand inquiry): set generated_comment: null.
 
 OUTPUT STRICT JSON:
 {
-  "intent": "BUYER" | "CAREER_ADVICE" | "LEAD_GENERATION_BUYER" | "RECRUITMENT" | "JOB_SEEKER" | "SERVICE_PROVIDER" | "NETWORKING" | "IRRELEVANT" | "NEEDS_REVIEW",
+  "intent": "BUYER" | "BRAND_INQUIRY" | "FOUNDER_INQUIRY" | "CAPABILITY_INQUIRY" | "CAREER_ADVICE" | "LEAD_GENERATION_BUYER" | "RECRUITMENT" | "JOB_SEEKER" | "SERVICE_PROVIDER" | "NETWORKING" | "IRRELEVANT" | "NEEDS_REVIEW",
   "requirement": "string",
   "target_entity": "INDIVIDUAL" | "COMPANY" | "EITHER",
   "service_match": true,
@@ -1020,7 +532,7 @@ OUTPUT STRICT JSON:
   "is_genuine_buyer": true,
   "decision": "QUALIFIED" | "IGNORED",
   "reason": "string",
-  "generated_comment": "string"
+  "generated_comment": "string or null"
 }
 `;
   }

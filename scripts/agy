@@ -206,18 +206,6 @@ async function main() {
       process.exit(0);
     }
   } catch (err) {
-    // If IDE session is unavailable (e.g. running in minimal offline unit test mode)
-    if (process.env.NODE_ENV === "test") {
-      const aiDecisionEngine = require(path.resolve(__dirname, "../src/ai/ai-decision-engine"));
-      const contentMatch = prompt.match(/CONTENT:\s*"""([\s\S]*?)"""/) || prompt.match(/"""([\s\S]*?)"""/);
-      const authorMatch = prompt.match(/AUTHOR:\s*@?([a-zA-Z0-9._]+)/);
-      const text = (contentMatch ? contentMatch[1] : prompt).trim();
-      const username = authorMatch ? authorMatch[1] : "user";
-      const fallbackResult = aiDecisionEngine.evaluateGroundedSemantics({ text, username });
-      console.log(JSON.stringify(fallbackResult));
-      process.exit(0);
-    }
-
     console.error(`Antigravity AI IDE Session Error: ${err.message}`);
     process.exit(1);
   }
