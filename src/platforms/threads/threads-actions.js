@@ -244,7 +244,6 @@ class ThreadsActions {
       stateStore.recordActionTransition("COMMENT", post.postId, "PREPARING", "OPENED", { username: post.username });
 
       await textbox.focus();
-      await textbox.click();
       await new Promise(r => setTimeout(r, 400));
 
       // State Transition: TYPING
@@ -262,6 +261,20 @@ class ThreadsActions {
       logger.info(`Clicking Reply submit button...`);
 
       const postClicked = await page.evaluate(() => {
+        // Priority 0: Exact SVG Reply button in active thread composer
+        const replySvgs = Array.from(document.querySelectorAll('svg[aria-label="Reply"], svg[aria-label*="reply" i]'));
+        for (const s of replySvgs) {
+          const btn = s.closest('div[role="button"], button') || s;
+          const rect = btn.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            btn.focus();
+            btn.click();
+            btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            return true;
+          }
+        }
+
         // Priority 1: Check modal dialog if open (Ensure it is a reply modal, not "New thread")
         const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]');
         if (dialog) {

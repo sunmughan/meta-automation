@@ -46,30 +46,30 @@ const PILLARS = [
 ];
 
 const PILLAR_CAPTIONS = {
-  pixelgo_hms: [
-    "Hospitality operations shouldn’t require 5 to 7 disconnected tools everyday. Most hotels juggle separate PMS, POS, Channel Managers, and Housekeeping tools that constantly fail to sync and cause double bookings. We engineered PixelGo HMS (pixelgo.live) to fix this from the ground up: the world’s first truly unified hotel operations engine with zero-latency WebSockets sync and autonomous guest telemetry.\n\nHoteliers, resort operators, and engineers—what is the single biggest operational headache you’ve experienced with hotel software?",
-    "Building software for hospitality taught us one brutal lesson: 24/7/365 operations demand zero-latency state synchronization. When a guest charges an amenity or requests a room upgrade, every staff screen across front desk, restaurant, and housekeeping needs to reflect it instantly. That is the core architecture behind PixelGo HMS.\n\nExplore our platform at pixelgo.live. What’s your take on unifying vertical SaaS vs using fragile third-party integrations?",
-    "A major milestone for CodeAir Software Solutions: PixelGo HMS (pixelgo.live) is eliminating third-party middleware fees for hotel properties. By running billing, housekeeping dispatch, channel managers, and room inventory on a single reactive core, properties run smoother and guests get zero-queue check-ins.\n\nAre you in hospitality or building complex multi-tenant platforms? Visit pixelgo.live or DM me to connect!"
+  founders_revolution: [
+    "To all SaaS founders, developers, UI/UX designers, and startup builders:\n\nBuilding a great product comes down to 3 simple things:\n1. Clean design that users get in 5 seconds.\n2. Fast, reliable code that never crashes.\n3. Talking to real users every day.\n\nYou don't need 50 features to launch. Start small, launch fast, and iterate.\n\nWhat are you building this week? Let's connect below!",
+    "The fastest way to test a startup idea:\n\nDon't spend 6 months building in secret.\nBuild a simple working MVP in 2 to 3 weeks. Make the UI clean and easy. Put it in front of real users to see if they find it valuable.\n\nFounders, developers, and designers: what was the biggest lesson from your first launch?",
+    "A quick reminder for startup founders, engineers, and marketers:\n\nClear words beat fancy words.\nA simple product that solves one real problem beats a complicated tool with 20 features.\n\nWhat is one problem your project solves? Let's connect!"
   ],
   builder_network: [
-    "Building something meaningful in tech requires great people. At CodeAir Software Solutions (www.codeair.tech), we’re actively expanding our developer network. We’re looking to collaborate with passionate software engineers on full-stack, mobile (Flutter), and AI automation projects—with transparent, generous revenue sharing for client leads and project execution.\n\nWhat tech stack or side project are you currently building this week? Drop your GitHub or DM me!",
-    "To all software engineers and builders: client work shouldn't be zero-sum. We're assembling an elite developer community at CodeAir (www.codeair.tech) where engineers collaborate on high-value SaaS, custom business systems, and AI workflows with fair revenue share.\n\nIf you're a full-stack, backend (Node/Postgres), or Flutter developer looking to build production software, let's connect. What are you building right now?",
-    "The best engineers want autonomy, high technical standards, and fair financial rewards. That's why CodeAir's builder network operates on transparent revenue sharing for collaborative client delivery and referrals. Learn more at www.codeair.tech—whether you want to lead an engineering module or advise on architecture, let's talk!"
-  ],
-  founders_revolution: [
-    "To fellow startup founders and co-founders building revolutionary products: premature microservices and bloated infrastructure kill more early startups than market competition. At CodeAir (www.codeair.tech), we believe in lean, pragmatic architecture—single scalable PostgreSQL databases, clean domain boundaries, and shipping customer value multiple times a day.\n\nWhat is the single biggest architectural or product hurdle you're solving right now?",
-    "Every visionary startup goes through the 0-to-1 grind. The difference between companies that scale and those that burn out often comes down to choosing boring, battle-tested technology early on so you can focus 100% on product-market fit.\n\nFounders: what was the best tech stack decision you made for your MVP? (www.codeair.tech)",
-    "Looking to connect with fellow startup founders, co-founders, and entrepreneurs building next-generation products. Whether you're navigating distribution, technical debt, or integrating AI into your workflow—let's exchange notes at www.codeair.tech. What are you building?"
-  ],
-  tech_mentorship: [
-    "If you’re an ambitious developer or early-stage technical founder feeling stuck on system design, database tenant isolation, or architecting production AI workflows—I’m offering 1-on-1 mentorship and architecture reviews. No gatekeeping, just real battle-tested engineering advice to help you unblock and ship.\n\nCheck out our work at www.codeair.tech. What technical question or system design bottleneck is keeping you up at night?",
-    "Mentorship transformed my engineering journey, and I believe in paying it forward. If you're building a SaaS, struggling with database performance, or wondering how to transition from coder to system architect—drop your questions below or DM me. (www.codeair.tech)",
-    "A common trap in modern web development: over-complicating state management and database schemas before having 10 active users. If you'd like a second pair of eyes on your architecture or database design, reach out at www.codeair.tech. What are you building this week?"
+    "Calling software engineers, developers, and UI/UX designers:\n\nAt CodeAir (www.codeair.tech), we love collaborating with builders on web apps, mobile apps, and SaaS projects with transparent revenue sharing.\n\nIf you love building clean, reliable software, say hi or drop your tech stack below!",
+    "To all developers, UI/UX designers, and tech enthusiasts:\n\nWhat is your favorite stack right now for building quick, clean web apps? Are you using Next.js, React, Node, Flutter, or something new?\n\nWhat tools are actually saving you time this year?",
+    "Great products are built by teams that care about user experience and solid code.\n\nWhether you write backend code, design screens, or generate leads—working together is how we all grow.\n\nWhat are you working on this month?"
   ],
   agentic_ai: [
-    "Everyone is prototyping with LLMs, but production reliability separates toys from enterprise software. Chaining prompts without deterministic guardrails inevitably derails into hallucinations and runaway loops. At CodeAir (www.codeair.tech), we use strict JSON schemas, finite state machines, and specialized multi-agent sub-teams to build autonomous workflows that run 24/7 with zero surprises.\n\nIf you're deploying AI to real users, what’s your biggest obstacle so far?",
-    "The 5 hard truths of production AI agents: 1. Unbounded loops burn budgets. 2. Raw text outputs break databases. 3. Mega-agents fail—specialist multi-agent teams succeed. 4. Sub-second latency requires aggressive DOM/context pruning. 5. Deterministic guardrails are mandatory.\n\nWhat AI workflows is your team automating this quarter? Explore our architectures at www.codeair.tech.",
-    "Autonomous AI systems are revolutionizing custom business operations—from automated customer qualification to real-time dispatch. But the foundation is always reliable engineering, not prompt magic. What business process in your workflow do you wish was fully automated? (www.codeair.tech)"
+    "AI tools are great, but the real secret is keeping things simple.\n\nInstead of trying to automate everything, find the one boring task that takes your team 2 hours every day—and automate just that.\n\nFounders, developers, and marketers: what task do you wish was automated in your work?",
+    "How smart teams use AI right now:\n1. Drafting simple customer replies\n2. Cleaning up leads and data\n3. Testing code and UI components\n\nKeep it simple, test everything, and keep a human in the loop.\n\nWhat is your favorite AI use case today?",
+    "For developers and startup founders exploring AI: Reliable systems beat flashy demos every time. Clean logic and good error handling make all the difference.\n\nWhat are you testing with AI this week?"
+  ],
+  tech_mentorship: [
+    "If you are a developer, designer, or early founder building your first product:\n\nDon't get stuck overthinking your tech stack. Keep your database simple, make your UI clean, and focus on helping users.\n\nNeed a second pair of eyes on your architecture or MVP scope? Drop a question below!\n\nWhat's the hardest part of building right now?",
+    "Advice for anyone learning development or starting a software business:\n\n1. Build real projects, not just tutorials.\n2. Keep code clean and readable.\n3. Ask for feedback early.\n\nWhat is one piece of advice you would give to someone starting today?",
+    "To all developers, designers, and startup consultants:\n\nSharing knowledge makes the whole community better. If anyone has questions on web dev, app building, or scaling, drop them below. Let's help each other grow!"
+  ],
+  pixelgo_hms: [
+    "Hotels often waste hours juggling separate tools for bookings, billing, and room management.\n\nWe built PixelGo HMS (pixelgo.live) to make hotel operations simple: one unified dashboard where everything stays in sync in real time.\n\nWhat industry do you think still needs simpler software?",
+    "When building software for real businesses, speed and simplicity matter most.\nStaff members want tools that are fast and intuitive.\n\nThat's the core focus behind PixelGo HMS (pixelgo.live).\n\nDesigners and developers: how do you keep your UI simple?",
+    "Building business software that works seamlessly 24/7 is an exciting challenge.\nWith PixelGo HMS (pixelgo.live), our goal is simple: zero double bookings and an easy experience for hotel teams.\n\nWhat is the most rewarding product you've built?"
   ]
 };
 
@@ -265,7 +265,13 @@ class ThreadsPoster {
     // State Transition: TYPING
     stateStore.recordActionTransition("OWN_POST", ourPostId, "OPENED", "TYPING", { pillar, format });
     await textbox.focus();
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 400));
+    // Clear any residual draft text completely
+    await page.keyboard.down("Control");
+    await page.keyboard.press("KeyA");
+    await page.keyboard.up("Control");
+    await page.keyboard.press("Backspace");
+    await new Promise(r => setTimeout(r, 400));
 
     // 6. Type text visibly with human-like delays
     logger.info("[THREADS POSTER] Visibly typing post caption into composer...");
@@ -281,79 +287,47 @@ class ThreadsPoster {
     logger.info("[THREADS POSTER] Submitting post via active composer Post button...");
     let postSubmitted = false;
 
-    for (let attempt = 0; attempt < 5; attempt++) {
-      postSubmitted = await page.evaluate(() => {
-        const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
-        const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
+    // Locate the Post button element handle in Puppeteer
+    const postHandle = await page.evaluateHandle(() => {
+      const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
+      const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
+      return buttons.find(b => {
+        const txt = (b.innerText || "").trim().toLowerCase();
+        const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+        const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
+        return (txt === "post" || aria === "post") && isEnabled;
+      });
+    });
 
-        // Strategy 1: Visible button with exact text "post"
-        let postBtn = buttons.find(b => {
-          const txt = (b.innerText || "").trim().toLowerCase();
-          const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-          const rect = b.getBoundingClientRect();
-          return txt === "post" && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
-        });
-
-        // Strategy 2: aria-label matching post
-        if (!postBtn) {
-          postBtn = buttons.find(b => {
-            const label = (b.getAttribute("aria-label") || "").trim().toLowerCase();
-            const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-            const rect = b.getBoundingClientRect();
-            return label === "post" && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
-          });
-        }
-
-        // Strategy 3: Child SVG with aria-label containing post
-        if (!postBtn) {
-          postBtn = buttons.find(b => {
-            const svg = b.querySelector('svg[aria-label*="post" i], svg[aria-label*="Post" i]');
-            const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-            const rect = b.getBoundingClientRect();
-            return !!svg && isEnabled && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
-          });
-        }
-
-        // Strategy 4: Rightmost primary action in composer footer
-        if (!postBtn) {
-          const candidateButtons = buttons.filter(b => {
+    if (postHandle && postHandle.asElement()) {
+      logger.info("[THREADS POSTER] Found active Post button handle. Clicking via native mouse event...");
+      const box = await postHandle.boundingBox();
+      if (box && box.width > 0 && box.height > 0) {
+        await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      } else {
+        await postHandle.click();
+      }
+      postSubmitted = true;
+    } else {
+      // Fallback strategies
+      for (let attempt = 0; attempt < 3; attempt++) {
+        postSubmitted = await page.evaluate(() => {
+          const dialog = document.querySelector('div[role="dialog"], [aria-modal="true"]') || document.body;
+          const buttons = [...dialog.querySelectorAll('div[role="button"], button')];
+          const postBtn = buttons.find(b => {
             const txt = (b.innerText || "").trim().toLowerCase();
             const isEnabled = !b.disabled && b.getAttribute("aria-disabled") !== "true";
-            const isSecondary = txt.includes("anyone") || txt.includes("cancel") || txt.includes("discard") || txt.includes("draft");
-            const rect = b.getBoundingClientRect();
-            return isEnabled && !isSecondary && (rect.width > 0 || b.offsetWidth > 0 || b.getClientRects().length > 0);
+            return txt === "post" && isEnabled;
           });
-          if (candidateButtons.length > 0) {
-            candidateButtons.sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
-            postBtn = candidateButtons[0];
+          if (postBtn) {
+            postBtn.focus();
+            postBtn.click();
+            return true;
           }
-        }
-
-        if (postBtn) {
-          postBtn.focus();
-          postBtn.click();
-          postBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          return true;
-        }
-        return false;
-      });
-
-      if (postSubmitted) {
-        break;
-      }
-      await new Promise(r => setTimeout(r, 1500));
-    }
-
-    if (!postSubmitted) {
-      logger.warn("[THREADS POSTER] Composer Post button not clickable via DOM evaluation; retrying direct selector click...");
-      try {
-        const postButtonHandle = await page.$('div[role="dialog"] div[role="button"]:has(span), div[role="dialog"] button');
-        if (postButtonHandle) {
-          await postButtonHandle.click();
-          postSubmitted = true;
-        }
-      } catch (err) {
-        logger.warn(`[THREADS POSTER] Direct selector click failed: ${err.message}`);
+          return false;
+        });
+        if (postSubmitted) break;
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
 
