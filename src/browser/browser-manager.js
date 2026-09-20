@@ -159,6 +159,9 @@ class BrowserManager {
       await dialog.accept().catch(() => {});
     });
 
+    // Bring tab to foreground so automation is visibly active to user
+    await selectedPage.bringToFront().catch(() => {});
+
     return selectedPage;
   }
 
