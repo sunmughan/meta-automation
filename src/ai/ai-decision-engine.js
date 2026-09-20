@@ -161,66 +161,30 @@ class AiDecisionEngine {
   normalizeAiResponse(aiRes, post) {
     const intent = (aiRes.intent || "").toUpperCase();
     const decision = (aiRes.decision || "").toUpperCase();
-    const isDisqualified =
-      decision === "IGNORED" ||
-      aiRes.is_genuine_buyer === false ||
-      aiRes.service_match === false ||
-      intent === "OUT_OF_SCOPE" ||
-      intent === "SERVICE_PROVIDER" ||
-      intent === "RECRUITMENT" ||
-      intent === "JOB_SEEKER" ||
-      intent === "CAREER_ADVICE" ||
-      intent === "LEAD_GENERATION_BUYER" ||
-      intent === "IRRELEVANT";
+    const postText = String((post && post.text) || "");
 
-    const isBuyer = !isDisqualified && (
-      intent === "BUYER" ||
-      intent === "PROJECT_BUYER" ||
-      intent === "INDUSTRY_LEAD" ||
-      intent === "BRAND_INQUIRY" ||
-      intent === "FOUNDER_INQUIRY" ||
-      intent === "CAPABILITY_INQUIRY" ||
-      aiRes.is_genuine_buyer === true
-    );
+    const isQualified = decision === "QUALIFIED" && aiRes.is_genuine_buyer === true && aiRes.service_match !== false;
 
-    if (isBuyer) {
-      let rawCap = aiRes.primary_capability || aiRes.primary_category || aiRes.matched_capability || "Web Development";
-      let cap = "Web Development";
-      const capLower = String(rawCap).toLowerCase();
-      if (/\b(hotels?|resorts?|hospitality|pms|pixelgo)\b/i.test(capLower)) {
-        cap = "Hospitality";
-      } else if (/\b(mobile|flutter|ios|android|react\s+native|mobile\s+apps?|apps?)\b/i.test(capLower)) {
-        cap = "Mobile Development";
-      } else if (/\b(saas|mvps?|platforms?)\b/i.test(capLower)) {
-        cap = "SaaS development";
-      } else if (/\b(ai|agents?|automations?|bots?|llms?|workflows?|machine\s+learning)\b/i.test(capLower)) {
-        cap = "AI & Automation";
-      } else if (/\b(crms?|erps?|dashboards?|admins?|portals?|business\s+systems?|internal\s+tools?)\b/i.test(capLower)) {
-        cap = "Business Systems";
-      } else if (/\b(backends?|apis?|databases?|postgres|servers?)\b/i.test(capLower)) {
-        cap = "Backend & APIs";
-      } else if (/\b(web|websites?|sites?|landing|frontend|fullstack|personal\s+brand)\b/i.test(capLower)) {
-        cap = "Web Development";
-      } else {
-        cap = rawCap;
-      }
+    if (isQualified) {
+      const cap = aiRes.primary_capability || aiRes.primary_category || aiRes.matched_capability || "Software Development";
+      const representation = aiRes.representation || (aiRes.target_entity === "INDIVIDUAL" ? "FOUNDER" : "COMPANY");
+      const isWarm = intent === "INDUSTRY_LEAD" || intent === "NETWORKING" || aiRes.temperature === "WARM";
 
-      const isWarm = intent === "INDUSTRY_LEAD" || aiRes.temperature === "WARM";
       return {
         intent: intent || "BUYER",
-        requirement: aiRes.requirement || post.text.slice(0, 100),
+        requirement: aiRes.requirement || postText.slice(0, 100),
         target_entity: aiRes.target_entity || "EITHER",
         service_match: true,
         matched_capability: cap,
         matched_categories: [cap],
         matched_services: [cap],
-        representation: aiRes.representation || "FOUNDER",
+        representation: representation,
         decision: "QUALIFIED",
         temperature: isWarm ? "WARM" : "HOT",
         relevance_score: isWarm ? 85 : 95,
         is_genuine_buyer: true,
         should_reply: true,
-        reason: aiRes.reason || `AI qualified lead for ${cap}.`,
+        reason: aiRes.reason || `AI qualified: ${intent} for ${cap}.`,
         generated_comment: aiRes.generated_comment || null
       };
     }
@@ -235,7 +199,7 @@ class AiDecisionEngine {
       temperature: "IGNORE",
       is_genuine_buyer: false,
       should_reply: false,
-      reason: aiRes.reason || "AI evaluated post as non-buyer."
+      reason: aiRes.reason || "AI evaluated post as disqualified."
     };
   }
 
@@ -503,22 +467,30 @@ CONTENT:
 
 CRITICAL INSTRUCTIONS:
 1. Classify INTENT: BUYER | BRAND_INQUIRY | FOUNDER_INQUIRY | CAPABILITY_INQUIRY | CAREER_ADVICE | LEAD_GENERATION_BUYER | RECRUITMENT | JOB_SEEKER | SERVICE_PROVIDER | NETWORKING | IRRELEVANT | NEEDS_REVIEW
-2. Genuine buyers and direct brand inquiries qualify (is_genuine_buyer: true, decision: "QUALIFIED"):
-   - Anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, or hospitality systems.
-   - Anyone directly asking about ${company.name} or founder ${founder.name} (e.g. "Who is behind ${company.name}?", "What does ${company.name} do?"):
+2. Genuine buyers, tech networking, and direct brand inquiries qualify (is_genuine_buyer: true, decision: "QUALIFIED"):
+   - SOFTWARE / WEB / APP / AI / SAAS / HOSPITALITY BUYERS: Anyone needing, hiring, seeking, or asking for software development, web design/development, mobile apps, SaaS, AI automation, custom tools, or hospitality systems.
+     * If asking for an individual/freelancer/developer: set intent: "BUYER", representation: "FOUNDER", target_entity: "INDIVIDUAL".
+     * If asking for an agency/company/team/business: set intent: "BUYER", representation: "COMPANY", target_entity: "COMPANY".
+     * If open to either: set representation: "COMPANY" (or "BOTH").
+   - TECH NETWORKING / BUILDER CONNECTIONS: Anyone explicitly expressing intent to connect, network, collaborate, or build peer relationships with fellow software developers, engineers, AI builders, SaaS founders, or tech peers in IT/software/AI/Web/SaaS/Cloud (e.g. "Looking to connect with more founders, creators and builders", "Looking to connect with developers in AI, fullstack, SaaS", "Let's connect"):
+     * set intent: "NETWORKING", representation: "FOUNDER", target_entity: "INDIVIDUAL", service_match: true, is_genuine_buyer: true, decision: "QUALIFIED".
+     * generated_comment: Speak warmly and authentically as ${founder.name} (${founder.role} at ${company.name} / software builder), sharing genuine interest in building/connecting with fellow builders, and include Founder Profile (${founderUrl}).
+   - DIRECT BRAND / FOUNDER INQUIRIES:
      * If asking about founder / who is behind ${company.name}: set intent: "FOUNDER_INQUIRY", representation: "FOUNDER", target_entity: "INDIVIDUAL", generated_comment must introduce ${founder.name} (${founder.role}) and include Founder Profile (${founderUrl}).
      * If asking about company / what ${company.name} does: set intent: "CAPABILITY_INQUIRY", representation: "COMPANY", target_entity: "COMPANY", generated_comment must describe ${company.name} core capabilities and include Company Website (${companyUrl}).
-3. Strict Disqualifications (Zero Sales Pitch):
+3. Strict Disqualifications (Zero Sales Pitch, Zero Non-Tech Engagement, Zero Spam on General Discussion):
+   - GENERAL DISCUSSION / OPINION POLLS: Anyone posting general opinion polls, open thought experiments, or advice questions (e.g. "What tech stack are you SaaS founders using to build your MVP this year?", "What is your favorite framework?", "What tools save you time?"). These are conversational prompts without explicit intent to connect or hire. Classify as IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
+   - NON-TECH NETWORKING: Anyone networking strictly outside IT/Software/AI (e.g. real estate agents, accountants, fitness coaches, beauty influencers, MLM). Classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - REAL_ESTATE / PROPERTIES / INVESTMENTS: Anyone advertising, selling, buying, or promoting real estate properties, plots, apartments, or property developer services. Strictly classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - CAREER_ADVICE: Anyone asking about job titles, degrees, career transitions, WFH options, or resume feedback.
    - LEAD_GENERATION_BUYER: Anyone pitching lead generation data, cold email lists, or marketing databases.
-   - JOB_SEEKER / RECRUITMENT: Anyone looking for employment or hiring salaried corporate employees.
+   - NON-TECH RECRUITMENT: Salaried corporate hiring for non-tech roles (e.g. receptionist, VA, social media creator, graphic design, drivers). Classify as RECRUITMENT with is_genuine_buyer: false and decision: IGNORED.
 4. Extract REQUIREMENT in natural language.
 5. Determine TARGET_ENTITY: INDIVIDUAL (freelancer/developer) | COMPANY (agency/team) | EITHER.
 6. Match capability against approved capabilities.
 7. Select REPRESENTATION: FOUNDER | COMPANY | BOTH | NEUTRAL | IGNORE.
-   - If user asks for an individual/freelancer/developer: FOUNDER
-   - If user asks for an agency/company/team: COMPANY
+   - If user asks for an individual/freelancer/developer, or is seeking tech/builder networking, or asks who is behind ${company.name}: FOUNDER
+   - If user asks for an agency/company/team, or asks what ${company.name} does: COMPANY
    - If open to either: BOTH (or COMPANY)
 8. Single-URL Discipline:
    - For FOUNDER: Share Founder Profile only (${founderUrl}). Never include company website.
@@ -529,8 +501,9 @@ CRITICAL INSTRUCTIONS:
    - If genuine buyer or brand inquiry, generate a bespoke 2-3 sentence comment addressing the author's exact project, stack, or question.
    - If user asks for an individual/freelancer/developer/co-founder or asks who is behind ${company.name}: Speak as ${founder.name} (${founder.role}) and share Founder Profile only.
    - If user asks for an agency/team/company or asks what ${company.name} does: Speak as ${company.name} and share Company Website only.
+   - If user is seeking tech/builder networking: Speak as ${founder.name} (${founder.role} at ${company.name}), warmly engaging peer-to-peer on building software/AI/SaaS products and share Founder Profile (${founderUrl}).
    - Zero canned clichés. Directly helpful, authentic, and engaging.
-   - If post is disqualified (not a genuine buyer or brand inquiry): set generated_comment: null.
+   - If post is disqualified (not a genuine buyer, tech networking, or brand inquiry): set generated_comment: null.
 
 OUTPUT STRICT JSON:
 {

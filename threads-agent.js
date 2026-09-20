@@ -130,7 +130,14 @@ async function commandAnalyze(options = {}) {
   const retryablePostIds = new Set(retryableFailed.map(p => p.postId));
 
   const unanalyzed = Object.values(stateStore.state.posts)
-    .filter(p => (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform))
+    .filter(p => {
+      if (!p || !p.postId) return false;
+      // Permanent shield against mock or test posts
+      if (p.postId.includes("test_") || (p.username && (p.username.includes("user_retry") || p.username.includes("user_test")))) {
+        return false;
+      }
+      return (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform);
+    })
     .sort((a, b) => getLeadPriorityScore(b) - getLeadPriorityScore(a));
 
   const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed.slice(0, 15);
@@ -461,13 +468,13 @@ async function commandRun() {
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
       await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
 
-      // 5. Check Activity / Replies calmly (every 15 cycles = ~12-15 min, offset from DMs)
-      if (cycle % 15 === 8) {
+      // 5. Check Activity / Replies continuously (Cycle 1 and every 3 cycles)
+      if (cycle === 1 || cycle % 3 === 0) {
         await commandReplies();
       }
 
-      // 6. Check DMs periodically (every 20 cycles = ~15-20 min)
-      if (cycle % 20 === 14) {
+      // 6. Check DMs continuously (Cycle 1 and every 5 cycles)
+      if (cycle === 1 || cycle % 5 === 0) {
         await commandDms();
       }
 
