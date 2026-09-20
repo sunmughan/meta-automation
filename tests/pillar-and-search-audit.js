@@ -5,7 +5,6 @@
 
 const assert = require("assert");
 const intentClassifier = require("../src/leads/intent-classifier");
-const serviceMatcher = require("../src/leads/service-matcher");
 const threadsPoster = require("../src/platforms/threads/threads-poster");
 const threadsMedia = require("../src/platforms/threads/threads-media");
 const { HIGH_INTENT_SEARCH_QUERIES } = require("../src/platforms/threads/threads-scanner");
