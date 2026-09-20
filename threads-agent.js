@@ -75,13 +75,35 @@ async function commandScan(options = {}) {
   }
 }
 
+function getLeadPriorityScore(post) {
+  let score = 0;
+  if (post.status === "COMMENT_PENDING") score += 5000;
+  if (post.source === "SEARCH") score += 2000;
+  const text = (post.text || "").toLowerCase();
+  const highIntentKeywords = [
+    /\b(looking for|need|hiring|hire|seeking|searching for|want to build|want an?)\b/i,
+    /\b(developer|designer|engineer|programmer|coder|agency|freelancer)\b/i,
+    /\b(website|web app|mobile app|flutter|react|fullstack|frontend|backend|saas|mvp|ai agent)\b/i,
+    /\b(recommend a|anyone know a|can someone build)\b/i
+  ];
+  for (const regex of highIntentKeywords) {
+    if (regex.test(text)) score += 500;
+  }
+  const ageHours = (Date.now() - new Date(post.discoveredAt || 0).getTime()) / (1000 * 60 * 60);
+  if (ageHours < 24) {
+    score += Math.max(0, Math.round(24 - ageHours) * 10);
+  }
+  return score;
+}
+
 async function commandAnalyze(options = {}) {
-  const maxLiveComments = options.maxLiveComments !== undefined
-    ? options.maxLiveComments
+  const opts = typeof options === "number" ? { maxPosts: options } : (options || {});
+  const maxLiveComments = opts.maxLiveComments !== undefined
+    ? opts.maxLiveComments
     : (CONFIG.MAX_NEW_POST_REPLIES_PER_HOUR || 5);
   let liveCommentsPosted = 0;
 
-  let maxPosts = options.maxPosts;
+  let maxPosts = opts.maxPosts;
   if (!maxPosts) {
     const maxPostsArgIdx = process.argv.findIndex(a => a.startsWith("--max-posts"));
     if (maxPostsArgIdx !== -1) {
@@ -106,11 +128,11 @@ async function commandAnalyze(options = {}) {
 
   const unanalyzed = Object.values(stateStore.state.posts)
     .filter(p => (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform))
-    .sort((a, b) => new Date(b.discoveredAt || 0) - new Date(a.discoveredAt || 0));
+    .sort((a, b) => getLeadPriorityScore(b) - getLeadPriorityScore(a));
 
-  const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed.slice(0, 10);
+  const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed.slice(0, 15);
 
-  console.log(`Found ${unanalyzed.length} posts pending qualification/posting (processing ${targetPosts.length})...\n`);
+  console.log(`Found ${unanalyzed.length} posts pending qualification/posting (processing ${targetPosts.length} prioritized)...\n`);
 
   let hotCount = 0;
   let warmCount = 0;
@@ -331,15 +353,15 @@ async function commandStatus() {
   return 0;
 }
 
-async function checkAndPublishScheduledPost() {
+async function checkAndPublishScheduledPost(force = false) {
   const lastFailure = stateStore.getLastPostAttemptFailure();
   const failureCooldownMs = 30 * 60 * 1000; // 30 minutes failure cooldown
   const timeSinceFailure = lastFailure ? (Date.now() - (lastFailure.timestamp || 0)) : Infinity;
 
-  if (timeSinceFailure < failureCooldownMs) {
+  if (!force && timeSinceFailure < failureCooldownMs) {
     const minWait = Math.ceil((failureCooldownMs - timeSinceFailure) / 60000);
     console.log(`[SCHEDULED POST] Recent post attempt failure recorded (${lastFailure.reason || "unverified"}). Cooldown active for ~${minWait} min.`);
-    return;
+    return null;
   }
 
   const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
@@ -349,7 +371,7 @@ async function checkAndPublishScheduledPost() {
   const postIntervalHours = CONFIG.POST_INTERVAL_HOURS || 6;
   const postIntervalMs = postIntervalHours * 60 * 60 * 1000;
   const elapsedMs = Date.now() - lastPostTime;
-  const isDue = elapsedMs >= postIntervalMs || lastPostTime === 0;
+  const isDue = force || elapsedMs >= postIntervalMs || lastPostTime === 0;
 
   if (isDue && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
     console.log("\n==============================================");
@@ -359,15 +381,19 @@ async function checkAndPublishScheduledPost() {
       const res = await threadsPoster.publishEngagingPost();
       if (res && res.verified) {
         console.log(`✅ Post published & verified [${res.pillar} - ${res.format}]: "${res.text.slice(0, 70)}..."\n`);
+        return res;
       } else {
         console.warn(`⚠️ Scheduled post attempt did not verify cleanly: ${res ? res.reason : "unknown"}\n`);
+        return res;
       }
     } catch (err) {
       console.error("❌ Failed to publish post:", err.message);
+      return null;
     }
   } else if (!isDue) {
     const minutesRemaining = Math.max(1, Math.round((postIntervalMs - elapsedMs) / 60000));
     console.log(`[SCHEDULED POST] Next post due in ~${minutesRemaining} min (Cadence: exactly 4 posts / 24h, every ${postIntervalHours}h).`);
+    return null;
   }
 }
 
@@ -412,31 +438,34 @@ async function commandRun() {
       console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING`);
       console.log(`==============================================`);
 
-      // 1. Prioritize Direct Messages & client inquiries first (highest responsiveness)
-      await commandDms();
+      // 1. Check DMs periodically (every 10 cycles = ~5-8 min, or cycle 1) so browser doesn't flick pages constantly
+      if (cycle === 1 || cycle % 10 === 0) {
+        await commandDms();
+      }
 
-      // 2. Prioritize Activity & multi-turn replies second
-      await commandReplies();
+      // 2. Check Activity & multi-turn replies periodically (cycle 1, and every 10 cycles on cycle 5, 15, 25...)
+      if (cycle === 1 || cycle % 10 === 5) {
+        await commandReplies();
+      }
 
       // 3. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
       await checkAndPublishScheduledPost();
 
       // 4. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
-      // 4. High-intent keyword search discovery (websites, web dev, AI engineering, MVPs)
-      if (cycle % 4 === 1) {
+      if (cycle % 3 === 1) {
         console.log("\n[SEARCH DISCOVERY] Searching Threads for high-intent client queries (websites, AI dev)...");
         const searchRes = await searchThreadsKeywords({ queryCount: 1 });
         console.log(`Search queries visible posts: ${searchRes.scannedCount}, Newly discovered: ${searchRes.newCount}`);
       }
 
-      // 5. Natural feed browsing (10-12 posts per cycle)
+      // 5. Natural feed browsing (8-10 posts per cycle)
       console.log("\n[FEED DISCOVERY] Scanning and browsing Threads feed naturally...");
-      const scanRes = await scanThreadsFeed({ maxPosts: 12, scrollStep: 450, waitAfterScroll: 1000 });
+      const scanRes = await scanThreadsFeed({ maxPosts: 10, scrollStep: 450, waitAfterScroll: 1000 });
       console.log(`Feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
 
-      // 6. Lead qualification & live commenting on qualified founder / buyer / tech posts
+      // 6. Lead qualification & live commenting on prioritized leads (search/buyers first)
       console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
-      await commandAnalyze(8);
+      await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
 
       // 7. Refresh feed periodically (every 8 cycles) so feed doesn't constantly jump to top
       if (cycle % 8 === 0) {
@@ -478,6 +507,11 @@ async function main() {
     case "dms":
       process.exit(await commandDms());
       break;
+    case "post":
+      await checkAndPublishScheduledPost(true);
+      browserManager.disconnect();
+      process.exit(0);
+      break;
     case "status":
       process.exit(await commandStatus());
       break;
@@ -490,7 +524,7 @@ async function main() {
       break;
     default:
       console.log(`Unknown command: ${cmd}`);
-      console.log("Available: auth, scan, analyze, approve, replies, dms, status, test, run");
+      console.log("Available: auth, scan, analyze, approve, replies, dms, post, status, test, run");
       process.exit(1);
   }
 }
