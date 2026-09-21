@@ -12,6 +12,7 @@ const path = require("path");
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const logger = require("../../logging/logger");
+const knowledge = require("../../knowledge/knowledge-engine");
 
 const LOGO_CODEAIR = path.resolve(CONFIG.ROOT_DIR, "assets/codeair-logo.png");
 const LOGO_PIXELGO = path.resolve(CONFIG.ROOT_DIR, "assets/pixelgo-logo.webp");
@@ -44,9 +45,14 @@ class ThreadsHtmlRenderer {
    * Generates HTML markup for a structured slide card.
    */
   generateSlideHtml(spec) {
+    const founder = knowledge.getFounderInfo();
+    const companyInfo = knowledge.getCompanyInfo();
+    const profiles = knowledge.getOfficialProfiles();
+    const compTag = (companyInfo.name || "COMPANY").toUpperCase().slice(0, 10);
+
     const accent = spec.accentColor || "#00F0FF";
     const glow = spec.glowColor || "rgba(0, 240, 255, 0.12)";
-    const badge = spec.badge || "CODEAIR • INNOVATION";
+    const badge = spec.badge || `${compTag} • INNOVATION`;
     const title = spec.title || "";
     const subtitle = spec.subtitle || "";
     let cards = spec.cards;
@@ -59,14 +65,15 @@ class ThreadsHtmlRenderer {
     }
     const slideNum = spec.slide_num || 1;
     const totalSlides = spec.total_slides || 5;
-    const author = spec.author || "Sunmughan Swamy • Founder";
+    const author = spec.author || `${founder.name || "Founder"} • ${founder.role || "Founder"}`;
 
     const isPixelGo = (spec.badge || "").includes("PIXELGO") ||
                       (spec.title || "").includes("PixelGo") ||
                       spec.pillar === "pixelgo_hms";
-    const website = isPixelGo ? "pixelgo.live" : "www.codeair.tech";
-    const company = isPixelGo ? "PIXELGO HMS" : "CODEAIR SOFTWARE SOLUTIONS";
-    const logoDataUri = isPixelGo ? getPixelGoLogoUri() : getCodeAirLogoUri();
+    const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
+    const website = spec.website || (isPixelGo ? "pixelgo.live" : defaultSite || "www.codeair.tech");
+    const company = spec.company || (isPixelGo ? "PIXELGO HMS" : (companyInfo.name || "CODEAIR SOFTWARE SOLUTIONS").toUpperCase());
+    const logoDataUri = spec.logoDataUri || (isPixelGo ? getPixelGoLogoUri() : getCodeAirLogoUri());
     const logoClass = isPixelGo ? "brand-logo-pixelgo" : "brand-logo-codeair";
 
     const cardsHtml = cards.map(c => `
@@ -318,12 +325,17 @@ class ThreadsHtmlRenderer {
    * architectural / strategic principles panel, completely eliminating empty space.
    */
   generateQuoteCardHtml(spec) {
+    const founder = knowledge.getFounderInfo();
+    const companyInfo = knowledge.getCompanyInfo();
+    const profiles = knowledge.getOfficialProfiles();
+    const compTag = (companyInfo.name || "COMPANY").toUpperCase().slice(0, 10);
+
     const accent = spec.accentColor || "#00F0FF";
     const glow = spec.glowColor || "rgba(0, 240, 255, 0.15)";
-    const badge = spec.badge || "CODEAIR • PERSPECTIVE";
+    const badge = spec.badge || `${compTag} • PERSPECTIVE`;
     const quote = spec.quote || "";
-    const author = spec.author || "Sunmughan Swamy";
-    const role = spec.role || "Founder, CodeAir Software Solutions";
+    const author = spec.author || founder.name || "Founder";
+    const role = spec.role || `${founder.role || "Founder"}, ${companyInfo.name || "Software"}`;
     const footerTag = spec.footerTag || "BUILDER NETWORK";
 
     let takeaways = spec.takeaways || spec.cards || [];
@@ -348,8 +360,10 @@ class ThreadsHtmlRenderer {
     const isPixelGo = (spec.badge || "").includes("PIXELGO") ||
                       (spec.quote || "").includes("PixelGo") ||
                       spec.pillar === "pixelgo_hms";
-    const website = isPixelGo ? "pixelgo.live" : "www.codeair.tech";
-    const logoDataUri = isPixelGo ? getPixelGoLogoUri() : getCodeAirLogoUri();
+    const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
+    const website = spec.website || (isPixelGo ? "pixelgo.live" : defaultSite || "www.codeair.tech");
+    const brandTag = spec.brandTag || (isPixelGo ? "PIXELGO" : compTag);
+    const logoDataUri = spec.logoDataUri || (isPixelGo ? getPixelGoLogoUri() : getCodeAirLogoUri());
     const avatarClass = isPixelGo ? "author-avatar-pixelgo" : "author-avatar-img";
 
     return `<!DOCTYPE html>
@@ -612,7 +626,7 @@ class ThreadsHtmlRenderer {
         <div class="author-role">${role} • <span class="author-site">${website}</span></div>
       </div>
     </div>
-    <div class="brand-tag">${isPixelGo ? 'PIXELGO' : 'CODEAIR'}</div>
+    <div class="brand-tag">${brandTag}</div>
   </div>
 </body>
 </html>`;
@@ -622,11 +636,17 @@ class ThreadsHtmlRenderer {
    * Generates HTML markup for a dark-mode terminal code snippet card.
    */
   generateCodeCardHtml(spec) {
+    const founder = knowledge.getFounderInfo();
+    const companyInfo = knowledge.getCompanyInfo();
+    const profiles = knowledge.getOfficialProfiles();
+    const compTag = (companyInfo.name || "COMPANY").toUpperCase().slice(0, 10);
+    const companyName = (companyInfo.name || "CODEAIR SOFTWARE SOLUTIONS").toUpperCase();
+
     const accent = spec.accentColor || "#00F0FF";
     const glow = spec.glowColor || "rgba(0, 240, 255, 0.15)";
-    const badge = spec.badge || "CODEAIR • ARCHITECTURE RUNTIME";
+    const badge = spec.badge || `${compTag} • ARCHITECTURE RUNTIME`;
     const title = spec.title || spec.code_title || "agent_orchestrator.ts";
-    const rawCode = spec.code || spec.code_snippet || `// CodeAir Autonomous Orchestration
+    const rawCode = spec.code || spec.code_snippet || `// ${companyInfo.name || "CodeAir"} Autonomous Orchestration
 const orchestrator = new AgenticPipeline({
   runtime: "gemini-3.8-flash-high",
   guardrails: { maxRetries: 3, deterministicFSM: true },
@@ -636,9 +656,10 @@ const orchestrator = new AgenticPipeline({
   }
 });`;
     const language = spec.language || spec.code_language || "TypeScript";
-    const author = spec.author || "Sunmughan Swamy • Founder";
-    const website = "www.codeair.tech";
-    const logoDataUri = getCodeAirLogoUri();
+    const author = spec.author || `${founder.name || "Founder"} • ${founder.role || "Founder"}`;
+    const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
+    const website = spec.website || defaultSite || "www.codeair.tech";
+    const logoDataUri = spec.logoDataUri || getCodeAirLogoUri();
 
     // Syntax formatting helper
     const escapeHtml = (str) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -914,14 +935,21 @@ const orchestrator = new AgenticPipeline({
    * Generates HTML markup for a system architecture topology diagram card.
    */
   generateArchitectureCardHtml(spec) {
+    const founder = knowledge.getFounderInfo();
+    const companyInfo = knowledge.getCompanyInfo();
+    const profiles = knowledge.getOfficialProfiles();
+    const compTag = (companyInfo.name || "COMPANY").toUpperCase().slice(0, 10);
+    const companyName = (companyInfo.name || "CODEAIR SOFTWARE SOLUTIONS").toUpperCase();
+
     const accent = spec.accentColor || "#00F0FF";
     const glow = spec.glowColor || "rgba(0, 240, 255, 0.16)";
-    const badge = spec.badge || "CODEAIR • TOPOLOGY BLUEPRINT";
+    const badge = spec.badge || `${compTag} • TOPOLOGY BLUEPRINT`;
     const title = spec.title || spec.arch_title || "Distributed Agent Pipeline";
     const subtitle = spec.subtitle || "Resilient multi-stage execution with deterministic guardrails";
-    const author = spec.author || "Sunmughan Swamy • Founder";
-    const website = "www.codeair.tech";
-    const logoDataUri = getCodeAirLogoUri();
+    const author = spec.author || `${founder.name || "Founder"} • ${founder.role || "Founder"}`;
+    const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
+    const website = spec.website || defaultSite || "www.codeair.tech";
+    const logoDataUri = spec.logoDataUri || getCodeAirLogoUri();
 
     const components = (spec.components || spec.arch_components || [
       { name: "01. Ingestion Stream", role: "Multi-signal event capture & aggressive DOM token pruning", icon: "⚡" },

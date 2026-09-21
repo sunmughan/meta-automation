@@ -5,18 +5,18 @@
  *
  * IDENTITY RULES:
  * 1. "FOUNDER": Written in first-person ("I", "as a founder & architect").
- *    Shares Sunmughan's personal profile (LinkedIn) ONLY. NEVER includes company website.
- * 2. "COMPANY": Written in collective company voice ("We at CodeAir Software Solutions").
- *    Shares company website (https://www.codeair.tech) ONLY. NEVER includes personal founder link.
+ *    Shares the founder's personal profile (LinkedIn) ONLY. NEVER includes company website.
+ * 2. "COMPANY": Written in collective company voice ("We at <CompanyName>").
+ *    Shares company website ONLY. NEVER includes personal founder link.
  * 3. "NEUTRAL": Pure technical value, architectural advice, or diagnostic question.
  *    ZERO promotional links.
- * 4. "BOTH": Introduces CodeAir engineering team with founder oversight.
+ * 4. "BOTH": Introduces company engineering team with founder oversight.
  *    Single primary link (company website).
  *
  * STRICT URL DISCIPLINE:
  * - At most ONE (1) URL per comment across all modes.
- * - PixelGo HMS (https://pixelgo.live) ONLY for explicit hospitality/hotel/resort/restaurant requests.
- * - Links are dynamically resolved from knowledge/profiles.md via knowledgeEngine.
+ * - PixelGo HMS ONLY for explicit hospitality/hotel/resort/restaurant requests.
+ * - ALL links and names are dynamically resolved from knowledge/profiles.md via knowledgeEngine.
  */
 
 const knowledge = require("../knowledge/knowledge-engine");
@@ -106,10 +106,15 @@ class CommentGenerator {
     const handle = username ? `@${username}` : "";
     const greeting = handle ? (Math.random() > 0.5 ? `${handle} ` : `Hey ${handle}, `) : "";
 
-    // Resolve official links dynamically from knowledge base (single source of truth)
-    const companyWebsite = knowledge.getProfileLink("COMPANY", "website") || "https://www.codeair.tech";
-    const pixelgoUrl = knowledge.getProfileLink("COMPANY", "pixelgo") || "https://pixelgo.live";
-    const founderLinkedin = knowledge.getProfileLink("FOUNDER", "linkedin") || "https://www.linkedin.com/in/sunmughan/";
+    // Resolve ALL brand identity dynamically from knowledge base (zero hardcoded strings)
+    const founder = knowledge.getFounderInfo();
+    const company = knowledge.getCompanyInfo();
+    const founderName = founder.name || "Founder";
+    const founderRole = founder.role || "Founder";
+    const companyName = company.name || "our team";
+    const companyWebsite = knowledge.getProfileLink("COMPANY", "website") || company.website || "";
+    const pixelgoUrl = knowledge.getProfileLink("COMPANY", "pixelgo") || company.productUrl || "";
+    const founderLinkedin = knowledge.getProfileLink("FOUNDER", "linkedin") || founder.linkedin || "";
 
     const topic = this.determineTopic(cleanText, matchedCategories);
 
@@ -148,14 +153,14 @@ class CommentGenerator {
     if (identity === "FOUNDER") {
       if (topic === "HOSPITALITY") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I'm Sunmughan, founder and tech architect behind CodeAir. We built PixelGo HMS (${pixelgoUrl}) to help hotel and resort owners manage bookings, front desk, and billing in one simple system. Feel free to connect directly if you'd like a quick walkthrough!`,
-          `${greeting}For hotel operations, having bookings, check-ins, and billing all in one clean tool saves hours every day. I designed PixelGo HMS (${pixelgoUrl}) for simple property management. Message me anytime!`
+          `${greeting}I'm ${founderName}, ${founderRole} at ${companyName}. We built PixelGo HMS (${pixelgoUrl}) to help hotel and resort owners manage bookings, front desk, and billing in one simple system. Feel free to connect directly if you'd like a quick walkthrough!`,
+          `${greeting}For hotel operations, having bookings, check-ins, and billing all in one clean tool saves hours every day. I built PixelGo HMS (${pixelgoUrl}) for simple property management. Message me anytime!`
         ]), pixelgoUrl);
       }
 
       if (topic === "WEB") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I'd love to help build this! I'm Sunmughan, software engineer and founder at CodeAir. I specialize in React, Next.js, and modern full-stack web applications with clean code and fast turnaround. Connect with me on LinkedIn at ${founderLinkedin} or send a DM to talk through your project scope!`,
+          `${greeting}I'd love to help build this! I'm ${founderName}, software engineer and ${founderRole} at ${companyName}. I specialize in React, Next.js, and modern full-stack web applications with clean code and fast turnaround. Connect with me on LinkedIn at ${founderLinkedin} or send a DM to talk through your project scope!`,
           `${greeting}I can definitely help with your React and web applications! I build fast, clean, and responsive web apps. Feel free to connect with me on LinkedIn at ${founderLinkedin} or drop a DM and let's discuss your project requirements!`,
           `${greeting}If you're looking for a React developer who writes clean, maintainable code and ships fast, let's connect! You can reach me directly on LinkedIn at ${founderLinkedin} or message me with your project details.`
         ]), founderLinkedin);
@@ -163,7 +168,7 @@ class CommentGenerator {
 
       if (topic === "MOBILE") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I can definitely help you build this! I'm Sunmughan, software engineer and founder at CodeAir. We build fast Flutter mobile apps for both iOS and Android. Connect with me on LinkedIn at ${founderLinkedin} or send a DM with your app idea!`,
+          `${greeting}I can definitely help you build this! I'm ${founderName}, software engineer and ${founderRole} at ${companyName}. We build fast Flutter mobile apps for both iOS and Android. Connect with me on LinkedIn at ${founderLinkedin} or send a DM with your app idea!`,
           `${greeting}Building a mobile app with Flutter gives you great performance on both iOS and Android from one codebase. Connect with me on LinkedIn at ${founderLinkedin} and let's talk through your project!`
         ]), founderLinkedin);
       }
@@ -191,7 +196,7 @@ class CommentGenerator {
 
       // Founder general web / software development
       return this.enforceSingleUrl(this.pickVariation([
-        `${greeting}I'd love to help you with this! I'm Sunmughan, founder and software engineer at CodeAir. We build fast web apps, mobile apps, and custom platforms. Feel free to connect on LinkedIn at ${founderLinkedin} or send over a DM!`,
+        `${greeting}I'd love to help you with this! I'm ${founderName}, ${founderRole} at ${companyName}. We build fast web apps, mobile apps, and custom platforms. Feel free to connect on LinkedIn at ${founderLinkedin} or send over a DM!`,
         `${greeting}If you're looking for a developer to build this with clean code and fast delivery, let's connect! You can reach me directly on LinkedIn at ${founderLinkedin}. What are your main goals and timeline?`
       ]), founderLinkedin);
     }
@@ -203,52 +208,52 @@ class CommentGenerator {
     if (identity === "COMPANY") {
       if (topic === "HOSPITALITY") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}For hotel and resort operations, having bookings, rooms, and payments all sync in real time saves so much headache. At CodeAir Software Solutions, we built PixelGo HMS (${pixelgoUrl}) to make property management simple. What type of property do you run?`,
-          `${greeting}Hotel operations run best when your front desk, bookings, and billing are all in one system. At CodeAir Software Solutions, our platform PixelGo HMS (${pixelgoUrl}) was built for exactly that. Feel free to send a DM for a quick demo!`
+          `${greeting}For hotel and resort operations, having bookings, rooms, and payments all sync in real time saves so much headache. At ${companyName}, we built PixelGo HMS (${pixelgoUrl}) to make property management simple. What type of property do you run?`,
+          `${greeting}Hotel operations run best when your front desk, bookings, and billing are all in one system. At ${companyName}, our platform PixelGo HMS (${pixelgoUrl}) was built for exactly that. Feel free to send a DM for a quick demo!`
         ]), pixelgoUrl);
       }
 
       if (topic === "WEB") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}Our engineering team at CodeAir Software Solutions specializes in modern web applications using React, Next.js, and full-stack technologies. See our work and portfolio at ${companyWebsite}. Feel free to send us a DM with your project scope!`,
-          `${greeting}Over at CodeAir Software Solutions, we design and build custom, fast web applications and websites with clean code and responsive UI. Check our portfolio at ${companyWebsite}. Send us a DM anytime!`,
-          `${greeting}We build custom websites and scalable web applications over at CodeAir Software Solutions. We focus on clean code, fast loading, and reliable architecture. Explore our work at ${companyWebsite}. Let's chat via DM!`
+          `${greeting}Our engineering team at ${companyName} specializes in modern web applications using React, Next.js, and full-stack technologies. See our work and portfolio at ${companyWebsite}. Feel free to send us a DM with your project scope!`,
+          `${greeting}Over at ${companyName}, we design and build custom, fast web applications and websites with clean code and responsive UI. Check our portfolio at ${companyWebsite}. Send us a DM anytime!`,
+          `${greeting}We build custom websites and scalable web applications over at ${companyName}. We focus on clean code, fast loading, and reliable architecture. Explore our work at ${companyWebsite}. Let's chat via DM!`
         ]), companyWebsite);
       }
 
       if (topic === "MOBILE") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}Building mobile apps with Flutter lets you run smoothly on both iOS and Android with one codebase. At CodeAir Software Solutions, we build fast, clean mobile apps. Check our work at ${companyWebsite}. Are you launching on both platforms?`,
-          `${greeting}Over at CodeAir Software Solutions, we build custom iOS and Android mobile apps using Flutter. We focus on clean design and fast APIs. See our portfolio at ${companyWebsite}. What features are you planning first?`
+          `${greeting}Building mobile apps with Flutter lets you run smoothly on both iOS and Android with one codebase. At ${companyName}, we build fast, clean mobile apps. Check our work at ${companyWebsite}. Are you launching on both platforms?`,
+          `${greeting}Over at ${companyName}, we build custom iOS and Android mobile apps using Flutter. We focus on clean design and fast APIs. See our portfolio at ${companyWebsite}. What features are you planning first?`
         ]), companyWebsite);
       }
 
       if (topic === "AI") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}A reliable AI workflow needs clean prompt rules and simple fallback checks. Over at CodeAir Software Solutions, we build reliable AI automations for real businesses. Review our solutions at ${companyWebsite}. What tasks are you looking to automate?`,
-          `${greeting}At CodeAir Software Solutions, we build custom AI automations and workflows designed to run reliably without errors. Check our company work at ${companyWebsite}. Feel free to drop us a DM with your workflow details!`
+          `${greeting}A reliable AI workflow needs clean prompt rules and simple fallback checks. Over at ${companyName}, we build reliable AI automations for real businesses. Review our solutions at ${companyWebsite}. What tasks are you looking to automate?`,
+          `${greeting}At ${companyName}, we build custom AI automations and workflows designed to run reliably without errors. Check our company work at ${companyWebsite}. Feel free to drop us a DM with your workflow details!`
         ]), companyWebsite);
       }
 
       if (topic === "SAAS") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}Keeping your code and database simple early on saves months of headache later. At CodeAir Software Solutions, we build scalable SaaS platforms and MVPs for founders. Check our work at ${companyWebsite}. What core features are you building first?`,
-          `${greeting}At CodeAir Software Solutions, full-cycle product engineering and fast SaaS builds are our main focus. See our company work at ${companyWebsite}. What is your target launch date?`
+          `${greeting}Keeping your code and database simple early on saves months of headache later. At ${companyName}, we build scalable SaaS platforms and MVPs for founders. Check our work at ${companyWebsite}. What core features are you building first?`,
+          `${greeting}At ${companyName}, full-cycle product engineering and fast SaaS builds are our main focus. See our company work at ${companyWebsite}. What is your target launch date?`
         ]), companyWebsite);
       }
 
       if (topic === "BUSINESS") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}At CodeAir Software Solutions, we build custom CRM systems, ERPs, and admin dashboards tailored to your workflows. Check our work at ${companyWebsite}. Send us a DM to discuss your setup!`,
-          `${greeting}Over at CodeAir Software Solutions, we build custom business software, dashboards, and internal tools. Check our portfolio at ${companyWebsite} or send a DM with your requirements!`
+          `${greeting}At ${companyName}, we build custom CRM systems, ERPs, and admin dashboards tailored to your workflows. Check our work at ${companyWebsite}. Send us a DM to discuss your setup!`,
+          `${greeting}Over at ${companyName}, we build custom business software, dashboards, and internal tools. Check our portfolio at ${companyWebsite} or send a DM with your requirements!`
         ]), companyWebsite);
       }
 
       // Company general web / software development
       return this.enforceSingleUrl(this.pickVariation([
-        `${greeting}Over at CodeAir Software Solutions, we design and develop custom, modern websites and web apps. Fast loading, clean design, and great mobile support come standard. Review our work at ${companyWebsite}. What type of website or app are you planning?`,
-        `${greeting}If you need a dedicated software team to build this, we'd be glad to help! At CodeAir Software Solutions, we build fast web platforms and clean user interfaces. See our work at ${companyWebsite}. Send us a DM anytime!`,
-        `${greeting}We build custom websites, scalable web apps, and mobile apps over at CodeAir Software Solutions. We focus on clean code and reliable design. See our work at ${companyWebsite}. Let's chat via DM!`
+        `${greeting}Over at ${companyName}, we design and develop custom, modern websites and web apps. Fast loading, clean design, and great mobile support come standard. Review our work at ${companyWebsite}. What type of website or app are you planning?`,
+        `${greeting}If you need a dedicated software team to build this, we'd be glad to help! At ${companyName}, we build fast web platforms and clean user interfaces. See our work at ${companyWebsite}. Send us a DM anytime!`,
+        `${greeting}We build custom websites, scalable web apps, and mobile apps over at ${companyName}. We focus on clean code and reliable design. See our work at ${companyWebsite}. Let's chat via DM!`
       ]), companyWebsite);
     }
 
@@ -257,21 +262,21 @@ class CommentGenerator {
     // ============================================================
     if (topic === "HOSPITALITY") {
       return this.enforceSingleUrl(
-        `${greeting}For hotel and hospitality operations, our engineering team at CodeAir Software Solutions built PixelGo HMS to combine room bookings, front desk, and billing into one clean system. See the platform at ${pixelgoUrl}. Feel free to reach out via DM!`,
+        `${greeting}For hotel and hospitality operations, our engineering team at ${companyName} built PixelGo HMS to combine room bookings, front desk, and billing into one clean system. See the platform at ${pixelgoUrl}. Feel free to reach out via DM!`,
         pixelgoUrl
       );
     }
 
     if (topic === "WEB") {
       return this.enforceSingleUrl(this.pickVariation([
-        `${greeting}Our engineering team at CodeAir Software Solutions specializes in building modern React and full-stack web applications with direct founder oversight. Check our work at ${companyWebsite}. Feel free to drop a DM with your project details!`,
-        `${greeting}If you're looking for an experienced engineering team with direct founder oversight, CodeAir Software Solutions builds clean, reliable web applications. See our work at ${companyWebsite}. Send a DM anytime!`
+        `${greeting}Our engineering team at ${companyName} specializes in building modern React and full-stack web applications with direct founder oversight. Check our work at ${companyWebsite}. Feel free to drop a DM with your project details!`,
+        `${greeting}If you're looking for an experienced engineering team with direct founder oversight, ${companyName} builds clean, reliable web applications. See our work at ${companyWebsite}. Send a DM anytime!`
       ]), companyWebsite);
     }
 
     return this.enforceSingleUrl(this.pickVariation([
-      `${greeting}Over at CodeAir Software Solutions, our engineering team handles full-cycle development from design to launch. Check our work at ${companyWebsite}. What is your timeline and preferred tech stack?`,
-      `${greeting}If you're looking for an experienced engineering team with direct founder oversight, CodeAir Software Solutions builds reliable web and software systems. See our work at ${companyWebsite}. Send a DM anytime to chat!`
+      `${greeting}Over at ${companyName}, our engineering team handles full-cycle development from design to launch. Check our work at ${companyWebsite}. What is your timeline and preferred tech stack?`,
+      `${greeting}If you're looking for an experienced engineering team with direct founder oversight, ${companyName} builds reliable web and software systems. See our work at ${companyWebsite}. Send a DM anytime to chat!`
     ]), companyWebsite);
   }
 }

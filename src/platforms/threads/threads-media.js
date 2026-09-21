@@ -213,7 +213,9 @@ class ThreadsMedia {
           ]
         };
 
-      case "meta_automation":
+      case "meta_automation": {
+        const metaUrl = knowledge.getMetaAutomationUrl();
+        const metaHandle = metaUrl ? metaUrl.replace("https://", "").replace("http://", "") : "github.com";
         return {
           isQuoteCard: true,
           badge: "OPEN SOURCE • META AUTOMATION",
@@ -222,13 +224,14 @@ class ThreadsMedia {
           quote: "Autonomous AI doesn't need costly cloud servers. Open-source agents running locally on Linux, macOS, Windows & Termux with zero token cost change the game.",
           author: authorName,
           role: authorRole,
-          footerTag: "GITHUB: SUNMUGHAN/META-AUTOMATION",
+          footerTag: `GITHUB: ${metaHandle.toUpperCase()}`,
           takeaways: [
             { num: "01", title: "100% Free & Open-Source", desc: "Zero API token costs using local Antigravity runtime reasoning." },
             { num: "02", title: "Cross-Platform Everywhere", desc: "Runs 24/7 on Android (Termux:X11), Linux, Windows & macOS." },
-            { num: "03", title: "Community Star & Fork", desc: "Full code and setup guide at github.com/sunmughan/meta-automation." }
+            { num: "03", title: "Community Star & Fork", desc: `Full code and setup guide at ${metaHandle}.` }
           ]
         };
+      }
 
       case "builder_network":
       default:
@@ -251,9 +254,22 @@ class ThreadsMedia {
   }
 
   /**
-   * Curated high-impact carousel decks tailored to Sunmughan Swamy & CodeAir.
+   * Curated high-impact carousel decks tailored to the configured brand identity.
+   * ALL brand names, URLs, and usernames are resolved dynamically from knowledge engine.
    */
   getDeckSpecs(theme) {
+    // Resolve all brand identity dynamically — zero hardcoded strings
+    const founder = knowledge.getFounderInfo();
+    const company = knowledge.getCompanyInfo();
+    const founderName = founder.name || "Founder";
+    const founderUsername = founder.threadsUsername || "";
+    const founderHandle = founderUsername ? `@${founderUsername}` : founderName;
+    const companyName = company.name || "our team";
+    const compTag = company.badgeName || (company.shortName || "COMPANY").toUpperCase();
+    const metaRepoUrl = knowledge.getMetaAutomationUrl();
+    const metaRepoHandle = metaRepoUrl ? metaRepoUrl.replace("https://", "").replace("http://", "") : "github.com";
+    const founderGithub = founder.github || metaRepoUrl || "";
+    const founderGithubHandle = founderGithub ? founderGithub.replace("https://github.com/", "").split("/")[0] : founderHandle;
     switch (theme) {
       case "pixelgo_hms":
         return [
@@ -358,12 +374,12 @@ class ThreadsMedia {
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.14)",
             title: "Reinventing Hospitality Software",
-            subtitle: "Built by Sunmughan Swamy and CodeAir Software Solutions.",
+            subtitle: `Built by ${founderName} and ${companyName}.`,
             cards: [
               {
                 num: "01",
                 title: "For Hoteliers & Resort Owners",
-                desc: "Ready to eliminate legacy software fees and operational friction? Let’s schedule a private demo."
+                desc: "Ready to eliminate legacy software fees and operational friction? Let's schedule a private demo."
               },
               {
                 num: "02",
@@ -373,7 +389,7 @@ class ThreadsMedia {
               {
                 num: "03",
                 title: "Start the Conversation",
-                desc: "Drop a comment or DM Sunmughan Swamy to explore PixelGo HMS in depth."
+                desc: `Drop a comment or DM ${founderHandle} to explore PixelGo HMS in depth.`
               }
             ]
           }
@@ -410,7 +426,7 @@ class ThreadsMedia {
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.12)",
             title: "The 0-to-1 Technical Blueprint",
-            subtitle: "CodeAir’s principles for launching high-performance MVPs and SaaS products.",
+            subtitle: `${companyName}'s principles for launching high-performance MVPs and SaaS products.`,
             cards: [
               {
                 num: "01",
@@ -473,7 +489,7 @@ class ThreadsMedia {
               {
                 num: "03",
                 title: "Founder-to-Founder Collaboration",
-                desc: "Direct communication with Sunmughan Swamy—no account manager telephone games."
+                desc: `Direct communication with ${founderName}—no account manager telephone games.`
               }
             ]
           },
@@ -492,7 +508,7 @@ class ThreadsMedia {
               {
                 num: "02",
                 title: "Need Dev Bandwidth?",
-                desc: "CodeAir partners with visionary founders to build and deliver mission-critical software."
+                desc: `${companyName} partners with visionary founders to build and deliver mission-critical software.`
               },
               {
                 num: "03",
@@ -602,11 +618,11 @@ class ThreadsMedia {
             ]
           },
           {
-            badge: "REACH OUT • SUNMUGHAN SWAMY",
+            badge: `REACH OUT • ${founderName.toUpperCase()}`,
             accentColor: "#10B981",
             glowColor: "rgba(16, 185, 129, 0.14)",
             title: "Need Guidance on Your Project?",
-            subtitle: "I’m always happy to help ambitious developers solve real engineering problems.",
+            subtitle: `I'm always happy to help ambitious developers solve real engineering problems.`,
             cards: [
               {
                 num: "01",
@@ -616,12 +632,12 @@ class ThreadsMedia {
               {
                 num: "02",
                 title: "Code Reviews & Advice",
-                desc: "Send me a DM with your GitHub repo or project description for thoughtful feedback."
+                desc: `Send me a DM with your GitHub repo or project description for thoughtful feedback.`
               },
               {
                 num: "03",
                 title: "Collaborate With Us",
-                desc: "Passionate engineers can also join CodeAir's builder network and work on rev-share projects."
+                desc: `Passionate engineers can also join ${companyName}'s builder network and work on rev-share projects.`
               }
             ]
           }
@@ -658,7 +674,7 @@ class ThreadsMedia {
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.12)",
             title: "Deterministic Guardrails & FSMs",
-            subtitle: "CodeAir’s architecture blueprint for reliable autonomous software.",
+            subtitle: `${companyName}'s architecture blueprint for reliable autonomous software.`,
             cards: [
               {
                 num: "01",
@@ -735,7 +751,7 @@ class ThreadsMedia {
               {
                 num: "01",
                 title: "Enterprise Multi-Agent Workflows",
-                desc: "At CodeAir, we engineer deterministic multi-agent systems for high-value business operations."
+                desc: `At ${companyName}, we engineer deterministic multi-agent systems for high-value business operations.`
               },
               {
                 num: "02",
@@ -758,7 +774,7 @@ class ThreadsMedia {
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.14)",
             title: "24/7 AI Growth Engine: 100% Free & Open-Source",
-            subtitle: "How we engineered an autonomous Meta & Threads agent running on Linux, macOS, Windows & Android Termux.",
+            subtitle: `How we engineered an autonomous Meta & Threads agent running on Linux, macOS, Windows & Android Termux.`,
             cards: [
               {
                 num: "01",
@@ -830,7 +846,7 @@ class ThreadsMedia {
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.12)",
             title: "Explore the Full Open-Source Codebase",
-            subtitle: "Every line of code is open-source at github.com/sunmughan/meta-automation.",
+            subtitle: `Every line of code is open-source at ${metaRepoHandle}.`,
             cards: [
               {
                 num: "01",
@@ -854,22 +870,22 @@ class ThreadsMedia {
             accentColor: "#10B981",
             glowColor: "rgba(16, 185, 129, 0.14)",
             title: "Star the Repo & Build With Us",
-            subtitle: "Available now on GitHub: sunmughan/meta-automation.",
+            subtitle: `Available now on GitHub: ${metaRepoHandle}.`,
             cards: [
               {
                 num: "01",
                 title: "Star & Fork on GitHub",
-                desc: "Visit github.com/sunmughan/meta-automation and leave a star to support open-source AI."
+                desc: `Visit ${metaRepoHandle} and leave a star to support open-source AI.`
               },
               {
                 num: "02",
                 title: "Follow for Daily Breakdowns",
-                desc: "Follow @sunmughan for daily systems architecture, software engineering craft, and agentic AI tutorials."
+                desc: `Follow ${founderHandle} for daily systems architecture, software engineering craft, and agentic AI tutorials.`
               },
               {
                 num: "03",
                 title: "Connect With Our Network",
-                desc: "Drop a comment or DM Sunmughan Swamy to discuss custom AI automation or software development."
+                desc: `Drop a comment or DM ${founderName} to discuss custom AI automation or software development.`
               }
             ]
           }
@@ -903,7 +919,7 @@ class ThreadsMedia {
             ]
           },
           {
-            badge: "CODEAIR • REV-SHARE MODEL",
+            badge: `${compTag} • REV-SHARE MODEL`,
             accentColor: "#10B981",
             glowColor: "rgba(16, 185, 129, 0.12)",
             title: "Fair Revenue Share Partnerships",
@@ -975,11 +991,11 @@ class ThreadsMedia {
             ]
           },
           {
-            badge: "LET’S CONNECT • CODEAIR",
+            badge: `LET'S CONNECT • ${compTag}`,
             accentColor: "#10B981",
             glowColor: "rgba(16, 185, 129, 0.14)",
-            title: "Join the CodeAir Developer Network",
-            subtitle: "Drop a comment or DM to connect with Sunmughan Swamy.",
+            title: `Join the ${companyName} Developer Network`,
+            subtitle: `Drop a comment or DM to connect with ${founderName}.`,
             cards: [
               {
                 num: "01",
