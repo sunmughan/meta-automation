@@ -50,7 +50,7 @@ const CONFIG = {
 
   // AI Settings (Pure Antigravity AI Runtime)
   AI_RUNTIME: "antigravity",
-  MODEL: process.env.AI_MODEL || "gemini-3.6-flash",
+  MODEL: process.env.AI_MODEL || "gemini-3.8-flash-high",
 
   // Browser CDP & Display Configuration (Chrome, Edge, Brave, Chromium)
   BROWSER_TYPE: (process.env.BROWSER_TYPE || process.env.BROWSER || "auto").toLowerCase(),
@@ -91,6 +91,7 @@ const CONFIG = {
 
   // Scanner Settings
   SCAN_INTERVAL_SECONDS: Number(process.env.SCAN_INTERVAL_SECONDS) || 300,
+  AI_MAX_CONCURRENCY: Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || 3),
   MAX_POSTS_PER_SCAN: Number(process.env.MAX_POSTS_PER_SCAN) || 50,
 
   // Publishing Cadence (6 hours = 4 posts per 24 hours)

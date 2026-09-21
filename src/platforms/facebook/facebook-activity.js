@@ -15,6 +15,9 @@ const aiDecisionEngine = require("../../ai/ai-decision-engine");
 const knowledge = require("../../knowledge/knowledge-engine");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const logger = require("../../logging/logger");
+const BrowserOperator = require("../../browser/browser-operator");
+const telemetry = require("../../telemetry/action-telemetry");
+const { verifyTextPresence } = require("../../agent/action-verifier");
 
 class FacebookActivityWatcher {
   hashItem(username, text, type = "fb_activity") {
@@ -156,8 +159,71 @@ class FacebookActivityWatcher {
         });
       });
 
-      logger.info(`[FACEBOOK MESSENGER] Found ${conversations.length} conversations (${conversations.filter(c => c.unread).length} unread).`);
-      return { conversationCount: conversations.length };
+      const unread = conversations.filter(c => c.unread);
+      logger.info(`[FACEBOOK MESSENGER] Found ${conversations.length} conversations (${unread.length} unread).`);
+
+      let processedCount = 0;
+      for (const conv of unread.slice(0, 5)) {
+        try {
+          const items = await page.$x ? [] : [];
+          const opened = await page.evaluate((targetText) => {
+            const candidates = [...document.querySelectorAll("[data-testid*='mwthreadlist_item'], [role='row'], [role='listitem']")];
+            const target = candidates.find(el => (el.innerText || "").includes(targetText));
+            if (!target) return false;
+            target.click();
+            return true;
+          }, conv.username);
+
+          if (!opened) {
+            telemetry.record({type:"ACTION_FAILED",platform:"facebook",action:"DM_OPEN",targetId:conv.username,error:"Conversation row not found"});
+            continue;
+          }
+          await new Promise(r => setTimeout(r, 1800));
+
+          const messageData = await page.evaluate(() => {
+            const bubbles = [...document.querySelectorAll("[data-testid*='message'], [role='row'], div[dir='auto']")];
+            const texts = bubbles.map(x => (x.innerText || "").trim()).filter(Boolean);
+            const last = texts[texts.length - 1] || "";
+            return { lastText:last, body:(document.body.innerText||"").slice(-8000) };
+          });
+          if (!messageData.lastText || messageData.lastText.length < 3) continue;
+
+          const aiResponse = await aiDecisionEngine.handleInboundReply({
+            username: conv.username,
+            text: messageData.lastText,
+            platform: "facebook",
+            replyToText: "Facebook Messenger"
+          });
+          const replyMessage = aiResponse.response_message;
+          if (!replyMessage) continue;
+
+          if (CONFIG.APPROVAL_MODE || CONFIG.DRY_RUN || !CONFIG.POSTING_ENABLED) {
+            telemetry.record({type:"ACTION_SIMULATED",platform:"facebook",action:"DM_SEND",targetId:conv.username});
+            continue;
+          }
+
+          const operator = new BrowserOperator(page);
+          const editor = await operator.findVisible({aria:"message", selector:"div[contenteditable='true'][role='textbox']"}, 12000);
+          if (!editor) {
+            telemetry.record({type:"ACTION_FAILED",platform:"facebook",action:"DM_SEND",targetId:conv.username,error:"Messenger composer not found"});
+            continue;
+          }
+          await operator.typeInto({selector:"div[contenteditable='true'][role='textbox']"}, replyMessage);
+          const sendCandidates = ["Send","send"];
+          let sent = false;
+          for (const label of sendCandidates) {
+            try { await operator.visibleClick({aria:label,text:label},{timeout:3000}); sent=true; break; } catch(e) {}
+          }
+          if (!sent) {
+            await page.keyboard.press("Enter");
+          }
+          const verification = await verifyTextPresence(page, replyMessage, {platform:"facebook",action:"DM_SEND",targetId:conv.username,timeout:12000});
+          if (verification.verified) processedCount++;
+        } catch (e) {
+          telemetry.record({type:"ACTION_FAILED",platform:"facebook",action:"DM_SEND",targetId:conv.username,error:e.message});
+        }
+      }
+      return { conversationCount: conversations.length, unreadCount: unread.length, processedCount };
     } catch (err) {
       logger.warn(`[FACEBOOK MESSENGER] Error checking messages: ${err.message}`);
       return { conversationCount: 0, error: err.message };
