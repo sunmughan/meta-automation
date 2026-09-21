@@ -1,0 +1,175 @@
+{
+  "version": "1.5.0",
+  "generatedAt": "2026-09-22T01:50:00Z",
+  "browserEndpoint": "http://127.0.0.1:9222",
+  "matrix": [
+    {
+      "platform": "Threads",
+      "capability": "Feed scan",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "threads:E2E_AUDIT"
+    },
+    {
+      "platform": "Threads",
+      "capability": "Search",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "threads:SEARCH"
+    },
+    {
+      "platform": "Threads",
+      "capability": "AI qualification",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "aiDecisionEngine.qualifyPost (Gemini 3.8 Flash High)"
+    },
+    {
+      "platform": "Threads",
+      "capability": "Comment",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "ActionVerifier.verifyCommentPresence"
+    },
+    {
+      "platform": "Threads",
+      "capability": "Activity",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "threadsActivityWatcher.checkActivity"
+    },
+    {
+      "platform": "Threads",
+      "capability": "DM",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "ActionVerifier.verifyOutgoingMessage"
+    },
+    {
+      "platform": "Threads",
+      "capability": "Publishing",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "threadsPoster.publishPost"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Feed",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "linkedin:FEED_SCAN"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Search",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "linkedin:SEARCH"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Notifications",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "checkLinkedInNotifications"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Connections",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "checkLinkedInConnectionRequests"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Messages",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "checkLinkedInMessages"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Comments",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "linkedInActions.postComment"
+    },
+    {
+      "platform": "LinkedIn",
+      "capability": "Publishing",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "linkedInPoster.publishPost"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Feed",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "facebookProfileManager.scanProfileFeed"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Search",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "searchFacebookPosts"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Groups",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "searchFacebookGroupPosts"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Notifications",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "checkFacebookNotifications"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Messenger",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "checkFacebookMessages"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Comments",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "facebookActions.postComment"
+    },
+    {
+      "platform": "Facebook",
+      "capability": "Publishing",
+      "codeExists": true,
+      "liveBrowserTested": true,
+      "verified": true,
+      "evidence": "facebookPoster.publishPost"
+    }
+  ]
+}

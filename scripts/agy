@@ -256,7 +256,13 @@ You are acting as a pure text classifier and lead specialist. DO NOT invoke ANY 
       throw new Error(`Antigravity IDE agent query timed out after ${timeoutMs}ms`);
     } catch (err) {
       lastError = err;
-      if (err.message && err.message.includes("unknown model key")) {
+      if (err.message && (
+        err.message.includes("unknown model key") ||
+        err.message.includes("RESOURCE_EXHAUSTED") ||
+        err.message.includes("429") ||
+        err.message.includes("quota reached") ||
+        err.message.includes("overloaded")
+      )) {
         // Try next candidate model
         continue;
       }
