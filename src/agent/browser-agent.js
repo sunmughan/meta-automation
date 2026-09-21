@@ -1,3 +1,4 @@
+
 /**
  * src/agent/browser-agent.js
  * Master Autonomous Browser Agent Engine for Threads, LinkedIn, and Facebook.
@@ -229,7 +230,7 @@ class BrowserAgent {
           try {
             const el = document.querySelector(sel);
             if (el && isVisible(el)) return el;
-          } catch (e) {}
+          } catch (e) { }
         }
 
         // LEVEL 8: Contextual Container Scoping

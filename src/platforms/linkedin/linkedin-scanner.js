@@ -140,8 +140,11 @@ class LinkedInScanner {
 
         if (discoveredPosts.length >= maxPosts) break;
 
-        // Smooth scroll
-        await page.evaluate((step) => window.scrollBy({ top: step, behavior: "smooth" }), scrollStep);
+        // Smooth scroll container (LinkedIn SPA uses main#workspace or scaffold container, not window)
+        await page.evaluate((step) => {
+          const sc = document.querySelector("main#workspace, main, #workspace, .scaffold-layout__main") || document.scrollingElement || window;
+          sc.scrollBy({ top: step, behavior: "smooth" });
+        }, scrollStep);
         await new Promise(r => setTimeout(r, waitAfterScroll));
       }
 
@@ -202,7 +205,8 @@ class LinkedInScanner {
           for (const btn of seeMoreBtns) {
             try { btn.click(); } catch (e) {}
           }
-          window.scrollBy({ top: 400, behavior: "smooth" });
+          const sc = document.querySelector("main#workspace, main, #workspace, .scaffold-layout__main") || document.scrollingElement || window;
+          sc.scrollBy({ top: 400, behavior: "smooth" });
         });
         await new Promise(r => setTimeout(r, 1000));
       }

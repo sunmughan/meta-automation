@@ -98,7 +98,20 @@ class LinkedInActions {
       // Locate the specific card on the page (matching text snippet or author)
       const postSnippet = (post.text || "").slice(0, 40).toLowerCase().replace(/[^a-z0-9]/g, "");
       const cardHandle = await page.evaluateHandle((targetSnippet) => {
-        const cards = Array.from(document.querySelectorAll("div[role='listitem'][componentkey*='update-card'], .feed-shared-update-v2, [data-view-name='feed-full-update']"));
+        let cards = Array.from(document.querySelectorAll("div[role='listitem'], div[id*='expanded'], div[componentkey*='update-card'], .feed-shared-update-v2, [data-view-name='feed-full-update']")).filter(c => {
+          return (c.innerText || "").includes("Comment") && (c.innerText || "").length > 40;
+        });
+        if (!cards.length) {
+          const commentButtons = Array.from(document.querySelectorAll("button")).filter(b => (b.innerText || "").trim().toLowerCase() === "comment");
+          for (const btn of commentButtons) {
+            let parent = btn;
+            for (let i = 0; i < 8 && parent.parentElement; i++) {
+              parent = parent.parentElement;
+              if ((parent.innerText || "").includes("Comment") && (parent.innerText || "").length > 60) break;
+            }
+            if (parent && !cards.includes(parent)) cards.push(parent);
+          }
+        }
         if (!cards.length) return document.body;
         if (!targetSnippet) return cards[0];
         const match = cards.find(c => {
@@ -111,16 +124,15 @@ class LinkedInActions {
       // 1. Check if comment editor is already expanded on this card
       const isAlreadyExpanded = await page.evaluate((card) => {
         const c = card || document;
-        const ed = c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true']");
+        const ed = c.querySelector("div.tiptap.ProseMirror[role='textbox'], div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true']");
         return Boolean(ed && ed.offsetParent !== null);
       }, cardHandle);
 
       if (!isAlreadyExpanded) {
-        // Locate Comment action button in the social action bar of the card (ignore all dropdown options)
+        // Locate Comment action button in the card
         const btnCoords = await page.evaluate((card) => {
           const c = card || document;
-          const socialBar = c.querySelector(".feed-shared-social-actions, .feed-shared-social-action-bar, [data-view-name*='social-actions']") || c;
-          const btn = Array.from(socialBar.querySelectorAll("button")).find(b => {
+          const btn = Array.from(c.querySelectorAll("button")).find(b => {
             const t = (b.innerText || "").trim().toLowerCase();
             const label = (b.getAttribute("aria-label") || "").toLowerCase();
             if (label.includes("option") || label.includes("action") || label.includes("menu") || b.classList.contains("artdeco-dropdown__trigger")) return false;
@@ -134,12 +146,11 @@ class LinkedInActions {
 
         if (btnCoords && btnCoords.y > 0 && btnCoords.y < 900) {
           await page.mouse.click(btnCoords.x, btnCoords.y);
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 1500));
         } else {
           await page.evaluate((card) => {
             const c = card || document;
-            const socialBar = c.querySelector(".feed-shared-social-actions, .feed-shared-social-action-bar, [data-view-name*='social-actions']") || c;
-            const btn = Array.from(socialBar.querySelectorAll("button")).find(b => {
+            const btn = Array.from(c.querySelectorAll("button")).find(b => {
               const t = (b.innerText || "").trim().toLowerCase();
               const label = (b.getAttribute("aria-label") || "").toLowerCase();
               if (label.includes("option") || label.includes("action") || label.includes("menu") || b.classList.contains("artdeco-dropdown__trigger")) return false;
@@ -147,20 +158,20 @@ class LinkedInActions {
             });
             if (btn) btn.click();
           }, cardHandle);
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 1500));
         }
       }
 
       // 2. Wait for contenteditable editor specifically on this card
       await page.waitForFunction((card) => {
         const c = card || document;
-        return Boolean(c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true'], [contenteditable='true'][role='textbox']"));
+        return Boolean(c.querySelector("div.tiptap.ProseMirror[role='textbox'], div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true']"));
       }, { timeout: 12000 }, cardHandle);
 
       // Focus and click inside the editor on this card
       const edCoords = await page.evaluate((card) => {
         const c = card || document;
-        const el = c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true'], [contenteditable='true'][role='textbox']");
+        const el = c.querySelector("div.tiptap.ProseMirror[role='textbox'], div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true']");
         if (!el) return null;
         el.scrollIntoView({ behavior: "instant", block: "center" });
         const r = el.getBoundingClientRect();
@@ -172,7 +183,7 @@ class LinkedInActions {
       } else {
         await page.evaluate((card) => {
           const c = card || document;
-          const el = c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true'], [contenteditable='true'][role='textbox']");
+          const el = c.querySelector("div.tiptap.ProseMirror[role='textbox'], div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true']");
           if (el) { el.focus(); el.click(); }
         }, cardHandle);
       }
@@ -184,22 +195,42 @@ class LinkedInActions {
         await page.keyboard.type(char, { delay: Math.floor(Math.random() * 35) + 30 });
       }
 
-      await new Promise(r => setTimeout(r, 1200));
+      await new Promise(r => setTimeout(r, 1500));
 
       // 4. Find and click comment submit button inside this card
       const submitSuccess = await page.evaluate((card) => {
         const c = card || document;
-        const form = c.querySelector(".comments-comment-box__form, .comments-comment-box, form") || c;
-        const btn = Array.from(form.querySelectorAll("button")).find(b => {
-          const text = (b.innerText || b.value || "").trim().toLowerCase();
-          const label = (b.getAttribute("aria-label") || "").toLowerCase();
-          if (label.includes("option") || label.includes("action") || label.includes("menu")) return false;
-          return (text === "comment" || text === "post" || label === "comment" || label === "post") && !b.disabled;
-        }) || form.querySelector("button.comments-comment-box__submit-button:not([disabled])");
-
-        if (btn) {
-          btn.scrollIntoView({ behavior: "instant", block: "center" });
-          btn.click();
+        const ed = c.querySelector("div.tiptap.ProseMirror[role='textbox'], div[role='textbox'][aria-label*='comment' i], div[role='textbox'][contenteditable='true']");
+        let submitBtn = null;
+        if (ed) {
+          let parent = ed.parentElement;
+          for (let i = 0; i < 8 && parent && parent !== c; i++) {
+            const btns = Array.from(parent.querySelectorAll("button")).filter(b => {
+              const t = (b.innerText || b.value || "").trim().toLowerCase();
+              const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+              if (aria.includes("option") || aria.includes("action") || aria.includes("menu") || aria.includes("emoji") || aria.includes("gif") || aria.includes("photo")) return false;
+              return (t === "comment" || t === "post" || aria === "comment" || aria === "post") && !b.disabled;
+            });
+            if (btns.length > 0) {
+              submitBtn = btns[btns.length - 1];
+              break;
+            }
+            parent = parent.parentElement;
+          }
+        }
+        if (!submitBtn) {
+          const form = c.querySelector(".comments-comment-box__form, .comments-comment-box, form") || c;
+          const btns = Array.from(form.querySelectorAll("button")).filter(b => {
+            const text = (b.innerText || b.value || "").trim().toLowerCase();
+            const label = (b.getAttribute("aria-label") || "").toLowerCase();
+            if (label.includes("option") || label.includes("action") || label.includes("menu") || label.includes("emoji") || label.includes("gif") || label.includes("photo")) return false;
+            return (text === "comment" || text === "post" || label === "comment" || label === "post") && !b.disabled;
+          });
+          submitBtn = btns[btns.length - 1];
+        }
+        if (submitBtn) {
+          submitBtn.scrollIntoView({ behavior: "instant", block: "center" });
+          submitBtn.click();
           return true;
         }
         return false;
