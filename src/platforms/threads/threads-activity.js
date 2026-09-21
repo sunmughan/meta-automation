@@ -177,7 +177,7 @@ class ThreadsActivityWatcher {
           previousMessages: [
             ...(existingConv.previousMessages || []),
             { sender: item.username, text: item.text, timestamp: new Date().toISOString() },
-            { sender: "CodeAir", text: replyDecision.response_message, timestamp: new Date().toISOString() }
+            { sender: "SELF", isOutgoing: true, text: replyDecision.response_message, timestamp: new Date().toISOString() }
           ],
           newAction: "REPLY_PROCESSED",
           newActionDetails: { replyId: item.id, identity: replyDecision.identity }

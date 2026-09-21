@@ -116,7 +116,7 @@ class DmMonitor {
       previousMessages: [
         ...(existingConv.previousMessages || []),
         { sender: dmItem.sender, text: dmItem.lastMessage, timestamp: new Date().toISOString() },
-        { sender: "CodeAir", text: decision.response_message, timestamp: new Date().toISOString() }
+        { sender: "SELF", isOutgoing: true, text: decision.response_message, timestamp: new Date().toISOString() }
       ],
       newAction: "DM_PROCESSED",
       newActionDetails: { dmTurnId, identity: decision.identity, humanReview: decision.human_review_required }

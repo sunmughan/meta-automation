@@ -1,6 +1,6 @@
 /**
  * threads-agent.js
- * Primary Unified CLI Orchestrator for CodeAir Threads + Instagram AI System.
+ * Primary Unified Autonomous CLI Orchestrator for Threads + Instagram AI System.
  *
  * Supported Commands:
  *   node threads-agent.js auth      - Check Threads & Instagram authentication in Brave
@@ -83,15 +83,30 @@ function getLeadPriorityScore(post) {
   if (post.status === "COMMENT_PENDING") score += 5000;
   if (post.source === "SEARCH") score += 2000;
   const text = (post.text || "").toLowerCase();
-  const highIntentKeywords = [
+
+  // Generic intent verbs (seeking, hiring, wanting)
+  const buyerPatterns = [
     /\b(looking for|need|hiring|hire|seeking|searching for|want to build|want an?)\b/i,
-    /\b(developer|designer|engineer|programmer|coder|agency|freelancer)\b/i,
-    /\b(website|web app|mobile app|flutter|react|fullstack|frontend|backend|saas|mvp|ai agent)\b/i,
-    /\b(recommend a|anyone know a|can someone build)\b/i
+    /\b(recommend a|anyone know a|can someone build|who can build)\b/i
   ];
-  for (const regex of highIntentKeywords) {
+  for (const regex of buyerPatterns) {
     if (regex.test(text)) score += 500;
   }
+
+  // Dynamic service keywords grounded in Knowledge Engine
+  const approved = knowledge.getApprovedServices();
+  if (approved && approved.length > 0) {
+    for (const service of approved) {
+      const words = service.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      for (const word of words) {
+        if (text.includes(word)) {
+          score += 300;
+          break;
+        }
+      }
+    }
+  }
+
   const ageHours = (Date.now() - new Date(post.discoveredAt || 0).getTime()) / (1000 * 60 * 60);
   if (ageHours < 24) {
     score += Math.max(0, Math.round(24 - ageHours) * 10);
@@ -339,7 +354,7 @@ async function commandApprove() {
 
 async function commandStatus() {
   console.log("\n==============================================");
-  console.log("    CODEAIR THREADS + INSTAGRAM AGENT STATUS");
+  console.log("    THREADS + INSTAGRAM AGENT STATUS");
   console.log("==============================================");
   console.log(`Configuration:`);
   console.log(`  Operational Mode : DRY_RUN=${CONFIG.DRY_RUN}, APPROVAL_MODE=${CONFIG.APPROVAL_MODE}`);
@@ -442,7 +457,8 @@ async function checkAndTriggerQuotePost() {
       if (p.postId.includes("test_")) return false;
       const text = p.text.toLowerCase();
       const hasTechIntent = /\b(architecture|distributed systems|agentic ai|microservices|postgresql|database|concurrency|fullstack|saas|system design|latency)\b/i.test(text);
-      const isNotSelf = p.username !== (CONFIG.THREADS_USERNAME || "sunmughan");
+      const myUsername = CONFIG.THREADS_USERNAME || knowledge.getFounderInfo().threadsUsername || "";
+      const isNotSelf = !myUsername || p.username.toLowerCase() !== myUsername.toLowerCase();
       return hasTechIntent && isNotSelf && !stateStore.hasCommented(p.postId, p.platform);
     })
     .sort((a, b) => (b.text.length || 0) - (a.text.length || 0));
@@ -490,7 +506,7 @@ async function commandDms() {
 
 async function commandRun() {
   console.log("\n==============================================");
-  console.log("  🚀 STARTING CODEAIR ORCHESTRATOR LOOP");
+  console.log("  🚀 STARTING AUTONOMOUS ORCHESTRATOR LOOP");
   console.log("==============================================");
   console.log(`Mode: DRY_RUN=${CONFIG.DRY_RUN}, APPROVAL_MODE=${CONFIG.APPROVAL_MODE}, POSTING_ENABLED=${CONFIG.POSTING_ENABLED}`);
   console.log(`Interval: ${CONFIG.SCAN_INTERVAL_SECONDS}s, Post Cadence: Every ${CONFIG.POST_INTERVAL_HOURS}h\n`);
@@ -519,7 +535,7 @@ async function commandRun() {
       console.log(`Feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
 
       // 4. Lead qualification & live commenting on prioritized leads (buyers + target audience)
-      console.log("\n[LEAD ENGAGEMENT] Evaluating posts for CodeAir / Founder pitch & live commenting...");
+      console.log("\n[LEAD ENGAGEMENT] Evaluating posts for brand / Founder pitch & live commenting...");
       await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
 
       // 4b. Viral Quote-Posting Engine (Cycle 2, then every 12 cycles ~ 10-12 min)
@@ -589,14 +605,14 @@ async function commandOnboard(options = {}) {
     });
 
     try {
-      founderName = await ask("1. Founder Full Name", currentFounder.name || "Sunmughan Swamy");
-      founderRole = await ask("2. Founder Role / Title", currentFounder.role || "Founder & CEO, CodeAir Software Solutions");
-      founderProfile = await ask("3. Founder Profile / LinkedIn URL", currentProfiles.founder.linkedin || "https://linkedin.com/in/sunmughan");
-      threadsUsername = await ask("4. Threads Username (without @)", currentFounder.threadsUsername || CONFIG.THREADS_USERNAME || "sunmughan");
-      companyName = await ask("5. Company / Brand Name", currentCompany.name || "CodeAir Software Solutions");
-      companyWebsite = await ask("6. Company Website URL", currentCompany.website || "https://www.codeair.tech");
-      companyProduct = await ask("7. Product / Specialty URL (optional)", currentCompany.productUrl || "https://pixelgo.live");
-      companySummary = await ask("8. Company Brief Summary", currentCompany.summary || "Custom software engineering, cloud architecture, and modern AI automation");
+      founderName = await ask("1. Founder Full Name", currentFounder.name || "");
+      founderRole = await ask("2. Founder Role / Title", currentFounder.role || "");
+      founderProfile = await ask("3. Founder Profile / LinkedIn URL", currentProfiles.founder.linkedin || "");
+      threadsUsername = await ask("4. Threads Username (without @)", currentFounder.threadsUsername || CONFIG.THREADS_USERNAME || "");
+      companyName = await ask("5. Company / Brand Name", currentCompany.name || "");
+      companyWebsite = await ask("6. Company Website URL", currentCompany.website || "");
+      companyProduct = await ask("7. Product / Specialty URL (optional)", currentCompany.productUrl || "");
+      companySummary = await ask("8. Company Brief Summary", currentCompany.summary || "");
 
       const rawApproved = await ask("9. Core Approved Services (comma-separated)", "Custom Software, SaaS MVPs, Web Applications, Mobile Apps, AI Workflows");
       approvedServices = rawApproved.split(",").map(s => s.trim()).filter(Boolean);
@@ -604,7 +620,7 @@ async function commandOnboard(options = {}) {
       const rawExcluded = await ask("10. Excluded Non-Core Services (comma-separated)", "Graphic Design, SEO Marketing, Accounting, Recruitment");
       excludedServices = rawExcluded.split(",").map(s => s.trim()).filter(Boolean);
 
-      const defaultWhatsApp = currentProfiles.company?.whatsapp || currentProfiles.founder?.whatsapp || "https://wa.me/codeair";
+      const defaultWhatsApp = currentProfiles.company?.whatsapp || currentProfiles.founder?.whatsapp || "";
       founderWhatsApp = await ask("11. Founder / Brand Direct WhatsApp Booking URL (optional)", founderWhatsApp || defaultWhatsApp);
     } finally {
       rl.close();
@@ -629,7 +645,7 @@ Name: ${founderName}
 Role: ${founderRole}
 Threads: @${cleanUsername}
 LinkedIn: ${founderProfile}
-WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
+WhatsApp: ${founderWhatsApp || ""}
 
 ## Background & Philosophy
 ${founderName} is the ${founderRole} of ${companyName}.
@@ -643,7 +659,7 @@ ${founderName} is the ${founderRole} of ${companyName}.
 Name: ${companyName}
 Website: ${companyWebsite}
 Product: ${companyProduct || "None"}
-WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
+WhatsApp: ${founderWhatsApp || ""}
 
 ## Summary
 ${companySummary}
@@ -658,13 +674,13 @@ Name: ${founderName}
 Role: ${founderRole}
 Threads: @${cleanUsername}
 LinkedIn: ${founderProfile}
-WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
+WhatsApp: ${founderWhatsApp || ""}
 
 ## Company
 Name: ${companyName}
 Website: ${companyWebsite}
 Product: ${companyProduct || "None"}
-WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
+WhatsApp: ${founderWhatsApp || ""}
 `;
   fs.writeFileSync(path.join(knowledgeDir, "profiles.md"), profilesMd, "utf8");
 
@@ -704,7 +720,9 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   if (companyProduct) {
     console.log(`  Product    : ${companyProduct}`);
   }
-  console.log(`  WhatsApp   : ${founderWhatsApp || "https://wa.me/codeair"}`);
+  if (founderWhatsApp) {
+    console.log(`  WhatsApp   : ${founderWhatsApp}`);
+  }
   console.log(`  Approved   : ${approvedServices.length} capabilities`);
   console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
   console.log(`  AI Engine  : Live Antigravity IDE Gemini 3.8 Flash High`);
