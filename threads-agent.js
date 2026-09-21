@@ -418,6 +418,39 @@ async function commandHealth() {
   return 0;
 }
 
+async function commandAccept() {
+  console.log("\n==============================================");
+  console.log("  🎯 LIVE AGENTIC BROWSER ACCEPTANCE SUITE");
+  console.log("  Sequential Multi-Tab Execution: Threads ➔ Facebook ➔ LinkedIn");
+  console.log("==============================================");
+  console.log(`Browser CDP : ${CONFIG.CDP_URL}`);
+  console.log(`Mode        : AGENT_ACCEPTANCE_MODE=true, DRY_RUN=${CONFIG.DRY_RUN}, APPROVAL_MODE=${CONFIG.APPROVAL_MODE}`);
+  console.log(`Order       : 1. Threads ➔ 2. Facebook ➔ 3. LinkedIn\n`);
+
+  process.env.AGENT_ACCEPTANCE_MODE = "true";
+
+  try {
+    console.log(`\n[ACCEPTANCE 1/3] 🧵 THREADS TAB: Live feed scan & AI qualification...`);
+    await runThreadsCycle(1);
+
+    console.log(`\n[ACCEPTANCE 2/3] 📘 FACEBOOK TAB: Inbound notifications, Messenger check & commercial search...`);
+    await runFacebookCycle(1);
+
+    console.log(`\n[ACCEPTANCE 3/3] 💼 LINKEDIN TAB: Connection requests, messages & B2B search...`);
+    await runLinkedInCycle(1);
+
+    console.log(`\n==============================================`);
+    console.log("  ✅ LIVE BROWSER ACCEPTANCE CYCLE COMPLETED");
+    console.log("==============================================\n");
+  } catch (err) {
+    console.error("❌ Acceptance cycle failed:", err.message);
+  }
+
+  featureHealth.print();
+  browserManager.disconnect();
+  return 0;
+}
+
 async function commandStatus() {
   console.log("\n==============================================");
   console.log("    THREADS + INSTAGRAM AGENT STATUS");
@@ -609,7 +642,7 @@ async function commandDms() {
 function getExecutionMode() {
   const modeArg = process.argv.find(a => a.startsWith("--mode="));
   if (modeArg) return modeArg.split("=")[1].trim().toLowerCase();
-  return (CONFIG.EXECUTION_MODE || "concurrent").toLowerCase();
+  return (CONFIG.EXECUTION_MODE || "round-robin").toLowerCase();
 }
 
 async function runThreadsCycle(cycle) {
@@ -792,39 +825,40 @@ async function commandRun() {
         console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next parallel cycle...`);
         console.log(`==============================================\n`);
       } else if (executionMode === "round-robin" || executionMode === "rotation") {
-        const platformCycle = cycle % 3;
-        const activePlatform = platformCycle === 1 ? "threads" : (platformCycle === 2 ? "linkedin" : "facebook");
+        const platforms = ["threads", "facebook", "linkedin"];
+        const activePlatform = platforms[(cycle - 1) % platforms.length];
 
         console.log(`\n==============================================`);
-        console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING [PLATFORM: ${activePlatform.toUpperCase()}]`);
+        console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING [ROUND-ROBIN: ${activePlatform.toUpperCase()}]`);
+        console.log(`Rotation sequence: Threads ➔ Facebook ➔ LinkedIn`);
         console.log(`==============================================`);
 
         if (activePlatform === "threads") {
           await runThreadsCycle(cycle);
-        } else if (activePlatform === "linkedin") {
-          await runLinkedInCycle(cycle);
-        } else {
+        } else if (activePlatform === "facebook") {
           await runFacebookCycle(cycle);
+        } else {
+          await runLinkedInCycle(cycle);
         }
 
         console.log(`\n==============================================`);
         console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED [${activePlatform.toUpperCase()}]`);
-        console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next sequential cycle...`);
+        console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next platform in rotation...`);
         console.log(`==============================================\n`);
       } else {
-        // Sequential Multi-Tab Pipeline: Threads -> LinkedIn -> Facebook all in one cycle!
+        // Sequential Multi-Tab Pipeline: Threads -> Facebook -> LinkedIn
         console.log(`\n==============================================`);
-        console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING [MULTI-TAB PIPELINE: THREADS ➔ LINKEDIN ➔ FACEBOOK]`);
+        console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING [MULTI-TAB PIPELINE: THREADS ➔ FACEBOOK ➔ LINKEDIN]`);
         console.log(`==============================================`);
 
         console.log(`\n[STEP 1/3] 🧵 THREADS TAB: Scanning feed, processing replies, and evaluating leads...`);
         await runThreadsCycle(cycle);
 
-        console.log(`\n[STEP 2/3] 💼 LINKEDIN TAB: Searching high-intent B2B queries, scanning feed, and pitching...`);
-        await runLinkedInCycle(cycle);
-
-        console.log(`\n[STEP 3/3] 📘 FACEBOOK TAB: Searching commercial buyer queries, scanning groups, and pitching...`);
+        console.log(`\n[STEP 2/3] 📘 FACEBOOK TAB: Searching commercial buyer queries, scanning groups, and pitching...`);
         await runFacebookCycle(cycle);
+
+        console.log(`\n[STEP 3/3] 💼 LINKEDIN TAB: Searching high-intent B2B queries, scanning feed, and pitching...`);
+        await runLinkedInCycle(cycle);
 
         console.log(`\n==============================================`);
         console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED [ALL 3 PLATFORMS VISIBLY EXECUTED]`);
@@ -1064,6 +1098,9 @@ async function main() {
     case "health":
       process.exit(await commandHealth());
       break;
+    case "accept":
+      process.exit(await commandAccept());
+      break;
     case "test":
       await (require("./tests/suite").runAllTests());
       process.exit(0);
@@ -1073,7 +1110,7 @@ async function main() {
       break;
     default:
       console.log(`Unknown command: ${cmd}`);
-      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, test, run");
+      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, health, accept, test, run");
       process.exit(1);
   }
 }
@@ -1094,6 +1131,7 @@ module.exports = {
   commandDms,
   commandStatus,
   commandHealth,
+  commandAccept,
   commandOnboard,
   isPeakEngagementWindow,
   checkAndPublishScheduledPost,

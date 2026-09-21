@@ -60,33 +60,41 @@ const fs = require("fs");
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
       }
-    }, `${tag} - Omnichannel Autonomous Engagement Engine (LinkedIn, Facebook & Threads)`);
+    }, `${tag} - Zero-Heuristic Omnichannel AI Social Growth Engine (LinkedIn, Facebook & Threads)`);
 
     const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
     if (bodyTextarea) {
       const releaseNotes = `## What's New in ${tag}
 
+### 🧠 100% Zero-Heuristic AI Architecture (Gemini 3.8 Flash High)
+- **Zero Regex Pre-Filtering**: Complete eradication of static keyword heuristics, buyer intent regexes, and hand-crafted classification scores.
+- **Pure Antigravity AI Reasoning**: Every post is qualified directly by Gemini 3.8 Flash High via live Antigravity IDE Connect-RPC session.
+- **Dynamic Bespoke Comments**: Purged static comment variation templates. The AI generates bespoke, grounded comments with strict Single-URL Discipline.
+- **Zero-Heuristic Quarantine**: When AI reasoning is unavailable or times out, posts are quarantined without guessing or falling back to regex.
+
 ### 🌐 Complete Omnichannel Support (LinkedIn + Facebook + Threads)
 - **LinkedIn Inbound Operations**:
-  - Automatically manages incoming connection requests: accepts individual profile requests (\`/in/\`) and automatically ignores/rejects page follows, group invites, and event invitations.
-  - Direct Messages monitoring: checks unread DMs, detects sender context, avoids self-replies, and responds with tailored grounded AI.
-  - Inbound comment replies: monitors notifications for replies to our posts and comments, responding back with user tags (\`@Name\`).
-  - Daily B2B Thought-Leadership cross-posting: publishes daily authoritative technical posts reusing the high-impact visual media generated for Threads.
-  - 2026 Modern DOM traversal for high-intent B2B keyword searches and executive feed monitoring.
-
+  - Automatically manages connection requests: accepts individual profile requests (\`/in/\`) and rejects company page follows, group invites, and event spam.
+  - Direct Messages monitoring: inspects unread DMs, grounds context in dynamic business knowledge, and synthesizes helpful conversion replies with zero self-reply loops.
+  - Inbound comment replies: tracks notifications on posts/comments, responding warmly with user tags (\`@Name\`).
+  - Daily B2B Thought-Leadership cross-posting: publishes daily authoritative technical posts reusing visual media.
 - **Facebook Inbound & Outbound Operations**:
-  - Inbound comment replies via Facebook notifications with tagged replies.
-  - Messenger direct message monitoring with grounded AI response generation.
-  - Commercial buyer keyword searches and public founder/agency group discovery.
-
+  - Inbound comment notification monitoring with personalized tagged replies.
+  - Messenger direct message processing with grounded AI sales reasoning.
+  - Commercial buyer keyword search and public agency/founder group discovery.
 - **Threads Continuous Presence**:
   - Live feed and keyword scanning with active lead qualification and verified commenting.
   - Inbound activity reply monitor and direct message responder.
 
-### ⚡ Performance & Dynamic Architecture
-- **Dynamic Antigravity Language Server CSRF Socket Discovery**: Dynamically resolves listening ports and matching CSRF tokens, preventing process hangs and speeding up AI reasoning.
+### 🔗 Dynamic Grounding & WhatsApp Booking Link
+- **WhatsApp Meeting Booking Link**: Updated official WhatsApp booking link to \`https://wa.me/codeair\` across all dynamic profile lookups and DM scheduling flows.
+- **Centralized Search Queries**: All 42 discovery search queries and group topics centralized in \`knowledge/search-queries.md\` with dynamic cache hot-reloading.
+- **Multi-Brand Neutrality**: Complete brand isolation verified by automated multi-brand test suites. Onboard any agency or personal brand in seconds via \`npm run onboard\`.
+
+### ⚡ Performance & Multi-Browser Engine
 - **Dedicated Browser Tab Instances**: Mutex-guarded dedicated tabs for Threads, LinkedIn, and Facebook with automatic foreground switching (\`bringToFront: true\`).
-- **Sequential and Concurrent Multi-Tab Execution Modes**: Choose between seamless sequential multi-tab pipeline execution or simultaneous background multi-threading.
+- **Sequential and Concurrent Multi-Tab Execution Modes**: Seamless switching between sequential round-robin execution and concurrent multi-threading.
+- **Universal Multi-Browser Support**: 1-click support for Chrome, Edge, Brave, and Chromium across Linux, macOS, Windows, and Android Termux.
 
 ---
 

@@ -50,8 +50,14 @@ class FacebookActivityWatcher {
         for (const row of rows) {
           const text = (row.innerText || "").trim();
           if (/commented on your|replied to your comment|mentioned you/i.test(text)) {
-            const link = row.querySelector("a[href*='facebook.com'], a[href*='story.php'], a[href*='permalink']");
-            const url = link ? link.href : "";
+            let url = "";
+            if (row.tagName === "A" && row.href) {
+              url = row.href;
+            } else {
+              const link = row.querySelector("a[href*='facebook.com'], a[href*='story.php'], a[href*='permalink'], a[href*='notif'], a[role='link']");
+              url = link ? link.href : (row.closest("a") ? row.closest("a").href : "");
+            }
+            if (url && url.startsWith("/")) url = "https://www.facebook.com" + url;
             const authorMatch = text.match(/^([^\n]+)/);
             const username = authorMatch ? authorMatch[1].trim() : "facebook_user";
             results.push({ username, text: text.slice(0, 200), url });
@@ -116,8 +122,7 @@ class FacebookActivityWatcher {
             text: replyMessage,
             username: notif.username
           });
-
-          logger.info(`✅ Sent live Facebook reply to @${notif.username}!`);
+          logger.info(`✅ Replied to Facebook comment notification from @${notif.username}!`);
           repliesSent++;
         }
       }
@@ -163,66 +168,107 @@ class FacebookActivityWatcher {
       logger.info(`[FACEBOOK MESSENGER] Found ${conversations.length} conversations (${unread.length} unread).`);
 
       let processedCount = 0;
-      for (const conv of unread.slice(0, 5)) {
+      for (let idx = 0; idx < conversations.length; idx++) {
+        const conv = conversations[idx];
+        if (!conv.unread && idx > 0) continue;
+
         try {
-          const items = await page.$x ? [] : [];
-          const opened = await page.evaluate((targetText) => {
-            const candidates = [...document.querySelectorAll("[data-testid*='mwthreadlist_item'], [role='row'], [role='listitem']")];
-            const target = candidates.find(el => (el.innerText || "").includes(targetText));
-            if (!target) return false;
-            target.click();
-            return true;
-          }, conv.username);
+          // Click into the conversation
+          const opened = await page.evaluate((targetIdx) => {
+            const items = Array.from(document.querySelectorAll("[data-testid*='mwthreadlist_item'], [role='row'], [role='listitem']"));
+            if (items[targetIdx]) {
+              items[targetIdx].click();
+              return true;
+            }
+            return false;
+          }, idx);
 
           if (!opened) {
-            telemetry.record({type:"ACTION_FAILED",platform:"facebook",action:"DM_OPEN",targetId:conv.username,error:"Conversation row not found"});
+            telemetry.record({ type: "ACTION_FAILED", platform: "facebook", action: "DM_OPEN", targetId: conv.username, error: "Conversation row not found" });
             continue;
           }
-          await new Promise(r => setTimeout(r, 1800));
+          await new Promise(r => setTimeout(r, 2000));
 
+          // Inspect messages in active conversation
           const messageData = await page.evaluate(() => {
-            const bubbles = [...document.querySelectorAll("[data-testid*='message'], [role='row'], div[dir='auto']")];
-            const texts = bubbles.map(x => (x.innerText || "").trim()).filter(Boolean);
-            const last = texts[texts.length - 1] || "";
-            return { lastText:last, body:(document.body.innerText||"").slice(-8000) };
-          });
-          if (!messageData.lastText || messageData.lastText.length < 3) continue;
+            const bubbles = Array.from(document.querySelectorAll("div[dir='auto'][role='none'], div[data-scope='messages_table'] div[dir='auto'], [data-testid*='message']"));
+            if (!bubbles.length) return null;
 
+            const lastBubble = bubbles[bubbles.length - 1];
+            const lastText = (lastBubble.innerText || "").trim();
+            const isFromSelf = Boolean(lastBubble.closest("[data-testid*='outgoing'], [class*='outgoing'], [aria-label*='You sent' i]"));
+
+            return { lastText, isFromSelf };
+          });
+
+          if (!messageData || messageData.isFromSelf || messageData.lastText.length < 3) {
+            logger.info(`[FACEBOOK MESSENGER] Skipping @${conv.username}: Last message was sent by us or empty.`);
+            continue;
+          }
+
+          const convId = this.hashItem(conv.username, messageData.lastText, "fb_dm");
+          const dupCheck = duplicateGuard.canExecute({
+            platform: "facebook",
+            actionType: "DM",
+            targetId: convId,
+            text: messageData.lastText
+          });
+
+          if (!dupCheck.allowed) continue;
+
+          logger.info(`[FACEBOOK MESSENGER] Generating tailored response for @${conv.username}: "${messageData.lastText.slice(0, 60)}..."`);
           const aiResponse = await aiDecisionEngine.handleInboundReply({
             username: conv.username,
             text: messageData.lastText,
             platform: "facebook",
-            replyToText: "Facebook Messenger"
+            replyToText: "Facebook Messenger Direct Message"
           });
+
           const replyMessage = aiResponse.response_message;
           if (!replyMessage) continue;
 
           if (CONFIG.APPROVAL_MODE || CONFIG.DRY_RUN || !CONFIG.POSTING_ENABLED) {
-            telemetry.record({type:"ACTION_SIMULATED",platform:"facebook",action:"DM_SEND",targetId:conv.username});
+            telemetry.record({ type: "ACTION_SIMULATED", platform: "facebook", action: "DM_SEND", targetId: conv.username, evidence: { replyMessage } });
             continue;
           }
 
           const operator = new BrowserOperator(page);
-          const editor = await operator.findVisible({aria:"message", selector:"div[contenteditable='true'][role='textbox']"}, 12000);
+          const editorSelector = "div[role='textbox'][aria-label*='Message' i], div[contenteditable='true'][role='textbox']";
+          const editor = await operator.findVisible({ aria: "message", selector: editorSelector }, 12000);
           if (!editor) {
-            telemetry.record({type:"ACTION_FAILED",platform:"facebook",action:"DM_SEND",targetId:conv.username,error:"Messenger composer not found"});
+            telemetry.record({ type: "ACTION_FAILED", platform: "facebook", action: "DM_SEND", targetId: conv.username, error: "Messenger composer not found" });
             continue;
           }
-          await operator.typeInto({selector:"div[contenteditable='true'][role='textbox']"}, replyMessage);
-          const sendCandidates = ["Send","send"];
+
+          await operator.typeInto({ selector: editorSelector }, replyMessage);
+          await new Promise(r => setTimeout(r, 600));
+
+          const sendCandidates = ["Send", "send"];
           let sent = false;
           for (const label of sendCandidates) {
-            try { await operator.visibleClick({aria:label,text:label},{timeout:3000}); sent=true; break; } catch(e) {}
+            try { await operator.visibleClick({ aria: label, text: label }, { timeout: 2000 }); sent = true; break; } catch (e) {}
           }
           if (!sent) {
             await page.keyboard.press("Enter");
           }
-          const verification = await verifyTextPresence(page, replyMessage, {platform:"facebook",action:"DM_SEND",targetId:conv.username,timeout:12000});
-          if (verification.verified) processedCount++;
+
+          const verification = await verifyTextPresence(page, replyMessage, { platform: "facebook", action: "DM_SEND", targetId: conv.username, timeout: 12000 });
+          if (verification.verified) {
+            duplicateGuard.recordExecuted({
+              platform: "facebook",
+              actionType: "DM",
+              targetId: convId,
+              text: replyMessage,
+              username: conv.username
+            });
+            logger.info(`✅ Verified Facebook Messenger response sent to @${conv.username}!`);
+            processedCount++;
+          }
         } catch (e) {
-          telemetry.record({type:"ACTION_FAILED",platform:"facebook",action:"DM_SEND",targetId:conv.username,error:e.message});
+          telemetry.record({ type: "ACTION_FAILED", platform: "facebook", action: "DM_SEND", targetId: conv.username, error: e.message });
         }
       }
+
       return { conversationCount: conversations.length, unreadCount: unread.length, processedCount };
     } catch (err) {
       logger.warn(`[FACEBOOK MESSENGER] Error checking messages: ${err.message}`);

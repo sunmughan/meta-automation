@@ -400,14 +400,14 @@ class ThreadsActions {
           });
 
           // 3. Check for specific author + snippet association outside of composer
-          const hasAuthorSnippet = bodyText.toLowerCase().includes("sunmughan") && snippetFound;
+          const hasAuthorSnippet = authorUsername ? (bodyText.toLowerCase().includes(authorUsername) && snippetFound) : snippetFound;
 
           if (snippetFound || hasAuthorSnippet) {
             return { verified: true, reason: "Comment snippet verified in thread DOM outside composer" };
           }
 
           return { verified: false, error: "Awaiting confirmed DOM insertion" };
-        }, textSnippet);
+        }, textSnippet, (post.username || CONFIG.THREADS_USERNAME || "").toLowerCase());
 
         if (check.verified) {
           isVerifiedPosted = true;

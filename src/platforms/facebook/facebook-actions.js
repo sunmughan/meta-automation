@@ -40,7 +40,7 @@ class FacebookActions {
       return { success: false, reason: "Empty comment text" };
     }
 
-    if (!post.url || typeof post.url !== "string" || !post.url.startsWith("http") || post.url.includes("/search/")) {
+    if (!post.url || typeof post.url !== "string" || !post.url.startsWith("http")) {
       logger.warn(`Cannot post Facebook comment on post ${post.postId}: Missing or invalid individual post URL (${post.url || "empty"})`);
       return { success: false, reason: "Missing or invalid post URL" };
     }
@@ -79,19 +79,38 @@ class FacebookActions {
       page = await browserManager.getFacebookPage({ bringToFront: true });
       await page.bringToFront().catch(() => {});
 
-      logger.info(`Navigating to dedicated Facebook post: ${post.url}...`);
-      await page.goto(post.url, { waitUntil: "domcontentloaded", timeout: 45000 });
-      await new Promise(r => setTimeout(r, 3500));
-
-      const currentUrl = page.url();
-      if (currentUrl.includes("/search/")) {
-        throw new Error(`Navigation failed: page remained on search results URL instead of individual post`);
+      const isSearchCard = post.url.includes("/search/");
+      if (isSearchCard) {
+        if (!page.url().includes("/search/")) {
+          logger.info(`Navigating to Facebook search page: ${post.url}...`);
+          await page.goto(post.url.split("#")[0], { waitUntil: "domcontentloaded", timeout: 45000 });
+          await new Promise(r => setTimeout(r, 3500));
+        }
+      } else {
+        logger.info(`Navigating to dedicated Facebook post: ${post.url}...`);
+        await page.goto(post.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+        await new Promise(r => setTimeout(r, 3500));
       }
 
       // Locate comment input trigger or contenteditable box
-      const commentInputSelector = "div[aria-label*='Write a comment' i][role='textbox'], div[aria-label*='Write a public comment' i], div[contenteditable='true'][role='textbox'], div[aria-label*='Comment as' i][role='textbox']";
-      await page.waitForSelector(commentInputSelector, { timeout: 15000 });
-      const commentInput = await page.$(commentInputSelector);
+      const commentInputSelector = "div[aria-label*='Write a comment' i][role='textbox'], div[aria-label*='Write a public comment' i], div[contenteditable='true'][role='textbox'], div[aria-label*='Comment as' i][role='textbox'], div[aria-label*='Write an answer' i][role='textbox']";
+      let commentInput = await page.$(commentInputSelector);
+
+      if (!commentInput) {
+        // Try clicking a comment button on the card if comment box is collapsed
+        await page.evaluate(() => {
+          const btns = Array.from(document.querySelectorAll("div[role='button'], span"));
+          const cBtn = btns.find(b => {
+            const t = (b.innerText || "").trim().toLowerCase();
+            return t === "comment" || t === "leave a comment";
+          });
+          if (cBtn) {
+            try { cBtn.click(); } catch (e) {}
+          }
+        });
+        await new Promise(r => setTimeout(r, 1500));
+        commentInput = await page.$(commentInputSelector);
+      }
 
       if (!commentInput) {
         throw new Error("Could not find Facebook comment input box on target post");

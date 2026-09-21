@@ -55,18 +55,18 @@ test("3. Concurrency detection flags concurrent/parallel correctly", () => {
 });
 
 // 4. Sequential round-robin maps cycle % 3 correctly
-test("4. Sequential round-robin cycle % 3 correctly cycles Threads -> LinkedIn -> Facebook", () => {
+test("4. Sequential round-robin cycle % 3 correctly cycles Threads -> Facebook -> LinkedIn", () => {
   const getPlatform = (cycle) => {
-    const p = cycle % 3;
-    return p === 1 ? "threads" : (p === 2 ? "linkedin" : "facebook");
+    const platforms = ["threads", "facebook", "linkedin"];
+    return platforms[(cycle - 1) % platforms.length];
   };
 
   assert.strictEqual(getPlatform(1), "threads");
-  assert.strictEqual(getPlatform(2), "linkedin");
-  assert.strictEqual(getPlatform(3), "facebook");
+  assert.strictEqual(getPlatform(2), "facebook");
+  assert.strictEqual(getPlatform(3), "linkedin");
   assert.strictEqual(getPlatform(4), "threads");
-  assert.strictEqual(getPlatform(5), "linkedin");
-  assert.strictEqual(getPlatform(6), "facebook");
+  assert.strictEqual(getPlatform(5), "facebook");
+  assert.strictEqual(getPlatform(6), "linkedin");
 });
 
 // 5. StateStore atomic save uses unique temp file to prevent concurrent collision

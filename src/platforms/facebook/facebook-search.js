@@ -98,60 +98,71 @@ class FacebookSearchEngine {
       // 3. Scroll down and parse post feed cards
       for (let scroll = 0; scroll < 4; scroll++) {
         const postsData = await page.evaluate(() => {
-          // Select Facebook search feed item cards
-          const articles = Array.from(document.querySelectorAll("div[role='feed'] > div, div[role='article'], div[data-pagelet*='FeedUnit']"));
+          // Select Facebook search feed item cards across Comet DOM variations
+          let articles = Array.from(document.querySelectorAll("div[role='feed'] > div, div[role='article'], div[data-pagelet*='FeedUnit'], div[data-pagelet*='SearchResult'], div[role='main'] div[role='article']"));
+          if (!articles.length) {
+            articles = Array.from(document.querySelectorAll("div[role='main'] > div > div > div > div > div")).filter(d => {
+              const t = d.innerText || "";
+              return (t.includes("Like") || t.includes("Comment") || t.includes("Share")) && t.length > 50;
+            });
+          }
 
           const results = [];
           const seen = new Set();
 
           for (const el of articles) {
-            // Find true individual post permalink (exclude generic group home links)
+            // Find true individual post permalink (exclude generic search and home links)
             let url = "";
-            const postLinks = Array.from(el.querySelectorAll("a[href*='/posts/'], a[href*='/permalink/'], a[href*='story_fbid='], a[href*='multi_permalinks=']"));
+            const postLinks = Array.from(el.querySelectorAll("a[href*='/posts/'], a[href*='/permalink/'], a[href*='story_fbid='], a[href*='multi_permalinks='], a[href*='/photo/'], a[href*='/photo.php'], a[href*='/groups/']"));
             const validPostLink = postLinks.find(a => {
-              const h = a.href || "";
-              return h.includes("/posts/") || h.includes("/permalink/") || h.includes("story_fbid=") || h.includes("multi_permalinks=");
+              const h = (a.getAttribute("href") || a.href || "").trim();
+              return (h.includes("/posts/") || h.includes("/permalink/") || h.includes("story_fbid=") || h.includes("multi_permalinks=") || h.includes("/photo/") || (h.includes("/groups/") && (h.includes("/user/") || h.includes("/posts/") || h.includes("/permalink/")))) && !h.includes("/search/");
             });
 
             if (validPostLink) {
-              url = validPostLink.href;
+              url = validPostLink.href || validPostLink.getAttribute("href") || "";
             } else {
               // Try finding timestamp link
               const tsLinks = Array.from(el.querySelectorAll("span a[role='link'], h2 a[role='link'], h3 a[role='link'], a[role='link']"));
               const tsMatch = tsLinks.find(a => {
-                const h = a.href || "";
-                return (h.includes("/posts/") || h.includes("/permalink/") || h.includes("story_fbid=") || h.includes("multi_permalinks=")) && !h.includes("/search/");
+                const h = (a.getAttribute("href") || a.href || "").trim();
+                return h && !h.includes("/search/") && (h.includes("/posts/") || h.includes("/permalink/") || h.includes("story_fbid=") || h.includes("multi_permalinks=") || h.includes("/photo/"));
               });
-              if (tsMatch) url = tsMatch.href;
+              if (tsMatch) url = tsMatch.href || tsMatch.getAttribute("href") || "";
+            }
+
+            if (url && url.startsWith("/")) {
+              url = "https://www.facebook.com" + url;
             }
 
             // Find author
             const authorEl = el.querySelector("h2 a, h3 a, strong a, span[dir='auto'] strong, [role='link'] strong, a[role='link'][tabindex='0']");
             const username = authorEl ? authorEl.innerText.trim().replace(/[\r\n]+/g, " ") : "facebook_buyer";
-            const authorProfileUrl = authorEl && authorEl.href ? authorEl.href : "";
+            const authorProfileUrl = authorEl && authorEl.href ? (authorEl.href.startsWith("/") ? "https://www.facebook.com" + authorEl.href : authorEl.href) : "";
 
             // Find post text
             const textEl = el.querySelector("div[dir='auto'][style*='text-align'], div[data-ad-preview='message'], div[data-ad-comet-preview='message'], div[dir='auto']");
-            const text = textEl ? textEl.innerText.trim() : (el.innerText || "").slice(0, 500).trim();
+            let text = textEl ? textEl.innerText.trim() : (el.innerText || "").slice(0, 500).trim();
+            text = text.replace(/Like\s*Comment\s*Share/gi, "").trim();
 
             // Extract group context if this is a group post
             const groupLink = el.querySelector("a[href*='/groups/']");
             const groupName = groupLink ? groupLink.innerText.trim().replace(/[\r\n]+/g, " ") : "";
 
             // ID extraction
-            const fbidMatch = url.match(/story_fbid=([^&]+)/) || url.match(/\/posts\/([a-zA-Z0-9_-]+)/) || url.match(/\/permalink\/([a-zA-Z0-9_-]+)/) || url.match(/multi_permalinks=([0-9]+)/);
-            const postId = fbidMatch ? fbidMatch[1] : (url ? `fb_${Math.abs(url.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}` : "");
+            const fbidMatch = url.match(/story_fbid=([^&]+)/) || url.match(/\/posts\/([a-zA-Z0-9_-]+)/) || url.match(/\/permalink\/([a-zA-Z0-9_-]+)/) || url.match(/multi_permalinks=([0-9]+)/) || url.match(/fbid=([0-9]+)/);
+            const postId = fbidMatch ? fbidMatch[1] : (url ? `fb_${Math.abs(url.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}` : `fb_${Math.abs(text.slice(0, 30).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`);
 
-            // A post can ONLY be commented on if it has a genuine individual URL
-            const hasValidIndividualUrl = Boolean(url && url.startsWith("http") && !url.includes("/search/") && (url.includes("/posts/") || url.includes("/permalink/") || url.includes("story_fbid=") || url.includes("multi_permalinks=")));
+            // A post can be commented on if it has a genuine individual URL or on-card trigger
+            const hasValidIndividualUrl = Boolean(url && url.startsWith("http") && !url.includes("/search/"));
             const commentTrigger = el.querySelector("div[aria-label*='comment' i], div[aria-label*='reply' i], div[role='textbox']");
-            const canComment = Boolean(commentTrigger && hasValidIndividualUrl);
+            const canComment = Boolean(commentTrigger || hasValidIndividualUrl);
 
-            if (hasValidIndividualUrl && postId && !seen.has(postId) && text && text.length > 20) {
+            if (postId && !seen.has(postId) && text && text.length > 20) {
               seen.add(postId);
               results.push({
                 postId,
-                url,
+                url: url || `https://www.facebook.com/search/posts/?q=${encodeURIComponent(query)}#${postId}`,
                 username,
                 authorProfileUrl,
                 groupName,
