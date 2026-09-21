@@ -59,7 +59,8 @@ class FacebookSearchEngine {
 
     try {
       browser = await browserManager.connect();
-      page = await browserManager.getFacebookPage();
+      page = await browserManager.getFacebookPage({ bringToFront: true });
+      await page.bringToFront().catch(() => {});
 
       const searchUrl = this.buildSearchUrl(query);
       logger.info(`[FACEBOOK SEARCH] Searching high-intent query: "${query}"...`, { action: "FACEBOOK_SEARCH_START", query });

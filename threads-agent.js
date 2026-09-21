@@ -42,6 +42,8 @@ const dmMonitor = require("./src/engagement/dm-monitor");
 const stateStore = require("./src/storage/state-store");
 const rateLimiter = require("./src/safety/rate-limiter");
 const commentGenerator = require("./src/engagement/comment-generator");
+const { checkLinkedInConnectionRequests, checkLinkedInMessages, checkLinkedInNotifications } = require("./src/platforms/linkedin/linkedin-activity");
+const { checkFacebookNotifications, checkFacebookMessages } = require("./src/platforms/facebook/facebook-activity");
 const logger = require("./src/logging/logger");
 
 async function commandAuth() {
@@ -509,6 +511,42 @@ async function checkAndPublishScheduledPost(force = false) {
   }
 }
 
+async function checkAndPublishLinkedInDailyPost(force = false) {
+  const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
+  const liPosts = ourPosts.filter(p => p.platform === "linkedin" && (p.status === "VERIFIED_PUBLISHED" || p.published === true));
+  const latestLiPost = liPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+  const lastPostTime = latestLiPost ? new Date(latestLiPost.publishedAt).getTime() : 0;
+  const elapsedHours = (Date.now() - lastPostTime) / (1000 * 60 * 60);
+
+  if (force || lastPostTime === 0 || elapsedHours >= 20) {
+    if (CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
+      console.log("\n==============================================");
+      console.log(`  💼 PUBLISHING DAILY B2B THOUGHT-LEADERSHIP ON LINKEDIN`);
+      console.log("==============================================");
+      try {
+        // Reuse latest Threads media if available (same visual asset)
+        const threadsPosts = ourPosts.filter(p => (!p.platform || p.platform === "threads") && (p.status === "VERIFIED_PUBLISHED" || p.published === true));
+        const latestThreadsPost = threadsPosts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+        const mediaPath = (latestThreadsPost && latestThreadsPost.mediaPaths && latestThreadsPost.mediaPaths[0]) || null;
+        const pillar = (latestThreadsPost && latestThreadsPost.pillar) || "agentic_ai";
+
+        const res = await linkedInPoster.publishPost({
+          pillar,
+          mediaPath
+        });
+        if (res && res.verified) {
+          console.log(`✅ Daily LinkedIn post published: "${res.text.slice(0, 70)}..."\n`);
+        }
+        return res;
+      } catch (err) {
+        console.warn(`[LINKEDIN POSTER] Failed to publish daily post: ${err.message}`);
+      }
+    }
+  } else {
+    console.log(`[LINKEDIN POSTER] Daily post already published (${Math.round(elapsedHours)}h ago). Next post in ~${Math.round(24 - elapsedHours)}h.`);
+  }
+}
+
 async function checkAndTriggerQuotePost() {
   const recentQuotes = stateStore.getRecentQuotePosts ? stateStore.getRecentQuotePosts(24) : [];
   if (recentQuotes.length >= 2) {
@@ -578,6 +616,7 @@ function getExecutionMode() {
 async function runThreadsCycle(cycle) {
   console.log(`\n[THREADS WORKER] Starting active operations on Threads tab (Cycle #${cycle})...`);
   try {
+    await browserManager.getThreadsPage({ bringToFront: true });
     // 1. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
     await checkAndPublishScheduledPost();
 
@@ -624,25 +663,37 @@ async function runThreadsCycle(cycle) {
 async function runLinkedInCycle(cycle) {
   console.log(`\n[LINKEDIN WORKER] Starting active operations on LinkedIn tab (Cycle #${cycle})...`);
   try {
-    // 1. High-intent B2B search
+    await browserManager.getLinkedInPage({ bringToFront: true });
+
+    // 1. Connection Requests: Auto-accept individual profile invites, reject page/group invites
+    console.log("\n[LINKEDIN NETWORK] Managing incoming connection requests (profiles only)...");
+    await checkLinkedInConnectionRequests();
+
+    // 2. Inbound Direct Messages: Respond to new prospect messages
+    console.log("\n[LINKEDIN INBOX] Checking direct messages from prospects...");
+    await checkLinkedInMessages();
+
+    // 3. Inbound Notifications: Respond to replies on our posts & comments
+    console.log("\n[LINKEDIN NOTIFICATIONS] Checking comments & replies to our posts...");
+    await checkLinkedInNotifications();
+
+    // 4. Daily Thought-Leadership Post: Cross-post with visual assets
+    await checkAndPublishLinkedInDailyPost();
+
+    // 5. High-intent B2B search
     console.log("\n[LINKEDIN DISCOVERY] Searching high-intent B2B client queries on LinkedIn...");
     const liSearchRes = await searchLinkedInKeywords();
     console.log(`LinkedIn search query "${liSearchRes.query}": ${liSearchRes.scannedCount} visible, ${liSearchRes.newCount} new`);
 
-    // 2. Executive feed scan
+    // 6. Executive feed scan
     console.log("\n[LINKEDIN FEED] Scanning LinkedIn home feed for executive & founder updates...");
     const liFeedRes = await scanLinkedInFeed({ maxPosts: 10 });
     console.log(`LinkedIn feed: ${liFeedRes.scannedCount} visible, ${liFeedRes.newCount} new`);
 
-    // 3. Lead qualification & comments on discovered LinkedIn posts
+    // 7. Lead qualification & comments on discovered LinkedIn posts
     console.log("\n[LINKEDIN ENGAGEMENT] Evaluating LinkedIn leads for executive & agency pitches...");
     await commandAnalyze({ platform: "linkedin", maxPosts: 10, maxLiveComments: 2 });
 
-    // 4. Thought-leadership posting cadence
-    if (cycle % 6 === 2 && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
-      console.log("\n[LINKEDIN THOUGHT LEADERSHIP] Publishing scheduled executive perspective...");
-      await linkedInPoster.publishPost();
-    }
     console.log(`[LINKEDIN WORKER] Completed cycle #${cycle} operations.`);
   } catch (err) {
     console.error(`[LINKEDIN WORKER] Error in cycle #${cycle}:`, err.message);
@@ -652,7 +703,17 @@ async function runLinkedInCycle(cycle) {
 async function runFacebookCycle(cycle) {
   console.log(`\n[FACEBOOK WORKER] Starting active operations on Facebook tab (Cycle #${cycle})...`);
   try {
-    // 1. Hybrid Search Discovery: Alternates between Targeted Keyword Search and High-Intent Group Posts
+    await browserManager.getFacebookPage({ bringToFront: true });
+
+    // 1. Inbound Notifications: Monitor comments & replies to our posts and respond
+    console.log("\n[FACEBOOK NOTIFICATIONS] Checking incoming comments & replies...");
+    await checkFacebookNotifications();
+
+    // 2. Inbound Messenger: Check unread messages from prospective clients
+    console.log("\n[FACEBOOK MESSENGER] Checking direct messages from prospective clients...");
+    await checkFacebookMessages();
+
+    // 3. Hybrid Search Discovery: Alternates between Targeted Keyword Search and High-Intent Group Posts
     if (cycle % 2 === 1) {
       console.log("\n[FACEBOOK SEARCH] Searching Facebook for targeted commercial buyer queries...");
       const searchRes = await searchFacebookPosts({ maxPosts: 12 });
@@ -663,18 +724,18 @@ async function runFacebookCycle(cycle) {
       console.log(`Facebook group search query "${groupRes.query}": ${groupRes.scannedCount} visible, ${groupRes.newCount} new`);
     }
 
-    // 2. Periodic Profile Timeline Check (every 6 cycles) for visitor comments on own posts
+    // 4. Periodic Profile Timeline Check (every 6 cycles) for visitor comments on own posts
     if (cycle % 6 === 3) {
       console.log("\n[FACEBOOK PROFILE] Checking public profile timeline for incoming interactions...");
       const fbFeedRes = await scanFacebookProfileFeed({ maxPosts: 5 });
       console.log(`Facebook profile timeline: ${fbFeedRes.scannedCount} visible, ${fbFeedRes.newCount} new`);
     }
 
-    // 3. Lead qualification & comments on discovered Facebook posts
+    // 5. Lead qualification & comments on discovered Facebook posts
     console.log("\n[FACEBOOK ENGAGEMENT] Evaluating Facebook buyer leads & commercial opportunities...");
     await commandAnalyze({ platform: "facebook", maxPosts: 10, maxLiveComments: 2 });
 
-    // 4. Public profile post cadence
+    // 6. Public profile post cadence
     if (cycle % 6 === 5 && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
       console.log("\n[FACEBOOK POSTER] Publishing scheduled public profile update...");
       await facebookPoster.publishPost();
@@ -706,6 +767,9 @@ async function commandRun() {
         console.log(`Simultaneous tabs: Threads ⚡ LinkedIn ⚡ Facebook`);
         console.log(`==============================================`);
 
+        console.log(`[ORCHESTRATOR] Initializing dedicated tabs for Threads, LinkedIn, and Facebook...`);
+        await browserManager.ensureAllPlatformTabs();
+
         // Run all 3 platform workers concurrently in their dedicated tabs
         const results = await Promise.allSettled([
           runThreadsCycle(cycle),
@@ -724,7 +788,7 @@ async function commandRun() {
         console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED [ALL TABS PROCESSED]`);
         console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next parallel cycle...`);
         console.log(`==============================================\n`);
-      } else {
+      } else if (executionMode === "round-robin" || executionMode === "rotation") {
         const platformCycle = cycle % 3;
         const activePlatform = platformCycle === 1 ? "threads" : (platformCycle === 2 ? "linkedin" : "facebook");
 
@@ -744,11 +808,36 @@ async function commandRun() {
         console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED [${activePlatform.toUpperCase()}]`);
         console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next sequential cycle...`);
         console.log(`==============================================\n`);
+      } else {
+        // Sequential Multi-Tab Pipeline: Threads -> LinkedIn -> Facebook all in one cycle!
+        console.log(`\n==============================================`);
+        console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING [MULTI-TAB PIPELINE: THREADS ➔ LINKEDIN ➔ FACEBOOK]`);
+        console.log(`==============================================`);
+
+        console.log(`\n[STEP 1/3] 🧵 THREADS TAB: Scanning feed, processing replies, and evaluating leads...`);
+        await runThreadsCycle(cycle);
+
+        console.log(`\n[STEP 2/3] 💼 LINKEDIN TAB: Searching high-intent B2B queries, scanning feed, and pitching...`);
+        await runLinkedInCycle(cycle);
+
+        console.log(`\n[STEP 3/3] 📘 FACEBOOK TAB: Searching commercial buyer queries, scanning groups, and pitching...`);
+        await runFacebookCycle(cycle);
+
+        console.log(`\n==============================================`);
+        console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED [ALL 3 PLATFORMS VISIBLY EXECUTED]`);
+        console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next cycle...`);
+        console.log(`==============================================\n`);
+      }
+
+      if (process.argv.includes("--once")) {
+        console.log(`\n[ORCHESTRATOR] Single cycle completed with --once flag. Exiting cleanly.`);
+        break;
       }
 
       await new Promise(r => setTimeout(r, CONFIG.SCAN_INTERVAL_SECONDS * 1000));
     } catch (err) {
       console.error(`Error in cycle #${cycle}:`, err.message);
+      if (process.argv.includes("--once")) break;
       await new Promise(r => setTimeout(r, 15000));
     }
   }

@@ -55,29 +55,34 @@ const fs = require("fs");
     const titleInput = await ghPage.$("#release_name") || await ghPage.$("input[name=\"release[name]\"]");
     if (titleInput) {
       await titleInput.click({ clickCount: 3 });
-      await titleInput.type(`${tag} - 100% Dynamic Knowledge Architecture & Zero Hardcoding Engine`, { delay: 5 });
+      await titleInput.type(`${tag} - Omnichannel Autonomous Engagement Engine (LinkedIn, Facebook & Threads)`, { delay: 5 });
     }
 
     const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
     if (bodyTextarea) {
       const releaseNotes = `## What's New in ${tag}
 
-### 🧠 100% Dynamic Knowledge Grounding (Zero Hardcoding)
-- Eliminated all hardcoded brand strings, URLs, handles, and static fallback templates across the entire codebase (\`threads-agent.js\`, \`threads-html-renderer.js\`, \`threads-poster.js\`, \`ai-decision-engine.js\`, \`comment-generator.js\`, \`threads-media.js\`).
-- Dynamic single source of truth: \`knowledge/*.md\` (\`founder.md\`, \`company.md\`, \`profiles.md\`, \`services.md\`, \`pillars.md\`).
-- Brand names, handles, websites, and personas are dynamically resolved at runtime with complete brand isolation.
+### 🌐 Complete Omnichannel Support (LinkedIn + Facebook + Threads)
+- **LinkedIn Inbound Operations**:
+  - Automatically manages incoming connection requests: accepts individual profile requests (\`/in/\`) and automatically ignores/rejects page follows, group invites, and event invitations.
+  - Direct Messages monitoring: checks unread DMs, detects sender context, avoids self-replies, and responds with tailored grounded AI.
+  - Inbound comment replies: monitors notifications for replies to our posts and comments, responding back with user tags (\`@Name\`).
+  - Daily B2B Thought-Leadership cross-posting: publishes daily authoritative technical posts reusing the high-impact visual media generated for Threads.
+  - 2026 Modern DOM traversal for high-intent B2B keyword searches and executive feed monitoring.
 
-### 🌐 Universal Multi-Brand Customization & Isolation
-- Onboard any brand or personal profile in seconds via \`npm run onboard\`.
-- Automated test suites verify 100% brand isolation with zero bleed.
+- **Facebook Inbound & Outbound Operations**:
+  - Inbound comment replies via Facebook notifications with tagged replies.
+  - Messenger direct message monitoring with grounded AI response generation.
+  - Commercial buyer keyword searches and public founder/agency group discovery.
 
-### 🎨 Fully Dynamic Social Cards & Carousel Visuals
-- 1080x1080 social media cards, dark-mode terminal code snippets, and system topology diagrams render dynamically with official SVG/WebP assets and brand badges.
-- Footer spans and branding automatically adapt to the configured company and founder persona.
+- **Threads Continuous Presence**:
+  - Live feed and keyword scanning with active lead qualification and verified commenting.
+  - Inbound activity reply monitor and direct message responder.
 
-### ⚡ Complete Autonomous Agentic Intelligence
-- Pure Gemini 3.8 Flash High agentic reasoning with zero regex pre-filters or heuristic discards.
-- Intelligent intent classification, contextual representation (\`FOUNDER\`, \`COMPANY\`, \`BOTH\`, \`NEUTRAL\`), and single-URL discipline.
+### ⚡ Performance & Dynamic Architecture
+- **Dynamic Antigravity Language Server CSRF Socket Discovery**: Dynamically resolves listening ports and matching CSRF tokens, preventing process hangs and speeding up AI reasoning.
+- **Dedicated Browser Tab Instances**: Mutex-guarded dedicated tabs for Threads, LinkedIn, and Facebook with automatic foreground switching (\`bringToFront: true\`).
+- **Sequential and Concurrent Multi-Tab Execution Modes**: Choose between seamless sequential multi-tab pipeline execution or simultaneous background multi-threading.
 
 ---
 

@@ -56,7 +56,8 @@ class FacebookActions {
     // 3. Live CDP Posting
     let page = null;
     try {
-      page = await browserManager.getFacebookPage();
+      page = await browserManager.getFacebookPage({ bringToFront: true });
+      await page.bringToFront().catch(() => {});
 
       logger.info(`Navigating to Facebook post: ${post.url || post.postId}...`);
       if (post.url) {

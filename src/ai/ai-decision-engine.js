@@ -492,11 +492,14 @@ CRITICAL INSTRUCTIONS:
    - TECH NETWORKING / BUILDER CONNECTIONS: Anyone explicitly expressing intent to connect, network, collaborate, or build peer relationships with fellow software developers, engineers, AI builders, SaaS founders, or tech peers in IT/software/AI/Web/SaaS/Cloud (e.g. "Looking to connect with more founders, creators and builders", "Looking to connect with developers in AI, fullstack, SaaS", "Let's connect"):
      * set intent: "NETWORKING", representation: "FOUNDER", target_entity: "INDIVIDUAL", service_match: true, is_genuine_buyer: true, decision: "QUALIFIED".
      * generated_comment: Speak warmly and authentically as ${founder.name} (${founder.role} at ${company.name} / software builder), sharing genuine interest in building/connecting with fellow builders, and include Founder Profile (${founderUrl}).
+   - TECH ARCHITECTURE & SYSTEM DESIGN DISCUSSIONS: Founders, CTOs, engineers, or developers discussing software architecture, databases, tech stacks, AI agent engineering, SaaS scaling, or asking technical advice on engineering trade-offs:
+     * set intent: "NETWORKING", representation: "NEUTRAL", target_entity: "INDIVIDUAL", service_match: true, is_genuine_buyer: true, decision: "QUALIFIED".
+     * generated_comment: Provide high-signal, pragmatic engineering insight or lessons learned addressing their specific technical challenge. Strictly NEUTRAL, zero unsolicited pitches, zero URLs.
    - DIRECT BRAND / FOUNDER INQUIRIES:
      * If asking about founder / who is behind ${company.name}: set intent: "FOUNDER_INQUIRY", representation: "FOUNDER", target_entity: "INDIVIDUAL", generated_comment must introduce ${founder.name} (${founder.role}) and include Founder Profile (${founderUrl}).
      * If asking about company / what ${company.name} does: set intent: "CAPABILITY_INQUIRY", representation: "COMPANY", target_entity: "COMPANY", generated_comment must describe ${company.name} core capabilities and include Company Website (${companyUrl}).
-3. Strict Disqualifications (Zero Sales Pitch, Zero Non-Tech Engagement, Zero Spam on General Discussion):
-   - GENERAL DISCUSSION / OPINION POLLS: Anyone posting general opinion polls, open thought experiments, or advice questions (e.g. "What tech stack are you SaaS founders using to build your MVP this year?", "What is your favorite framework?", "What tools save you time?"). These are conversational prompts without explicit intent to connect or hire. Classify as IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
+3. Strict Disqualifications (Zero Non-Tech Engagement, Zero Spam):
+   - CASUAL NON-TECH / OFF-TOPIC CONTENT: Anyone posting casual personal updates, vacation photos, celebrity gossip, memes, non-tech sports/politics, or general non-tech lifestyle banter. Classify as IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - NON-TECH NETWORKING: Anyone networking strictly outside IT/Software/AI (e.g. real estate agents, accountants, fitness coaches, beauty influencers, MLM). Classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - REAL_ESTATE / PROPERTIES / INVESTMENTS: Anyone advertising, selling, buying, or promoting real estate properties, plots, apartments, or property developer services. Strictly classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - CAREER_ADVICE: Anyone asking about job titles, degrees, career transitions, WFH options, or resume feedback.
@@ -508,6 +511,7 @@ CRITICAL INSTRUCTIONS:
 7. Select REPRESENTATION: FOUNDER | COMPANY | BOTH | NEUTRAL | IGNORE.
    - If user asks for an individual/freelancer/developer, or is seeking tech/builder networking, or asks who is behind ${company.name}: FOUNDER
    - If user asks for an agency/company/team, or asks what ${company.name} does: COMPANY
+   - If general technical architecture/engineering discussion: NEUTRAL
    - If open to either: BOTH (or COMPANY)
 8. Single-URL Discipline:
    - For FOUNDER: Share Founder Profile only (${founderUrl}). Never include company website.
@@ -519,6 +523,7 @@ CRITICAL INSTRUCTIONS:
    - If user asks for an individual/freelancer/developer/co-founder or asks who is behind ${company.name}: Speak as ${founder.name} (${founder.role}) and share Founder Profile only.
    - If user asks for an agency/team/company or asks what ${company.name} does: Speak as ${company.name} and share Company Website only.
    - If user is seeking tech/builder networking: Speak as ${founder.name} (${founder.role} at ${company.name}), warmly engaging peer-to-peer on building software/AI/SaaS products and share Founder Profile (${founderUrl}).
+   - If technical architecture/system design discussion: Provide crisp, high-signal engineering perspective on the architectural trade-offs, contributing real value to the discussion. Zero pitch, 0 URLs.
    - Zero canned clichés. Directly helpful, authentic, and engaging.
    - If post is disqualified (not a genuine buyer, tech networking, or brand inquiry): set generated_comment: null.
 

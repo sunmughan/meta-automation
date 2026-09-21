@@ -24,6 +24,11 @@ class BrowserManager {
   constructor() {
     this.browser = null;
     this.cdpUrl = CONFIG.CDP_URL;
+    this._threadsPage = null;
+    this._linkedInPage = null;
+    this._facebookPage = null;
+    this._instagramPage = null;
+    this._pageMutex = Promise.resolve();
   }
 
   /**
@@ -116,233 +121,285 @@ class BrowserManager {
   }
 
   /**
-   * Retrieves or creates a page for Threads.
+   * Retrieves or creates a dedicated page for Threads.
    */
-  async getThreadsPage() {
+  async getThreadsPage(options = {}) {
     if (!this.browser || !this.browser.connected) {
       await this.connect();
     }
 
-    const pages = await this.browser.pages();
-
-    // 1. Look for existing Threads tab
-    let selectedPage = pages.find(p => {
-      const u = p.url();
-      return u.includes("threads.com") || u.includes("threads.net");
-    });
-
-    // 2. Look for reusable blank/new tab
-    if (!selectedPage) {
-      selectedPage = pages.find(p => {
-        const u = p.url();
-        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
-      });
-      if (selectedPage) {
-        await selectedPage.goto(CONFIG.THREADS_HOME, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000
-        });
-        await new Promise(r => setTimeout(r, 2000));
+    if (this._threadsPage && !this._threadsPage.isClosed()) {
+      if (options.bringToFront !== false) {
+        await this._threadsPage.bringToFront().catch(() => {});
       }
+      return this._threadsPage;
     }
 
-    // 3. Fallback: create new page
-    if (!selectedPage) {
-      selectedPage = await this.browser.newPage();
-      await selectedPage.goto(CONFIG.THREADS_HOME, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000
-      });
-      await new Promise(r => setTimeout(r, 2000));
-    }
+    let release;
+    const lock = new Promise(r => release = r);
+    const prevLock = this._pageMutex;
+    this._pageMutex = lock;
+    await prevLock;
 
     try {
-      await selectedPage.setViewport({
-        width: CONFIG.VIEWPORT_WIDTH,
-        height: CONFIG.VIEWPORT_HEIGHT,
-        deviceScaleFactor: 1
+      if (this._threadsPage && !this._threadsPage.isClosed()) {
+        if (options.bringToFront !== false) {
+          await this._threadsPage.bringToFront().catch(() => {});
+        }
+        return this._threadsPage;
+      }
+
+      const pages = await this.browser.pages();
+      const claimedPages = new Set([this._linkedInPage, this._facebookPage, this._instagramPage].filter(p => p && !p.isClosed()));
+
+      let selectedPage = pages.find(p => !claimedPages.has(p) && (p.url().includes("threads.com") || p.url().includes("threads.net")));
+
+      if (!selectedPage) {
+        selectedPage = pages.find(p => !claimedPages.has(p) && (p.url() === "about:blank" || p.url().includes("newtab")));
+        if (selectedPage) {
+          await selectedPage.goto(CONFIG.THREADS_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
+      if (!selectedPage) {
+        selectedPage = await this.browser.newPage();
+        await selectedPage.goto(CONFIG.THREADS_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      try {
+        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+      } catch (e) {}
+
+      selectedPage.removeAllListeners("dialog");
+      selectedPage.on("dialog", async dialog => {
+        logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
+        await dialog.accept().catch(() => {});
       });
-    } catch (e) {}
 
-    // Auto-dismiss/accept any browser native dialogs (e.g. Leave site?)
-    selectedPage.removeAllListeners("dialog");
-    selectedPage.on("dialog", async dialog => {
-      logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
-      await dialog.accept().catch(() => {});
-    });
-
-    // Bring tab to foreground if not running in concurrent multi-tab mode
-    if ((CONFIG.EXECUTION_MODE || "concurrent").toLowerCase() !== "concurrent") {
-      await selectedPage.bringToFront().catch(() => {});
+      this._threadsPage = selectedPage;
+      if (options.bringToFront !== false) {
+        await this._threadsPage.bringToFront().catch(() => {});
+      }
+      return this._threadsPage;
+    } finally {
+      release();
     }
-
-    return selectedPage;
   }
 
   /**
    * Retrieves or creates a page for Instagram.
    */
-  async getInstagramPage() {
+  async getInstagramPage(options = {}) {
     if (!this.browser || !this.browser.connected) {
       await this.connect();
     }
 
-    const pages = await this.browser.pages();
-
-    // 1. Look for existing Instagram tab
-    let selectedPage = pages.find(p => p.url().includes("instagram.com"));
-
-    // 2. Look for reusable blank tab
-    if (!selectedPage) {
-      selectedPage = pages.find(p => {
-        const u = p.url();
-        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
-      });
-      if (selectedPage) {
-        await selectedPage.goto(CONFIG.INSTAGRAM_HOME, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000
-        });
-        await new Promise(r => setTimeout(r, 2000));
+    if (this._instagramPage && !this._instagramPage.isClosed()) {
+      if (options.bringToFront !== false) {
+        await this._instagramPage.bringToFront().catch(() => {});
       }
+      return this._instagramPage;
     }
 
-    // 3. Fallback: create new page
-    if (!selectedPage) {
-      selectedPage = await this.browser.newPage();
-      await selectedPage.goto(CONFIG.INSTAGRAM_HOME, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000
-      });
-      await new Promise(r => setTimeout(r, 2000));
-    }
+    let release;
+    const lock = new Promise(r => release = r);
+    const prevLock = this._pageMutex;
+    this._pageMutex = lock;
+    await prevLock;
 
     try {
-      await selectedPage.setViewport({
-        width: CONFIG.VIEWPORT_WIDTH,
-        height: CONFIG.VIEWPORT_HEIGHT,
-        deviceScaleFactor: 1
+      if (this._instagramPage && !this._instagramPage.isClosed()) {
+        return this._instagramPage;
+      }
+
+      const pages = await this.browser.pages();
+      const claimedPages = new Set([this._threadsPage, this._linkedInPage, this._facebookPage].filter(p => p && !p.isClosed()));
+
+      let selectedPage = pages.find(p => !claimedPages.has(p) && p.url().includes("instagram.com"));
+
+      if (!selectedPage) {
+        selectedPage = pages.find(p => !claimedPages.has(p) && (p.url() === "about:blank" || p.url().includes("newtab")));
+        if (selectedPage) {
+          await selectedPage.goto(CONFIG.INSTAGRAM_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
+      if (!selectedPage) {
+        selectedPage = await this.browser.newPage();
+        await selectedPage.goto(CONFIG.INSTAGRAM_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      try {
+        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+      } catch (e) {}
+
+      selectedPage.removeAllListeners("dialog");
+      selectedPage.on("dialog", async dialog => {
+        logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
+        await dialog.accept().catch(() => {});
       });
-    } catch (e) {}
 
-    // Auto-dismiss/accept any browser native dialogs
-    selectedPage.removeAllListeners("dialog");
-    selectedPage.on("dialog", async dialog => {
-      logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
-      await dialog.accept().catch(() => {});
-    });
-
-    return selectedPage;
+      this._instagramPage = selectedPage;
+      if (options.bringToFront !== false) {
+        await this._instagramPage.bringToFront().catch(() => {});
+      }
+      return this._instagramPage;
+    } finally {
+      release();
+    }
   }
 
   /**
-   * Retrieves or creates a page for LinkedIn.
+   * Retrieves or creates a dedicated page for LinkedIn.
    */
-  async getLinkedInPage() {
+  async getLinkedInPage(options = {}) {
     if (!this.browser || !this.browser.connected) {
       await this.connect();
     }
 
-    const pages = await this.browser.pages();
-
-    // 1. Look for existing LinkedIn tab
-    let selectedPage = pages.find(p => p.url().includes("linkedin.com"));
-
-    // 2. Look for reusable blank tab
-    if (!selectedPage) {
-      selectedPage = pages.find(p => {
-        const u = p.url();
-        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
-      });
-      if (selectedPage) {
-        await selectedPage.goto(CONFIG.LINKEDIN_HOME, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000
-        });
-        await new Promise(r => setTimeout(r, 2000));
+    if (this._linkedInPage && !this._linkedInPage.isClosed()) {
+      if (options.bringToFront !== false) {
+        await this._linkedInPage.bringToFront().catch(() => {});
       }
+      return this._linkedInPage;
     }
 
-    // 3. Fallback: create new page
-    if (!selectedPage) {
-      selectedPage = await this.browser.newPage();
-      await selectedPage.goto(CONFIG.LINKEDIN_HOME, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000
-      });
-      await new Promise(r => setTimeout(r, 2000));
-    }
+    let release;
+    const lock = new Promise(r => release = r);
+    const prevLock = this._pageMutex;
+    this._pageMutex = lock;
+    await prevLock;
 
     try {
-      await selectedPage.setViewport({
-        width: CONFIG.VIEWPORT_WIDTH,
-        height: CONFIG.VIEWPORT_HEIGHT,
-        deviceScaleFactor: 1
+      if (this._linkedInPage && !this._linkedInPage.isClosed()) {
+        if (options.bringToFront !== false) {
+          await this._linkedInPage.bringToFront().catch(() => {});
+        }
+        return this._linkedInPage;
+      }
+
+      const pages = await this.browser.pages();
+      const claimedPages = new Set([this._threadsPage, this._facebookPage, this._instagramPage].filter(p => p && !p.isClosed()));
+
+      let selectedPage = pages.find(p => !claimedPages.has(p) && p.url().includes("linkedin.com"));
+
+      if (!selectedPage) {
+        selectedPage = pages.find(p => !claimedPages.has(p) && (p.url() === "about:blank" || p.url().includes("newtab")));
+        if (selectedPage) {
+          await selectedPage.goto(CONFIG.LINKEDIN_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
+      if (!selectedPage) {
+        selectedPage = await this.browser.newPage();
+        await selectedPage.goto(CONFIG.LINKEDIN_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      try {
+        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+      } catch (e) {}
+
+      selectedPage.removeAllListeners("dialog");
+      selectedPage.on("dialog", async dialog => {
+        logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
+        await dialog.accept().catch(() => {});
       });
-    } catch (e) {}
 
-    selectedPage.removeAllListeners("dialog");
-    selectedPage.on("dialog", async dialog => {
-      logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
-      await dialog.accept().catch(() => {});
-    });
-
-    return selectedPage;
+      this._linkedInPage = selectedPage;
+      if (options.bringToFront !== false) {
+        await this._linkedInPage.bringToFront().catch(() => {});
+      }
+      return this._linkedInPage;
+    } finally {
+      release();
+    }
   }
 
   /**
-   * Retrieves or creates a page for Facebook.
+   * Retrieves or creates a dedicated page for Facebook.
    */
-  async getFacebookPage() {
+  async getFacebookPage(options = {}) {
     if (!this.browser || !this.browser.connected) {
       await this.connect();
     }
 
-    const pages = await this.browser.pages();
-
-    // 1. Look for existing Facebook tab
-    let selectedPage = pages.find(p => p.url().includes("facebook.com"));
-
-    // 2. Look for reusable blank tab
-    if (!selectedPage) {
-      selectedPage = pages.find(p => {
-        const u = p.url();
-        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
-      });
-      if (selectedPage) {
-        await selectedPage.goto(CONFIG.FACEBOOK_HOME, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000
-        });
-        await new Promise(r => setTimeout(r, 2000));
+    if (this._facebookPage && !this._facebookPage.isClosed()) {
+      if (options.bringToFront !== false) {
+        await this._facebookPage.bringToFront().catch(() => {});
       }
+      return this._facebookPage;
     }
 
-    // 3. Fallback: create new page
-    if (!selectedPage) {
-      selectedPage = await this.browser.newPage();
-      await selectedPage.goto(CONFIG.FACEBOOK_HOME, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000
-      });
-      await new Promise(r => setTimeout(r, 2000));
-    }
+    let release;
+    const lock = new Promise(r => release = r);
+    const prevLock = this._pageMutex;
+    this._pageMutex = lock;
+    await prevLock;
 
     try {
-      await selectedPage.setViewport({
-        width: CONFIG.VIEWPORT_WIDTH,
-        height: CONFIG.VIEWPORT_HEIGHT,
-        deviceScaleFactor: 1
+      if (this._facebookPage && !this._facebookPage.isClosed()) {
+        if (options.bringToFront !== false) {
+          await this._facebookPage.bringToFront().catch(() => {});
+        }
+        return this._facebookPage;
+      }
+
+      const pages = await this.browser.pages();
+      const claimedPages = new Set([this._threadsPage, this._linkedInPage, this._instagramPage].filter(p => p && !p.isClosed()));
+
+      let selectedPage = pages.find(p => !claimedPages.has(p) && p.url().includes("facebook.com"));
+
+      if (!selectedPage) {
+        selectedPage = pages.find(p => !claimedPages.has(p) && (p.url() === "about:blank" || p.url().includes("newtab")));
+        if (selectedPage) {
+          await selectedPage.goto(CONFIG.FACEBOOK_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+
+      if (!selectedPage) {
+        selectedPage = await this.browser.newPage();
+        await selectedPage.goto(CONFIG.FACEBOOK_HOME, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      try {
+        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+      } catch (e) {}
+
+      selectedPage.removeAllListeners("dialog");
+      selectedPage.on("dialog", async dialog => {
+        logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
+        await dialog.accept().catch(() => {});
       });
-    } catch (e) {}
 
-    selectedPage.removeAllListeners("dialog");
-    selectedPage.on("dialog", async dialog => {
-      logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
-      await dialog.accept().catch(() => {});
-    });
+      this._facebookPage = selectedPage;
+      if (options.bringToFront !== false) {
+        await this._facebookPage.bringToFront().catch(() => {});
+      }
+      return this._facebookPage;
+    } finally {
+      release();
+    }
+  }
 
-    return selectedPage;
+  /**
+   * Ensures all three platforms (Threads, LinkedIn, Facebook) have open, dedicated tabs in the browser.
+   */
+  async ensureAllPlatformTabs() {
+    if (!this.browser || !this.browser.connected) {
+      await this.connect();
+    }
+    const tPage = await this.getThreadsPage({ bringToFront: false });
+    const liPage = await this.getLinkedInPage({ bringToFront: false });
+    const fbPage = await this.getFacebookPage({ bringToFront: false });
+    return { threadsPage: tPage, linkedInPage: liPage, facebookPage: fbPage };
   }
 
   /**
@@ -373,6 +430,10 @@ class BrowserManager {
       } catch (e) {}
       this.browser = null;
     }
+    this._threadsPage = null;
+    this._linkedInPage = null;
+    this._facebookPage = null;
+    this._instagramPage = null;
   }
 }
 
