@@ -197,8 +197,13 @@ class LinkedInActivityWatcher {
           replyToText: "LinkedIn Direct Message"
         });
 
+        const company = knowledge.getCompanyInfo();
+        const companyName = company.name || "our team";
+        const companyWebsite = company.website || knowledge.getProfileLink("COMPANY", "website") || "";
         const replyMessage = aiResponse.response_message || 
-          `Hi ${conv.username.split(" ")[0] || ""}, thanks for reaching out! At CodeAir, we specialize in high-performance web applications, custom SaaS, and AI automation. Feel free to explore our work and capabilities at https://www.codeair.tech.`;
+          (companyWebsite
+            ? `Hi ${conv.username.split(" ")[0] || ""}, thanks for reaching out! At ${companyName}, we specialize in high-performance web applications, custom SaaS, and AI automation. Feel free to explore our work at ${companyWebsite}.`
+            : `Hi ${conv.username.split(" ")[0] || ""}, thanks for reaching out! Great to connect with you.`);
 
         // Type and send reply
         const editorSelector = ".msg-form__contenteditable[contenteditable='true'], div[role='textbox'][aria-label*='message' i], .msg-form__message-texteditor [contenteditable='true']";
@@ -302,8 +307,11 @@ class LinkedInActivityWatcher {
           replyToText: "LinkedIn post comment"
         });
 
+        const notifWebsite = knowledge.getCompanyInfo().website || knowledge.getProfileLink("COMPANY", "website") || "";
         const replyMessage = aiResponse.response_message ||
-          `@${notif.username} Appreciate your thoughts and perspective on this! Feel free to connect or learn more about our architectural work at https://www.codeair.tech.`;
+          (notifWebsite
+            ? `@${notif.username} Appreciate your thoughts and perspective on this! Feel free to connect or learn more at ${notifWebsite}.`
+            : `@${notif.username} Appreciate your thoughts and perspective on this!`);
 
         // Locate comment / reply box
         const editorSelector = ".comments-comment-box__form [contenteditable='true'], div[role='textbox'][aria-label*='comment' i], .ql-editor";

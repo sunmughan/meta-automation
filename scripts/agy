@@ -61,6 +61,7 @@ function discoverAntigravitySession() {
       const fs = require("fs");
       const ss = execSync("ss -tulpn 2>/dev/null", { encoding: "utf8" });
       const lines = ss.split("\n");
+      const candidates = [];
       for (const line of lines) {
         if (line.includes("language_server")) {
           const portMatch = line.match(/:(\d+)\s+/);
@@ -72,13 +73,22 @@ function discoverAntigravitySession() {
               const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8");
               const tokenMatch = cmdline.match(/--csrf_token\x00([a-zA-Z0-9-]+)/) || cmdline.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
               if (tokenMatch) {
-                port = candidatePort;
-                token = tokenMatch[1];
-                break;
+                const isLsp = cmdline.includes("--enable_lsp");
+                const isStandalone = cmdline.includes("--standalone");
+                candidates.push({ port: candidatePort, token: tokenMatch[1], isLsp, isStandalone });
               }
             } catch (e) {}
           }
         }
+      }
+      candidates.sort((a, b) => {
+        if (!a.isLsp && !a.isStandalone && (b.isLsp || b.isStandalone)) return -1;
+        if (!b.isLsp && !b.isStandalone && (a.isLsp || a.isStandalone)) return 1;
+        return 0;
+      });
+      if (candidates.length > 0) {
+        port = candidates[0].port;
+        token = candidates[0].token;
       }
     } catch (e) {}
   }

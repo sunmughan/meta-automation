@@ -257,7 +257,7 @@ class StateStore {
   }
 
   /**
-   * Retrieves recent outgoing messages sent by CodeAir for a given conversation.
+   * Retrieves recent outgoing messages sent by the agent/company for a given conversation.
    * Used by Duplicate Guard and Relevance Gate to prevent repeating responses.
    *
    * @param {string} convId
@@ -279,9 +279,25 @@ class StateStore {
     }
 
     if (Array.isArray(conv.previousMessages)) {
+      let compName = "";
+      let compShort = "";
+      try {
+        const knowledge = require("../knowledge/knowledge-engine");
+        const info = knowledge.getCompanyInfo();
+        compName = (info?.name || "").toLowerCase();
+        compShort = (info?.shortName || "").toLowerCase();
+      } catch (_) {}
       for (let i = conv.previousMessages.length - 1; i >= 0; i--) {
         const msg = conv.previousMessages[i];
-        if (msg && (msg.isOutgoing || msg.sender === "SELF" || msg.sender === "CodeAir" || msg.sender === "US")) {
+        const sender = (msg?.sender || "").toLowerCase();
+        const isSelf = msg?.isOutgoing ||
+          sender === "self" ||
+          sender === "us" ||
+          sender === "agent" ||
+          sender === "bot" ||
+          (compName && sender === compName) ||
+          (compShort && sender === compShort);
+        if (msg && isSelf) {
           if (msg.text && !outgoing.includes(msg.text)) {
             outgoing.push(msg.text);
           }

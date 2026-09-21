@@ -81,6 +81,9 @@ class KnowledgeEngine {
     if (fileName === "pillars.md") {
       return this.parsePillarsMarkdown(content);
     }
+    if (fileName === "search-queries.md") {
+      return this.parseSearchQueriesMarkdown(content);
+    }
     return null;
   }
 
@@ -454,6 +457,7 @@ class KnowledgeEngine {
       summary: description,
       description,
       flagship: companyParsed.flagship || "",
+      flagshipProduct: companyParsed.flagship ? companyParsed.flagship.split("(")[0].trim() : "PixelGo HMS",
       linkedin: profiles.company.linkedin || "",
       instagram: profiles.company.instagram || "",
       facebook: profiles.company.facebook || ""
@@ -608,7 +612,8 @@ class KnowledgeEngine {
       /\b(pixelgo|hms|hotel|hospitality|resort|restaurant)\b/i.test(text) &&
       /\b(link|website|site|demo|reference|system|app|software|url|portfolio)\b/i.test(text)
     ) {
-      const pUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
+      const pUrl = profiles.company.pixelgo || company.productUrl || "";
+      if (!pUrl) return null;
       return {
         target: "COMPANY",
         platform: "pixelgo",
@@ -626,6 +631,66 @@ class KnowledgeEngine {
     }
 
     return null;
+  }
+
+  parseSearchQueriesMarkdown(content) {
+    const result = {
+      threads: [],
+      linkedin: [],
+      facebook: [],
+      facebook_groups: []
+    };
+
+    let currentSection = "";
+    const lines = content.split("\n");
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (/^##\s+Threads/i.test(trimmed)) {
+        currentSection = "threads";
+        continue;
+      } else if (/^##\s+LinkedIn/i.test(trimmed)) {
+        currentSection = "linkedin";
+        continue;
+      } else if (/^##\s+Facebook Search/i.test(trimmed)) {
+        currentSection = "facebook";
+        continue;
+      } else if (/^##\s+Facebook Group/i.test(trimmed)) {
+        currentSection = "facebook_groups";
+        continue;
+      } else if (/^##/i.test(trimmed)) {
+        currentSection = "";
+        continue;
+      }
+
+      if (currentSection && /^[-*]\s+(.+)/.test(trimmed)) {
+        const query = trimmed.replace(/^[-*]\s+/, "").trim();
+        if (query) {
+          result[currentSection].push(query);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  getSearchQueries(platform = "threads") {
+    this.loadAll();
+    const data = this.cache.get("search-queries.md")?.parsed;
+    const plat = String(platform).toLowerCase();
+    if (data && Array.isArray(data[plat]) && data[plat].length > 0) {
+      return data[plat];
+    }
+    return [];
+  }
+
+  getGroupTopics(platform = "facebook") {
+    this.loadAll();
+    const data = this.cache.get("search-queries.md")?.parsed;
+    if (data && Array.isArray(data.facebook_groups) && data.facebook_groups.length > 0) {
+      return data.facebook_groups;
+    }
+    return [];
   }
 
   isHospitalityQuery(text = "") {

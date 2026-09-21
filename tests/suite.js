@@ -1320,8 +1320,8 @@ async function runAllTests() {
   // 71. Knowledge Engine WhatsApp Profile Parsing & Retrieval
   test("71. Knowledge Engine parses official WhatsApp URL and handles retrieval", () => {
     const profiles = knowledge.getOfficialProfiles();
-    assert.strictEqual(profiles.founder.whatsapp, "https://wa.me/codeair", "Founder WhatsApp must be https://wa.me/codeair");
-    assert.strictEqual(knowledge.getWhatsAppUrl(), "https://wa.me/codeair", "getWhatsAppUrl helper must return https://wa.me/codeair");
+    assert.strictEqual(profiles.founder.whatsapp, "https://wa.me/919584215603", "Founder WhatsApp must be https://wa.me/919584215603");
+    assert.strictEqual(knowledge.getWhatsAppUrl(), "https://wa.me/919584215603", "getWhatsAppUrl helper must return https://wa.me/919584215603");
   });
 
   // 72. DM Discovery Stage Response grounds on WhatsApp booking link
@@ -1335,7 +1335,7 @@ async function runAllTests() {
     const res = await aiDecisionEngine.generateConversationReply(context);
     const text = res.response_message || res;
     assert(text && text.length > 20, "Must generate thoughtful reply");
-    assert(text.includes("https://wa.me/codeair"), "Discovery call response must include https://wa.me/codeair");
+    assert(text.includes("https://wa.me/919584215603"), "Discovery call response must include https://wa.me/919584215603");
   });
 
   // 73. Dark-mode Code Snippet Card HTML Renderer

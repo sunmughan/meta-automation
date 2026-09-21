@@ -7,6 +7,7 @@
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
+const knowledge = require("../../knowledge/knowledge-engine");
 const logger = require("../../logging/logger");
 
 async function extractPostsFromDom(page) {
@@ -247,28 +248,10 @@ async function checkSidebarBadges(page) {
   }
 }
 
-const HIGH_INTENT_SEARCH_QUERIES = [
-  "need a website",
-  "looking for web developer",
-  "who can build a website",
-  "looking for website designer",
-  "need an app developed",
-  "looking for ai developer",
-  "need someone to build MVP",
-  "looking for freelance developer",
-  "who can make a website",
-  "need custom software",
-  "looking for flutter developer",
-  "ai chatbot for business",
-  "need full stack developer",
-  "looking for web development agency",
-  "need someone to build a website",
-  "recommend a web developer",
-  "need an app developer",
-  "looking to hire a developer",
-  "who can build an app",
-  "need software built"
-];
+function getThreadsSearchQueries() {
+  const queries = knowledge.getSearchQueries("threads");
+  return queries.length > 0 ? queries : ["need a website", "looking for web developer"];
+}
 
 /**
  * Searches high-intent buyer keywords directly on Threads to discover active leads.
@@ -282,13 +265,14 @@ async function searchThreadsKeywords(options = {}) {
     stateStore.state.searchIndex = 0;
   }
 
+  const queries = getThreadsSearchQueries();
   const newlyDiscovered = [];
   const scannedPosts = [];
 
   for (let q = 0; q < queryCount; q++) {
-    const idx = stateStore.state.searchIndex % HIGH_INTENT_SEARCH_QUERIES.length;
-    stateStore.state.searchIndex = (stateStore.state.searchIndex + 1) % HIGH_INTENT_SEARCH_QUERIES.length;
-    const query = HIGH_INTENT_SEARCH_QUERIES[idx];
+    const idx = stateStore.state.searchIndex % queries.length;
+    stateStore.state.searchIndex = (stateStore.state.searchIndex + 1) % queries.length;
+    const query = queries[idx];
 
     logger.info(`[SEARCH DISCOVERY] Searching Threads for high-intent query: "${query}" (Recent Filter)...`);
     // Crucial: filter=recent ensures we search current real-time requests, not ancient posts from past years
@@ -335,5 +319,8 @@ module.exports = {
   refreshThreadsFeed,
   checkSidebarBadges,
   searchThreadsKeywords,
-  HIGH_INTENT_SEARCH_QUERIES
+  getThreadsSearchQueries,
+  get HIGH_INTENT_SEARCH_QUERIES() {
+    return getThreadsSearchQueries();
+  }
 };

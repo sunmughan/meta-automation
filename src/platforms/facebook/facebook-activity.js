@@ -85,8 +85,9 @@ class FacebookActivityWatcher {
           replyToText: "Facebook post comment"
         });
 
+        const companyWebsite = knowledge.getCompanyInfo().website || knowledge.getProfileLink("COMPANY", "website") || "";
         const replyMessage = aiResponse.response_message ||
-          `@${notif.username} Thanks for engaging! We appreciate the discussion. Feel free to connect or check out our work at https://www.codeair.tech.`;
+          (companyWebsite ? `@${notif.username} Thanks for connecting! Feel free to check out our work at ${companyWebsite}.` : `@${notif.username} Thanks for connecting! Great to be in touch.`);
 
         // Locate comment box
         const commentInputSelector = "div[aria-label*='Write a comment' i][role='textbox'], div[aria-label*='Write a reply' i][role='textbox'], div[contenteditable='true'][role='textbox']";

@@ -67,10 +67,10 @@ Use when:
 - Someone wants the founder's professional profile
 - Someone asks about professional background
 ### WhatsApp
-https://wa.me/codeair
+https://wa.me/919584215603
 
 Username:
-codeair
+919584215603
 
 Use when:
 - Someone asks to connect with the founder directly on WhatsApp or phone
@@ -127,10 +127,10 @@ https://www.codeair.tech
 https://pixelgo.live
 
 ### Official WhatsApp (Direct Discovery & Project Consultations)
-https://wa.me/codeair
+https://wa.me/919584215603
 
 Username:
-codeair
+919584215603
 
 Use when:
 - Direct discovery, consultation, or project timeline discussion is requested in DMs
