@@ -61,23 +61,38 @@ class LinkedInScanner {
       // Scroll and capture
       for (let s = 0; s < 5; s++) {
         const postsData = await page.evaluate(() => {
-          const updates = Array.from(document.querySelectorAll(".feed-shared-update-v2, [data-urn*='activity'], [data-view-name='feed-full-update']"));
+          let updates = Array.from(document.querySelectorAll("[role='listitem'][componentkey*='update-card'], [componentkey*='expanded'], .feed-shared-update-v2, [data-urn*='activity'], [data-view-name='feed-full-update']"));
+          if (!updates.length) {
+            const allDivs = Array.from(document.querySelectorAll("div"));
+            updates = allDivs.filter(d => {
+              const text = (d.innerText || "");
+              return text.includes("Comment") && text.includes("Repost") && (d.getAttribute("role") === "listitem" || d.hasAttribute("componentkey"));
+            });
+          }
+
+          // Deduplicate elements
+          const seenKeys = new Set();
           return updates.map(el => {
             const urn = el.getAttribute("data-urn") || "";
+            const compKey = el.getAttribute("componentkey") || el.getAttribute("id") || "";
             const permalinkEl = el.querySelector("a[href*='/feed/update/'], a[href*='/posts/']");
             const url = permalinkEl ? permalinkEl.href : (urn ? `https://www.linkedin.com/feed/update/${urn}` : "");
             
+            const actorLink = el.querySelector("a[href*='/in/']");
             const actorNameEl = el.querySelector(".update-components-actor__name, .feed-shared-actor__name, [data-view-name='actor-title'] span, .update-components-actor__title");
-            const username = actorNameEl ? actorNameEl.innerText.trim().replace(/[\r\n]+/g, " ") : "linkedin_user";
+            const username = actorNameEl ? actorNameEl.innerText.trim().replace(/[\r\n]+/g, " ") : (actorLink ? (actorLink.innerText || actorLink.href.split("/in/")[1]?.replace(/\//g, "")) : "linkedin_user");
 
             const headlineEl = el.querySelector(".update-components-actor__description, .feed-shared-actor__description");
             const headline = headlineEl ? headlineEl.innerText.trim().replace(/[\r\n]+/g, " ") : "";
 
             const textEl = el.querySelector(".feed-shared-update-v2__description, .update-components-text, .feed-shared-inline-show-more-text");
-            const text = textEl ? textEl.innerText.trim() : "";
+            const text = textEl ? textEl.innerText.trim() : (el.innerText || "").slice(0, 500).trim();
 
-            // Unique ID: prefer URN ID or hash
-            const postId = urn || (url.match(/urn:li:activity:([0-9]+)/) || [])[1] || `li_${Math.abs(text.slice(0, 40).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`;
+            const rawId = urn || compKey || (url.match(/urn:li:activity:([0-9]+)/) || [])[1] || `li_${Math.abs(text.slice(0, 40).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`;
+            const postId = rawId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 60);
+
+            if (seenKeys.has(postId)) return null;
+            seenKeys.add(postId);
 
             return {
               postId,
@@ -87,13 +102,14 @@ class LinkedInScanner {
               text,
               platform: "linkedin"
             };
-          }).filter(p => p.text && p.text.length > 20);
+          }).filter(p => p && p.text && p.text.length > 20);
         });
 
         for (const p of postsData) {
           scannedCount++;
-          if (!stateStore.state.posts[p.postId]) {
-            stateStore.recordDiscoveredPost(p.postId, {
+          if (!stateStore.state.posts[p.postId] && !stateStore.state.posts[`linkedin:${p.postId}`]) {
+            stateStore.addDiscoveredPost({
+              postId: p.postId,
               username: p.username,
               headline: p.headline,
               url: p.url,
@@ -191,8 +207,9 @@ class LinkedInScanner {
 
       let newCount = 0;
       for (const p of postsData) {
-        if (!stateStore.state.posts[p.postId]) {
-          stateStore.recordDiscoveredPost(p.postId, {
+        if (!stateStore.state.posts[p.postId] && !stateStore.state.posts[`linkedin:${p.postId}`]) {
+          stateStore.addDiscoveredPost({
+            postId: p.postId,
             username: p.username,
             headline: p.headline,
             url: p.url,

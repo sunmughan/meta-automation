@@ -92,7 +92,8 @@ class FacebookProfileManager {
         for (const p of postsData) {
           scannedCount++;
           if (!stateStore.state.posts[p.postId] && !stateStore.state.posts[`facebook:${p.postId}`]) {
-            stateStore.recordDiscoveredPost(p.postId, {
+            stateStore.addDiscoveredPost({
+              postId: p.postId,
               username: p.username,
               url: p.url,
               text: p.text,
