@@ -125,38 +125,12 @@ async function commandScan(options = {}) {
 }
 
 function getLeadPriorityScore(post) {
+  // AI-first architecture: deterministic ordering is limited to operational state.
+  // No content/keyword/regex signals are used to rank leads before semantic AI.
   let score = 0;
   if (post.status === "COMMENT_PENDING") score += 5000;
-  if (post.source === "SEARCH" || post.source === "FACEBOOK_KEYWORD_SEARCH" || post.source === "FACEBOOK_GROUP_SEARCH") score += 2000;
-  const text = (post.text || "").toLowerCase();
-
-  // Generic intent verbs (seeking, hiring, wanting)
-  const buyerPatterns = [
-    /\b(looking for|need|hiring|hire|seeking|searching for|want to build|want an?)\b/i,
-    /\b(recommend a|anyone know a|can someone build|who can build)\b/i
-  ];
-  for (const regex of buyerPatterns) {
-    if (regex.test(text)) score += 500;
-  }
-
-  // Dynamic service keywords grounded in Knowledge Engine
-  const approved = knowledge.getApprovedServices();
-  if (approved && approved.length > 0) {
-    for (const service of approved) {
-      const words = service.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      for (const word of words) {
-        if (text.includes(word)) {
-          score += 300;
-          break;
-        }
-      }
-    }
-  }
-
-  const ageHours = (Date.now() - new Date(post.discoveredAt || 0).getTime()) / (1000 * 60 * 60);
-  if (ageHours < 24) {
-    score += Math.max(0, Math.round(24 - ageHours) * 10);
-  }
+  if (post.status === "COMMENT_FAILED") score += 1000;
+  if (post.source === "SEARCH" || post.source === "FACEBOOK_KEYWORD_SEARCH" || post.source === "FACEBOOK_GROUP_SEARCH") score += 500;
   return score;
 }
 
