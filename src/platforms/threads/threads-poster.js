@@ -44,7 +44,8 @@ const PILLARS = [
   "builder_network",
   "founders_revolution",
   "tech_mentorship",
-  "agentic_ai"
+  "agentic_ai",
+  "meta_automation"
 ];
 
 class ThreadsPoster {
@@ -85,7 +86,7 @@ class ThreadsPoster {
     const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
     const lastFormat = ourPosts[ourPosts.length - 1]?.format;
 
-    if (pillar === "agentic_ai" || pillar === "tech_mentorship") {
+    if (pillar === "agentic_ai" || pillar === "tech_mentorship" || pillar === "meta_automation") {
       const techFormats = ["CODE_SNIPPET", "ARCHITECTURE_DIAGRAM", "SINGLE_CARD"];
       const nextFormat = techFormats.find(f => f !== lastFormat) || "CODE_SNIPPET";
       return nextFormat;
@@ -116,8 +117,9 @@ You are acting as the Chief Content Strategist & Technical Architect for ${found
 Brand & Context:
 - Founder: ${founder.name} (${founder.role})
 - Company: ${company.name} (${company.summary})
+- Open-Source Repo: https://github.com/sunmughan/meta-automation (Open-Source 24/7 Meta & Threads Agent with Termux:X11, Linux, Windows, macOS support)
 - Target Pillars:
-${pillars.map(p => `  * ${p.id}: ${p.title} - ${p.description}`).join("\n")}
+${pillars.map(p => `  * ${p.id}: ${p.title} - ${p.description || p.focus || ""}`).join("\n")}
 
 Current Post Directive:
 - Selected Pillar: ${pillar}
@@ -128,15 +130,16 @@ INSTRUCTIONS:
    - Voice: ${founder.name} (${founder.role}, conversational, sharp, honest, no corporate fluff).
    - Hook: Catchy first 1-2 lines that stop the scroll.
    - Body: 1-2 insightful technical or operational sentences based on current industry/market trends.
+   - GitHub Open-Source Highlight & Follower CTA: If pillar is "meta_automation" or relates to agentic AI, showcase the open-source GitHub repo (https://github.com/sunmughan/meta-automation). Invite developers, founders, and engineers to star/fork the repo, ask questions, and follow @${founder.threadsUsername || "sunmughan"} for daily agentic AI and architecture breakdowns.
    - Discussion Question & Soft Follower CTA: End with an open question inviting founders, developers, or operators to comment, plus a natural soft follow hook (e.g. "Follow @${founder.threadsUsername || "sunmughan"} for daily breakdowns on agentic AI & software architecture").
    - CRITICAL LENGTH CONSTRAINT: Threads enforces a strict 500-character maximum per post. The "caption" MUST be between 180 and 420 characters. Keep it punchy and concise!
 2. If format is SINGLE_CARD:
    - Provide "quote": A punchy, memorable 1-2 sentence quote or perspective for a dark-mode visual card.
-   - Provide "badge": A short 2-3 word topic tag (e.g. "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE", "INDUSTRY TECH").
+   - Provide "badge": A short 2-3 word topic tag (e.g. "OPEN SOURCE AI", "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE").
 3. If format is CAROUSEL:
    - Provide exactly 5 slides for a mini-deck:
      * Slides 1-4: Core architecture, lessons, or operational breakdowns (title & subtitle).
-     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Ship Resilient Systems", subtitle: "Follow @${founder.threadsUsername || "sunmughan"} for daily systems & SaaS insights").
+     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Star Meta Automation", subtitle: "Follow @${founder.threadsUsername || "sunmughan"} • github.com/sunmughan/meta-automation").
 4. If format is CODE_SNIPPET:
    - Provide "code_title": Short title (e.g. "Agentic Concurrency Queue").
    - Provide "code_snippet": 6-10 clean, realistic lines of TypeScript/Node.js architecture code.

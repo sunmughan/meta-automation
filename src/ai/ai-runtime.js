@@ -5,7 +5,7 @@
  * Enforces structured JSON schema parsing, queue-based concurrency governance, and resilient execution.
  */
 
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const CONFIG = require("../../config");
@@ -140,14 +140,54 @@ class AiRuntime {
   }
 
   /**
+   * Resolves the Antigravity CLI binary location cross-platform:
+   * 1. AGY_BIN environment variable override
+   * 2. Termux prefix ($PREFIX/bin/agy or /data/data/com.termux/files/usr/bin/agy)
+   * 3. User local bin: $HOME/.local/bin/agy or %USERPROFILE%\.local\bin\agy
+   * 4. System PATH lookup via which/where
+   * 5. Local repository runner: scripts/agy
+   * 6. Default command: 'agy'
+   */
+  resolveAgyBinary() {
+    if (process.env.AGY_BIN && fs.existsSync(process.env.AGY_BIN)) {
+      return process.env.AGY_BIN;
+    }
+
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    const termuxPrefix = process.env.PREFIX || "/data/data/com.termux/files/usr";
+    const termuxAgy = path.join(termuxPrefix, "bin/agy");
+    if (fs.existsSync(termuxAgy)) {
+      return termuxAgy;
+    }
+
+    const localBinAgy = path.join(home, ".local/bin/agy");
+    if (fs.existsSync(localBinAgy)) {
+      return localBinAgy;
+    }
+
+    try {
+      const lookupCmd = process.platform === "win32" ? "where agy 2>nul" : "which agy 2>/dev/null";
+      const found = execSync(lookupCmd, { encoding: "utf8" }).split(/\r?\n/)[0].trim();
+      if (found && fs.existsSync(found)) {
+        return found;
+      }
+    } catch (e) {}
+
+    const repoAgy = path.resolve(__dirname, "../../scripts/agy");
+    if (fs.existsSync(repoAgy)) {
+      return repoAgy;
+    }
+
+    return "agy";
+  }
+
+  /**
    * Invokes Antigravity AI runtime.
    * Runs agy command line with clean prompt and structured JSON formatting.
    */
   async callAntigravityCli(prompt, timeoutMs = 90000) {
     return new Promise((resolve, reject) => {
-      const repoAgy = path.resolve(__dirname, "../../scripts/agy");
-      const localBinAgy = "/home/sunmughan/.local/bin/agy";
-      const bin = fs.existsSync(localBinAgy) ? localBinAgy : (fs.existsSync(repoAgy) ? repoAgy : "agy");
+      const bin = this.resolveAgyBinary();
 
       const proc = spawn(bin, [
         "-p", prompt,

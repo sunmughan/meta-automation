@@ -38,3 +38,11 @@ Any user, agency, or business can customize these 5 pillars to match their speci
 - **Badge**: AGENTIC AI
 - **Focus**: Practical AI workflows, autonomous browser agents, local LLM orchestration, structured output governance, deterministic business automation over hype.
 - **Audience**: AI engineers, automation specialists, tech-forward business operators, CTOs.
+
+## Pillar 6: meta_automation
+- **Title**: Open-Source Meta Automation & Autonomous Growth
+- **Badge**: OPEN SOURCE AI
+- **Focus**: Open-source cross-platform social automation, Termux:X11 mobile execution, zero API token cost via local Antigravity reasoning, and multi-agent system architecture.
+- **Audience**: AI engineers, open-source contributors, growth hackers, software builders, Termux developers.
+- **Reference URL**: https://github.com/sunmughan/meta-automation
+

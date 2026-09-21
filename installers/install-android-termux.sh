@@ -27,12 +27,15 @@ pkg update -y || apt update -y
 echo "[2/7] Enabling x11-repo and tur-repo..."
 pkg install -y x11-repo tur-repo || true
 
-# 4. Install Node.js, Chromium, Termux:X11, Git, and Pulseaudio
-echo "[3/7] Installing Node.js LTS, Chromium, and X11 packages..."
+# 4. Install Node.js, Chromium, Termux:X11, Git, Tar, Curl, Bash and Pulseaudio
+echo "[3/8] Installing Node.js LTS, Chromium, X11, and terminal utilities..."
 pkg install -y \
     nodejs-lts \
     git \
     curl \
+    tar \
+    bash \
+    findutils \
     termux-x11-nightly \
     chromium \
     pulseaudio \
@@ -42,8 +45,19 @@ pkg install -y \
 echo "✅ Node.js: $(node -v 2>/dev/null || echo 'Installed')"
 echo "✅ Chromium: $(chromium --version 2>/dev/null || echo 'Installed')"
 
-# 5. Configure Termux:X11 Display & Preferences
-echo "[4/7] Configuring Termux:X11 display (:1) and preferences..."
+# 5. Install Google Antigravity CLI for Native Termux
+echo "[4/8] Installing Antigravity CLI (agy) for Android Termux..."
+if ! command -v agy >/dev/null 2>&1; then
+    echo "Installing Antigravity CLI via Termux standalone installer..."
+    curl -fsSL https://raw.githubusercontent.com/wallentx/antigravity-cli-termux/dev/install.sh | bash || {
+        echo "⚠️  Antigravity CLI automatic installation finished with a warning. Continuing..."
+    }
+else
+    echo "✅ Antigravity CLI (agy) is already installed: $(command -v agy)"
+fi
+
+# 6. Configure Termux:X11 Display & Preferences
+echo "[5/8] Configuring Termux:X11 display (:1) and preferences..."
 mkdir -p "$HOME/.termux"
 if [ ! -f "$HOME/.termux/termux.properties" ] || ! grep -q "allow-external-apps" "$HOME/.termux/termux.properties"; then
     echo "allow-external-apps = true" >> "$HOME/.termux/termux.properties"
@@ -55,12 +69,12 @@ if ! grep -q "DISPLAY=:1" "$HOME/.bashrc" 2>/dev/null; then
 fi
 export DISPLAY=:1
 
-# 6. Install Project Dependencies
-echo "[5/7] Installing Node.js dependencies..."
+# 7. Install Project Dependencies
+echo "[6/8] Installing Node.js dependencies..."
 npm install
 
-# 7. Configure Environment
-echo "[6/7] Configuring .env for Termux..."
+# 8. Configure Environment
+echo "[7/8] Configuring .env for Termux..."
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
@@ -73,7 +87,7 @@ sed -i 's/^THREADS_CDP_URL=.*/THREADS_CDP_URL=http:\/\/127.0.0.1:9222/' "$SCRIPT
 chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js "$SCRIPT_DIR"/start-termux 2>/dev/null || true
 
 # 9. Create 1-Tap Launcher in Termux Home & Termux Widget
-echo "[7/7] Creating 1-tap launchers for Android..."
+echo "[8/8] Creating 1-tap launchers for Android..."
 mkdir -p "$HOME/.shortcuts"
 
 cat << 'EOF' > "$HOME/start-meta.sh"

@@ -51,8 +51,8 @@ async function runAudit() {
   console.log(`  ✓ PASS: Configured 6-hour publishing interval (POST_INTERVAL_HOURS=6, exactly 4 posts / 24h)`);
   passed++;
 
-  // 4. Audit Decks for all 5 Pillars
-  const pillars = ["pixelgo_hms", "builder_network", "founders_revolution", "tech_mentorship", "agentic_ai"];
+  // 4. Audit Decks for all 6 Pillars (including open-source meta_automation)
+  const pillars = ["pixelgo_hms", "builder_network", "founders_revolution", "tech_mentorship", "agentic_ai", "meta_automation"];
   for (const pil of pillars) {
     const specs = threadsMedia.getDeckSpecs(pil);
     assert.strictEqual(specs.length, 5, `Expected 5 slides for pillar ${pil}`);

@@ -175,6 +175,18 @@ class ThreadsMedia {
           footerTag: "AI ARCHITECTURE"
         };
 
+      case "meta_automation":
+        return {
+          isQuoteCard: true,
+          badge: "OPEN SOURCE • META AUTOMATION",
+          accentColor: "#00F0FF",
+          glowColor: "rgba(0, 240, 255, 0.18)",
+          quote: "Autonomous AI doesn't need costly cloud servers. Open-source agents running locally on Linux, macOS, Windows & Termux with zero token cost change the game.",
+          author: authorName,
+          role: authorRole,
+          footerTag: "GITHUB: SUNMUGHAN/META-AUTOMATION"
+        };
+
       case "builder_network":
       default:
         return {
@@ -686,6 +698,130 @@ class ThreadsMedia {
                 num: "03",
                 title: "Connect With Sunmughan",
                 desc: "Drop a comment or DM to talk agent architectures and practical AI deployment."
+              }
+            ]
+          }
+        ];
+
+      case "meta_automation":
+        return [
+          {
+            badge: "META AUTOMATION • OPEN SOURCE",
+            accentColor: "#00F0FF",
+            glowColor: "rgba(0, 240, 255, 0.14)",
+            title: "24/7 AI Growth Engine: 100% Free & Open-Source",
+            subtitle: "How we engineered an autonomous Meta & Threads agent running on Linux, macOS, Windows & Android Termux.",
+            cards: [
+              {
+                num: "01",
+                title: "Zero API Token Cost",
+                desc: "Uses local Antigravity Language Server reasoning via Gemini 3.8 Flash High without recurring API bills."
+              },
+              {
+                num: "02",
+                title: "Cross-Platform Freedom",
+                desc: "1-click native runners for Termux:X11 on Android, Windows PowerShell, and macOS/Linux daemons."
+              },
+              {
+                num: "03",
+                title: "Production Guardrails",
+                desc: "Finite-state machine boundaries eliminate spam, enforce human-level cooldowns, and prevent hallucinations."
+              }
+            ]
+          },
+          {
+            badge: "SYSTEM DESIGN • DETERMINISTIC",
+            accentColor: "#7928CA",
+            glowColor: "rgba(121, 40, 202, 0.14)",
+            title: "The Deterministic Multi-Agent Architecture",
+            subtitle: "Why browser-level DOM telemetry beats fragile REST API bots every single time.",
+            cards: [
+              {
+                num: "01",
+                title: "CDP Remote Telemetry",
+                desc: "Attaches directly to Chromium port 9222, preserving logged-in sessions, cookies, and human fidelity."
+              },
+              {
+                num: "02",
+                title: "Deep Semantic Lead Scoring",
+                desc: "Categorizes high-intent buyer inquiries while strictly ignoring general polls, noise, and spam."
+              },
+              {
+                num: "03",
+                title: "Verified DOM Transactions",
+                desc: "Inspects live profile DOM post-submission to verify 100% delivery before committing state transitions."
+              }
+            ]
+          },
+          {
+            badge: "ANDROID TERMUX • MOBILE AI",
+            accentColor: "#10B981",
+            glowColor: "rgba(16, 185, 129, 0.14)",
+            title: "Running Full AI Automation on Your Phone",
+            subtitle: "Turn any spare Android smartphone into a 24/7 autonomous social growth server.",
+            cards: [
+              {
+                num: "01",
+                title: "1-Click Termux Setup",
+                desc: "Automated bash script sets up Node.js, Chromium, Pulseaudio, and companion X11 environment in minutes."
+              },
+              {
+                num: "02",
+                title: "Termux:X11 Mobile Display",
+                desc: "High-performance visual or headless X11 session running smoothly in the background without overheating."
+              },
+              {
+                num: "03",
+                title: "Native Antigravity CLI",
+                desc: "Run real-time reasoning and agentic pipelines right from your Termux terminal."
+              }
+            ]
+          },
+          {
+            badge: "GITHUB BLUEPRINT • OPEN SOURCE",
+            accentColor: "#00F0FF",
+            glowColor: "rgba(0, 240, 255, 0.12)",
+            title: "Explore the Full Open-Source Codebase",
+            subtitle: "Every line of code is open-source at github.com/sunmughan/meta-automation.",
+            cards: [
+              {
+                num: "01",
+                title: "Clean Modular Engine",
+                desc: "Separate layers for browser drivers, state store, multi-brand knowledge base, and safety limits."
+              },
+              {
+                num: "02",
+                title: "100% Brand Isolation",
+                desc: "Onboard any founder or agency in 60 seconds with zero hardcoded code changes."
+              },
+              {
+                num: "03",
+                title: "Contributions Welcome",
+                desc: "Fork the repo, submit PRs for new platforms, and build on top of our autonomous agent foundation."
+              }
+            ]
+          },
+          {
+            badge: "JOIN THE REVOLUTION • GITHUB",
+            accentColor: "#10B981",
+            glowColor: "rgba(16, 185, 129, 0.14)",
+            title: "Star the Repo & Build With Us",
+            subtitle: "Available now on GitHub: sunmughan/meta-automation.",
+            cards: [
+              {
+                num: "01",
+                title: "Star & Fork on GitHub",
+                desc: "Visit github.com/sunmughan/meta-automation and leave a star to support open-source AI."
+              },
+              {
+                num: "02",
+                title: "Follow for Daily Breakdowns",
+                desc: "Follow @sunmughan for daily systems architecture, software engineering craft, and agentic AI tutorials."
+              },
+              {
+                num: "03",
+                title: "Connect With Our Network",
+                desc: "Drop a comment or DM Sunmughan Swamy to discuss custom AI automation or software development."
               }
             ]
           }

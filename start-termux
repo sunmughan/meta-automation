@@ -16,16 +16,20 @@ echo "=================================================="
 export DISPLAY="${DISPLAY:-:1}"
 
 # 1. Ensure Termux:X11 server is alive
-if ! pgrep -f "termux-x11" >/dev/null; then
-    echo "[1/4] Starting Termux:X11 server on display $DISPLAY..."
-    termux-x11 "$DISPLAY" -xstartup "sleep 1" &
-    sleep 2
+if command -v termux-x11 >/dev/null 2>&1; then
+    if ! pgrep -f "termux-x11" >/dev/null; then
+        echo "[1/5] Starting Termux:X11 server on display $DISPLAY..."
+        termux-x11 "$DISPLAY" -xstartup "sleep 1" &
+        sleep 2
+    else
+        echo "[1/5] Termux:X11 server active on $DISPLAY."
+    fi
 else
-    echo "[1/4] Termux:X11 server active on $DISPLAY."
+    echo "⚠️  [1/5] termux-x11 binary not found. Ensure 'termux-x11-nightly' is installed and companion app is installed."
 fi
 
 # 2. Ensure Chromium CDP is active on port 9222
-echo "[2/4] Verifying Chromium CDP on port 9222..."
+echo "[2/5] Verifying Chromium CDP on port 9222..."
 if ! curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
     echo "🌐 Launching Chromium with remote debugging :9222..."
     mkdir -p "$HOME/.config/chromium"
@@ -47,11 +51,21 @@ else
     node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
 fi
 
-# 3. Check Authentication
-echo "[3/4] Checking platform authentication status..."
+# 3. Check Antigravity CLI Readiness
+echo "[3/5] Checking Google Antigravity CLI readiness..."
+if command -v agy >/dev/null 2>&1; then
+    echo "✅ Antigravity CLI ready: $(command -v agy)"
+elif [ -f "$HOME/.local/bin/agy" ]; then
+    echo "✅ Antigravity CLI ready: $HOME/.local/bin/agy"
+else
+    echo "ℹ️  Antigravity CLI runner will use repository session bridge ($SCRIPT_DIR/scripts/agy)."
+fi
+
+# 4. Check Authentication
+echo "[4/5] Checking platform authentication status..."
 node threads-agent.js auth > /dev/null 2>&1 || true
 
-# 4. Check if already running
+# 5. Check if already running
 if [ -f "$PID_FILE" ]; then
     EXISTING_PID=$(cat "$PID_FILE" 2>/dev/null)
     if [ -n "$EXISTING_PID" ] && kill -0 "$EXISTING_PID" 2>/dev/null; then
@@ -70,12 +84,12 @@ fi
 
 # 5. Launch Foreground vs Background
 if [ "$1" == "--foreground" ] || [ "$1" == "-f" ]; then
-    echo "[4/4] Starting automation loop in FOREGROUND..."
+    echo "[5/5] Starting automation loop in FOREGROUND..."
     echo "Press Ctrl+C to stop."
     echo "=================================================="
     node threads-agent.js run
 else
-    echo "[4/4] Starting automation loop in BACKGROUND..."
+    echo "[5/5] Starting automation loop in BACKGROUND..."
     nohup node threads-agent.js run >> "$LOG_FILE" 2>&1 &
     AGENT_PID=$!
     echo "$AGENT_PID" > "$PID_FILE"

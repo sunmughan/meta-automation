@@ -569,6 +569,7 @@ async function commandOnboard(options = {}) {
   let founderName = options.founderName;
   let founderRole = options.founderRole;
   let founderProfile = options.founderProfile;
+  let founderWhatsApp = options.founderWhatsApp || options.whatsappUrl || options.whatsapp;
   let threadsUsername = options.threadsUsername;
   let companyName = options.companyName;
   let companyWebsite = options.companyWebsite;
@@ -602,6 +603,9 @@ async function commandOnboard(options = {}) {
 
       const rawExcluded = await ask("10. Excluded Non-Core Services (comma-separated)", "Graphic Design, SEO Marketing, Accounting, Recruitment");
       excludedServices = rawExcluded.split(",").map(s => s.trim()).filter(Boolean);
+
+      const defaultWhatsApp = currentProfiles.company?.whatsapp || currentProfiles.founder?.whatsapp || "https://wa.me/codeair";
+      founderWhatsApp = await ask("11. Founder / Brand Direct WhatsApp Booking URL (optional)", founderWhatsApp || defaultWhatsApp);
     } finally {
       rl.close();
     }
@@ -625,6 +629,7 @@ Name: ${founderName}
 Role: ${founderRole}
 Threads: @${cleanUsername}
 LinkedIn: ${founderProfile}
+WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
 
 ## Background & Philosophy
 ${founderName} is the ${founderRole} of ${companyName}.
@@ -638,6 +643,7 @@ ${founderName} is the ${founderRole} of ${companyName}.
 Name: ${companyName}
 Website: ${companyWebsite}
 Product: ${companyProduct || "None"}
+WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
 
 ## Summary
 ${companySummary}
@@ -652,11 +658,13 @@ Name: ${founderName}
 Role: ${founderRole}
 Threads: @${cleanUsername}
 LinkedIn: ${founderProfile}
+WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
 
 ## Company
 Name: ${companyName}
 Website: ${companyWebsite}
 Product: ${companyProduct || "None"}
+WhatsApp: ${founderWhatsApp || "https://wa.me/codeair"}
 `;
   fs.writeFileSync(path.join(knowledgeDir, "profiles.md"), profilesMd, "utf8");
 
@@ -696,6 +704,7 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   if (companyProduct) {
     console.log(`  Product    : ${companyProduct}`);
   }
+  console.log(`  WhatsApp   : ${founderWhatsApp || "https://wa.me/codeair"}`);
   console.log(`  Approved   : ${approvedServices.length} capabilities`);
   console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
   console.log(`  AI Engine  : Live Antigravity IDE Gemini 3.8 Flash High`);

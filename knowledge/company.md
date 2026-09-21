@@ -15,6 +15,12 @@ Flagship Products:
 PixelGo HMS (Unified Hotel Management & Hospitality Operations System)
 Website: pixelgo.live
 
+Open-Source Autonomous Software:
+Meta Automation (Autonomous Social Growth & Multi-Agent Engine)
+Repository: https://github.com/sunmughan/meta-automation
+Website / Docs: https://github.com/sunmughan/meta-automation
+
+
 ## Core Services
 
 CodeAir works on software and technology solutions including:

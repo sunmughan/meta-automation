@@ -129,6 +129,33 @@ async function runCrossPlatformAudit() {
     assert(content.includes("Android (Termux)"), "Must include Termux instructions");
   });
 
+  // 6. Termux Antigravity CLI & Prerequisites
+  test("Termux: installer includes Antigravity CLI and tar/bash requirements", () => {
+    const termuxScript = path.join(ROOT, "installers/install-android-termux.sh");
+    const content = fs.readFileSync(termuxScript, "utf8");
+    assert(content.includes("wallentx/antigravity-cli-termux"), "Must include wallentx/antigravity-cli-termux installer");
+    assert(content.includes("tar"), "Must include tar package");
+    assert(content.includes("bash"), "Must include bash package");
+    assert(content.includes("termux-x11-nightly"), "Must include termux-x11-nightly");
+  });
+
+  // 7. Cross-Platform Antigravity CLI Dynamic Resolution (Zero Hardcoded User Paths)
+  test("AI Runtime: resolveAgyBinary does not hardcode user paths and resolves binary", () => {
+    const aiRuntime = require("../src/ai/ai-runtime");
+    assert(typeof aiRuntime.resolveAgyBinary === "function", "resolveAgyBinary method must exist");
+    const bin = aiRuntime.resolveAgyBinary();
+    assert(bin && bin.length > 0, "Must resolve a non-empty binary string");
+    const runtimeCode = fs.readFileSync(path.join(ROOT, "src/ai/ai-runtime.js"), "utf8");
+    assert(!runtimeCode.includes("/home/sunmughan/.local/bin/agy"), "Must not hardcode /home/sunmughan path");
+  });
+
+  // 8. Onboarding Wizard WhatsApp Integration
+  test("Onboarding Wizard: includes WhatsApp booking link prompt and profile output", () => {
+    const agentCode = fs.readFileSync(path.join(ROOT, "threads-agent.js"), "utf8");
+    assert(agentCode.includes("WhatsApp Booking URL"), "Onboarding wizard must prompt for WhatsApp Booking URL");
+    assert(agentCode.includes("WhatsApp: ${founderWhatsApp"), "Must save WhatsApp to knowledge base files");
+  });
+
   console.log("\n--------------------------------------------------");
   console.log(`Cross-Platform Results: ${passed} Passed, ${failed} Failed`);
   console.log("--------------------------------------------------\n");
