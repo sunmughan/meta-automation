@@ -93,99 +93,102 @@ class LinkedInActions {
         return match || cards[0];
       }, postSnippet);
 
-      // Scroll the Comment button of this card directly into center view
-      await page.evaluate((card) => {
-        const container = card || document;
-        const btn = Array.from(container.querySelectorAll("button")).find(b => {
-          const t = (b.innerText || "").trim().toLowerCase();
-          return t === "comment" && !b.getAttribute("aria-label")?.includes("reaction");
-        });
-        if (btn) btn.scrollIntoView({ behavior: "instant", block: "center" });
-      }, cardHandle);
-      await new Promise(r => setTimeout(r, 1000));
-
-      // Click comment trigger button if input not already expanded
-      const btnCoords = await page.evaluate((card) => {
-        const container = card || document;
-        const btn = Array.from(container.querySelectorAll("button")).find(b => {
-          const t = (b.innerText || "").trim().toLowerCase();
-          return t === "comment" && !b.getAttribute("aria-label")?.includes("reaction");
-        });
-        if (!btn) return null;
-        const r = btn.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top };
+      // 1. Check if comment editor is already expanded on this card
+      const isAlreadyExpanded = await page.evaluate((card) => {
+        const c = card || document;
+        const ed = c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true']");
+        return Boolean(ed && ed.offsetParent !== null);
       }, cardHandle);
 
-      if (btnCoords && btnCoords.y > 0 && btnCoords.y < 800) {
-        await page.mouse.click(btnCoords.x, btnCoords.y);
-        await new Promise(r => setTimeout(r, 1200));
-      } else {
-        await page.evaluate((card) => {
-          const container = card || document;
-          const btn = Array.from(container.querySelectorAll("button")).find(b => {
+      if (!isAlreadyExpanded) {
+        // Locate Comment action button in the social action bar of the card (ignore all dropdown options)
+        const btnCoords = await page.evaluate((card) => {
+          const c = card || document;
+          const socialBar = c.querySelector(".feed-shared-social-actions, .feed-shared-social-action-bar, [data-view-name*='social-actions']") || c;
+          const btn = Array.from(socialBar.querySelectorAll("button")).find(b => {
             const t = (b.innerText || "").trim().toLowerCase();
-            return t === "comment" && !b.getAttribute("aria-label")?.includes("reaction");
+            const label = (b.getAttribute("aria-label") || "").toLowerCase();
+            if (label.includes("option") || label.includes("action") || label.includes("menu") || b.classList.contains("artdeco-dropdown__trigger")) return false;
+            return t === "comment" || (label.includes("comment") && !label.includes("reaction") && !label.includes("reply"));
           });
-          if (btn) btn.click();
+          if (!btn) return null;
+          btn.scrollIntoView({ behavior: "instant", block: "center" });
+          const r = btn.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
         }, cardHandle);
-        await new Promise(r => setTimeout(r, 1200));
+
+        if (btnCoords && btnCoords.y > 0 && btnCoords.y < 900) {
+          await page.mouse.click(btnCoords.x, btnCoords.y);
+          await new Promise(r => setTimeout(r, 1200));
+        } else {
+          await page.evaluate((card) => {
+            const c = card || document;
+            const socialBar = c.querySelector(".feed-shared-social-actions, .feed-shared-social-action-bar, [data-view-name*='social-actions']") || c;
+            const btn = Array.from(socialBar.querySelectorAll("button")).find(b => {
+              const t = (b.innerText || "").trim().toLowerCase();
+              const label = (b.getAttribute("aria-label") || "").toLowerCase();
+              if (label.includes("option") || label.includes("action") || label.includes("menu") || b.classList.contains("artdeco-dropdown__trigger")) return false;
+              return t === "comment" || (label.includes("comment") && !label.includes("reaction") && !label.includes("reply"));
+            });
+            if (btn) btn.click();
+          }, cardHandle);
+          await new Promise(r => setTimeout(r, 1200));
+        }
       }
 
-      // Locate contenteditable editor or textbox
-      const editorSelector = "div[role='textbox'][contenteditable='true'][aria-label*='comment' i], .editor-content [contenteditable='true'], .comments-comment-box__form-container [contenteditable='true'], [contenteditable='true'][role='textbox'], .comments-comment-box__form [contenteditable='true']";
-      await page.waitForSelector(editorSelector, { timeout: 10000 });
-      
-      const edCoords = await page.evaluate((sel) => {
-        const el = document.querySelector(sel);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { x: r.left + 25, y: r.top + 20 };
-      }, editorSelector);
+      // 2. Wait for contenteditable editor specifically on this card
+      await page.waitForFunction((card) => {
+        const c = card || document;
+        return Boolean(c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true'], [contenteditable='true'][role='textbox']"));
+      }, { timeout: 12000 }, cardHandle);
 
-      if (edCoords && edCoords.y > 0 && edCoords.y < 800) {
+      // Focus and click inside the editor on this card
+      const edCoords = await page.evaluate((card) => {
+        const c = card || document;
+        const el = c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true'], [contenteditable='true'][role='textbox']");
+        if (!el) return null;
+        el.scrollIntoView({ behavior: "instant", block: "center" });
+        const r = el.getBoundingClientRect();
+        return { x: r.left + 35, y: r.top + 20 };
+      }, cardHandle);
+
+      if (edCoords && edCoords.y > 0 && edCoords.y < 900) {
         await page.mouse.click(edCoords.x, edCoords.y);
       } else {
-        const editor = await page.$(editorSelector);
-        if (editor) await editor.click();
+        await page.evaluate((card) => {
+          const c = card || document;
+          const el = c.querySelector("div[role='textbox'][contenteditable='true'], .comments-comment-box__form [contenteditable='true'], [contenteditable='true'][role='textbox']");
+          if (el) { el.focus(); el.click(); }
+        }, cardHandle);
       }
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 500));
 
-      // Realistic typing jitter (40ms - 80ms per character)
+      // 3. Realistic typing jitter (35ms - 70ms per character)
       logger.info(`Typing LinkedIn comment for @${post.username}...`);
       for (const char of commentText) {
-        await page.keyboard.type(char, { delay: Math.floor(Math.random() * 40) + 40 });
+        await page.keyboard.type(char, { delay: Math.floor(Math.random() * 35) + 30 });
       }
 
       await new Promise(r => setTimeout(r, 1200));
 
-      // Find and click post submit button inside editor container
-      const submitSuccess = await page.evaluate(() => {
-        const editor = document.querySelector("div[role='textbox'][contenteditable='true'][aria-label*='comment' i], .editor-content [contenteditable='true']");
-        if (!editor) return false;
-        
-        let p = editor;
-        for (let i = 0; i < 15 && p; i++) {
-          p = p.parentElement;
-          if (!p) break;
-          const btn = Array.from(p.querySelectorAll("button")).find(b => {
-            const text = (b.innerText || b.value || "").trim().toLowerCase();
-            return (text === "comment" || text === "post") && !b.disabled && !b.getAttribute("aria-label")?.includes("reaction");
-          });
-          if (btn) {
-            btn.scrollIntoView({ behavior: "instant", block: "center" });
-            btn.click();
-            return true;
-          }
-        }
-        // Fallback selector
-        const submitBtnSelector = "button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-button--cr, button[aria-label*='Post' i].comments-comment-box__submit-button";
-        const fb = document.querySelector(submitBtnSelector);
-        if (fb && !fb.disabled) {
-          fb.click();
+      // 4. Find and click comment submit button inside this card
+      const submitSuccess = await page.evaluate((card) => {
+        const c = card || document;
+        const form = c.querySelector(".comments-comment-box__form, .comments-comment-box, form") || c;
+        const btn = Array.from(form.querySelectorAll("button")).find(b => {
+          const text = (b.innerText || b.value || "").trim().toLowerCase();
+          const label = (b.getAttribute("aria-label") || "").toLowerCase();
+          if (label.includes("option") || label.includes("action") || label.includes("menu")) return false;
+          return (text === "comment" || text === "post" || label === "comment" || label === "post") && !b.disabled;
+        }) || form.querySelector("button.comments-comment-box__submit-button:not([disabled])");
+
+        if (btn) {
+          btn.scrollIntoView({ behavior: "instant", block: "center" });
+          btn.click();
           return true;
         }
         return false;
-      });
+      }, cardHandle);
 
       if (!submitSuccess) {
         throw new Error("Could not locate or click LinkedIn active comment submit button");
