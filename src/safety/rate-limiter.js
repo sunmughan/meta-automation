@@ -75,6 +75,16 @@ class RateLimiter {
   }
 
   /**
+   * Records an executed action for hourly tracking.
+   */
+  recordAction(actionType, platform = "threads", targetId = null, details = {}) {
+    const normType = (actionType === "COMMENT" || actionType === "NEW_POST_COMMENT") ? "COMMENT_POSTED" : actionType;
+    if (typeof stateStore.recordAction === "function") {
+      stateStore.recordAction(normType, targetId || `action_${Date.now()}`, { platform, ...details });
+    }
+  }
+
+  /**
    * Returns a random human delay in milliseconds between MIN and MAX.
    */
   getRandomDelay() {

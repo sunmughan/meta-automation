@@ -97,9 +97,11 @@ class StateStore {
         username: post.username,
         url: post.url,
         text: post.text,
+        source: post.source || "FEED",
         status: "DISCOVERED",
-        discoveredAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        discoveredAt: post.discoveredAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...post
       };
       this.state.stats.total_scanned++;
       this.saveState();
