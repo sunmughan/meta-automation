@@ -71,8 +71,8 @@ class ThreadsHtmlRenderer {
                       (spec.title || "").includes("PixelGo") ||
                       spec.pillar === "pixelgo_hms";
     const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
-    const website = spec.website || (isPixelGo ? "pixelgo.live" : defaultSite || "www.codeair.tech");
-    const company = spec.company || (isPixelGo ? "PIXELGO HMS" : (companyInfo.name || "CODEAIR SOFTWARE SOLUTIONS").toUpperCase());
+    const website = spec.website || (isPixelGo ? (companyInfo.productUrl ? companyInfo.productUrl.replace(/^https?:\/\//, "") : "pixelgo.live") : defaultSite);
+    const company = spec.company || (isPixelGo ? (companyInfo.productName || "PRODUCT").toUpperCase() : (companyInfo.name || "COMPANY").toUpperCase());
     const logoDataUri = spec.logoDataUri || (isPixelGo ? getPixelGoLogoUri() : getCodeAirLogoUri());
     const logoClass = isPixelGo ? "brand-logo-pixelgo" : "brand-logo-codeair";
 
@@ -361,8 +361,8 @@ class ThreadsHtmlRenderer {
                       (spec.quote || "").includes("PixelGo") ||
                       spec.pillar === "pixelgo_hms";
     const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
-    const website = spec.website || (isPixelGo ? "pixelgo.live" : defaultSite || "www.codeair.tech");
-    const brandTag = spec.brandTag || (isPixelGo ? "PIXELGO" : compTag);
+    const website = spec.website || (isPixelGo ? (companyInfo.productUrl ? companyInfo.productUrl.replace(/^https?:\/\//, "") : "pixelgo.live") : defaultSite);
+    const brandTag = spec.brandTag || (isPixelGo ? "PRODUCT" : compTag);
     const logoDataUri = spec.logoDataUri || (isPixelGo ? getPixelGoLogoUri() : getCodeAirLogoUri());
     const avatarClass = isPixelGo ? "author-avatar-pixelgo" : "author-avatar-img";
 
@@ -640,13 +640,13 @@ class ThreadsHtmlRenderer {
     const companyInfo = knowledge.getCompanyInfo();
     const profiles = knowledge.getOfficialProfiles();
     const compTag = (companyInfo.name || "COMPANY").toUpperCase().slice(0, 10);
-    const companyName = (companyInfo.name || "CODEAIR SOFTWARE SOLUTIONS").toUpperCase();
+    const companyName = (companyInfo.name || "COMPANY").toUpperCase();
 
     const accent = spec.accentColor || "#00F0FF";
     const glow = spec.glowColor || "rgba(0, 240, 255, 0.15)";
     const badge = spec.badge || `${compTag} • ARCHITECTURE RUNTIME`;
     const title = spec.title || spec.code_title || "agent_orchestrator.ts";
-    const rawCode = spec.code || spec.code_snippet || `// ${companyInfo.name || "CodeAir"} Autonomous Orchestration
+    const rawCode = spec.code || spec.code_snippet || `// ${companyInfo.name || "Agent"} Autonomous Orchestration
 const orchestrator = new AgenticPipeline({
   runtime: "gemini-3.8-flash-high",
   guardrails: { maxRetries: 3, deterministicFSM: true },
@@ -658,7 +658,7 @@ const orchestrator = new AgenticPipeline({
     const language = spec.language || spec.code_language || "TypeScript";
     const author = spec.author || `${founder.name || "Founder"} • ${founder.role || "Founder"}`;
     const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
-    const website = spec.website || defaultSite || "www.codeair.tech";
+    const website = spec.website || defaultSite;
     const logoDataUri = spec.logoDataUri || getCodeAirLogoUri();
 
     // Syntax formatting helper
@@ -918,9 +918,9 @@ const orchestrator = new AgenticPipeline({
 
   <div class="footer">
     <div class="footer-brand">
-      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-codeair" alt="CodeAir Logo" />` : ''}
+      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-codeair" alt="${companyName} Logo" />` : ''}
       <div class="footer-brand-info">
-        <span class="company-name">CODEAIR SOFTWARE SOLUTIONS</span>
+        <span class="company-name">${companyName}</span>
         <span class="website-tag">• ${website}</span>
       </div>
     </div>
@@ -939,7 +939,7 @@ const orchestrator = new AgenticPipeline({
     const companyInfo = knowledge.getCompanyInfo();
     const profiles = knowledge.getOfficialProfiles();
     const compTag = (companyInfo.name || "COMPANY").toUpperCase().slice(0, 10);
-    const companyName = (companyInfo.name || "CODEAIR SOFTWARE SOLUTIONS").toUpperCase();
+    const companyName = (companyInfo.name || "COMPANY").toUpperCase();
 
     const accent = spec.accentColor || "#00F0FF";
     const glow = spec.glowColor || "rgba(0, 240, 255, 0.16)";
@@ -948,7 +948,7 @@ const orchestrator = new AgenticPipeline({
     const subtitle = spec.subtitle || "Resilient multi-stage execution with deterministic guardrails";
     const author = spec.author || `${founder.name || "Founder"} • ${founder.role || "Founder"}`;
     const defaultSite = (profiles.company?.website || companyInfo.website || "").replace(/^https?:\/\//, "");
-    const website = spec.website || defaultSite || "www.codeair.tech";
+    const website = spec.website || defaultSite;
     const logoDataUri = spec.logoDataUri || getCodeAirLogoUri();
 
     const components = (spec.components || spec.arch_components || [
@@ -1226,9 +1226,9 @@ const orchestrator = new AgenticPipeline({
 
   <div class="footer">
     <div class="footer-brand">
-      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-codeair" alt="CodeAir Logo" />` : ''}
+      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-codeair" alt="${companyName} Logo" />` : ''}
       <div class="footer-brand-info">
-        <span class="company-name">CODEAIR SOFTWARE SOLUTIONS</span>
+        <span class="company-name">${companyName}</span>
         <span class="website-tag">• ${website}</span>
       </div>
     </div>

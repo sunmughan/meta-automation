@@ -347,10 +347,12 @@ class AiDecisionEngine {
       throw new Error("AI returned empty conversation turn output");
     } catch (err) {
       logger.warn(`[AI Engine] Antigravity AI conversation turn reasoning failed: ${err.message}`);
-      const whatsappUrl = knowledge.getWhatsAppUrl() || "https://wa.me/codeair";
+      const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company?.whatsapp || profiles.founder?.whatsapp || "";
       const isCallRequest = conversationStage === "DISCOVERY_CALL" || /\b(call|schedule|phone|meeting|consultation|whatsapp)\b/i.test(incomingMessage);
       const fallbackMsg = isCallRequest
-        ? `We would be happy to discuss your project requirements! Feel free to connect directly via WhatsApp to book a discovery call: ${whatsappUrl}`
+        ? (whatsappUrl
+            ? `We would be happy to discuss your project requirements! Feel free to connect directly to book a discovery call: ${whatsappUrl}`
+            : `We would be happy to discuss your project requirements! Please share your contact details or requirements, and our team will follow up promptly.`)
         : "Thanks for reaching out! A member of our technical team will follow up with you shortly.";
 
       return {
@@ -382,10 +384,10 @@ class AiDecisionEngine {
     const profiles = knowledge.getOfficialProfiles();
     const approved = knowledge.getApprovedServices();
     const excluded = knowledge.getExcludedServices();
-    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "https://linkedin.com";
-    const companyUrl = profiles.company.website || company.website || "https://www.codeair.tech";
-    const productUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
-    const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company.whatsapp || profiles.founder.whatsapp || "https://wa.me/codeair";
+    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "";
+    const companyUrl = profiles.company.website || company.website || "";
+    const productUrl = profiles.company.productUrl || company.productUrl || profiles.company.pixelgo || "";
+    const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company.whatsapp || profiles.founder.whatsapp || "";
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:
@@ -451,9 +453,9 @@ OUTPUT STRICT JSON:
     const approved = knowledge.getApprovedServices();
     const excluded = knowledge.getExcludedServices();
     const profiles = knowledge.getOfficialProfiles();
-    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "https://linkedin.com";
-    const companyUrl = profiles.company.website || company.website || "https://www.codeair.tech";
-    const productUrl = profiles.company.pixelgo || company.productUrl || "https://pixelgo.live";
+    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "";
+    const companyUrl = profiles.company.website || company.website || "";
+    const productUrl = profiles.company.productUrl || company.productUrl || profiles.company.pixelgo || "";
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:

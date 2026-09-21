@@ -398,7 +398,7 @@ class ThreadsMedia {
       case "founders_revolution":
         return [
           {
-            badge: "FOUNDERS • CODEAIR",
+            badge: `FOUNDERS • ${compTag}`,
             accentColor: "#7928CA",
             glowColor: "rgba(121, 40, 202, 0.14)",
             title: "For Founders Building What Matters",
@@ -470,7 +470,7 @@ class ThreadsMedia {
             ]
           },
           {
-            badge: "SCALING • CODEAIR",
+            badge: `SCALING • ${compTag}`,
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.12)",
             title: "Partnering With Technical Founders",
@@ -522,7 +522,7 @@ class ThreadsMedia {
       case "tech_mentorship":
         return [
           {
-            badge: "MENTORSHIP • CODEAIR",
+            badge: `MENTORSHIP • ${compTag}`,
             accentColor: "#10B981",
             glowColor: "rgba(16, 185, 129, 0.14)",
             title: "Technical Mentorship for Builders",
@@ -594,7 +594,7 @@ class ThreadsMedia {
             ]
           },
           {
-            badge: "CAREER & CRAFT • CODEAIR",
+            badge: `CAREER & CRAFT • ${compTag}`,
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.12)",
             title: "From Coder to System Architect",
@@ -760,7 +760,7 @@ class ThreadsMedia {
               },
               {
                 num: "03",
-                title: "Connect With Sunmughan",
+                title: `Connect With ${founderName}`,
                 desc: "Drop a comment or DM to talk agent architectures and practical AI deployment."
               }
             ]
@@ -895,7 +895,7 @@ class ThreadsMedia {
       default:
         return [
           {
-            badge: "DEVELOPER NETWORK • CODEAIR",
+            badge: `DEVELOPER NETWORK • ${compTag}`,
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.14)",
             title: "Calling All Engineers & Builders",
@@ -903,7 +903,7 @@ class ThreadsMedia {
             cards: [
               {
                 num: "01",
-                title: "The CodeAir Builder Community",
+                title: `The ${companyName} Builder Community`,
                 desc: "We’re assembling an elite network of full-stack, mobile, and AI engineers."
               },
               {

@@ -223,7 +223,7 @@ class StateStore {
     if (Array.isArray(conv.previousMessages)) {
       for (let i = conv.previousMessages.length - 1; i >= 0; i--) {
         const msg = conv.previousMessages[i];
-        if (msg && (msg.sender === "CodeAir" || msg.sender === "US" || msg.isOutgoing)) {
+        if (msg && (msg.isOutgoing || msg.sender === "SELF" || msg.sender === "CodeAir" || msg.sender === "US")) {
           if (msg.text && !outgoing.includes(msg.text)) {
             outgoing.push(msg.text);
           }

@@ -109,6 +109,12 @@ class ThreadsPoster {
     const pillars = knowledge.getContentPillars();
     const profiles = knowledge.getOfficialProfiles();
     const approved = knowledge.getApprovedServices();
+    const metaUrl = knowledge.getMetaAutomationUrl() || profiles.founder.github || "";
+    const metaHandle = metaUrl.replace(/^https?:\/\//, "").replace(/^www\./, "");
+    const founderHandle = founder.threadsUsername || CONFIG.THREADS_USERNAME || "";
+    const followHandle = founderHandle ? `@${founderHandle}` : "our profile";
+    const slide5Subtitle = `Follow ${followHandle}${metaHandle ? ` • ${metaHandle}` : ""}`;
+    const slide5Desc = `Follow ${followHandle} for real engineering workflows`;
 
     const prompt = `
 CRITICAL OPERATIONAL CONSTRAINT:
@@ -117,7 +123,7 @@ You are acting as the Chief Content Strategist & Technical Architect for ${found
 Brand & Context:
 - Founder: ${founder.name} (${founder.role})
 - Company: ${company.name} (${company.summary})
-- Open-Source Repo: https://github.com/sunmughan/meta-automation (Open-Source 24/7 Meta & Threads Agent with Termux:X11, Linux, Windows, macOS support)
+${metaUrl ? `- Open-Source Repo: ${metaUrl} (Open-Source 24/7 Meta & Threads Agent with Termux:X11, Linux, Windows, macOS support)` : ""}
 - Target Pillars:
 ${pillars.map(p => `  * ${p.id}: ${p.title} - ${p.description || p.focus || ""}`).join("\n")}
 
@@ -130,8 +136,8 @@ INSTRUCTIONS:
    - Voice: ${founder.name} (${founder.role}, conversational, sharp, honest, no corporate fluff).
    - Hook: Catchy first 1-2 lines that stop the scroll.
    - Body: 1-2 insightful technical or operational sentences based on current industry/market trends.
-   - GitHub Open-Source Highlight & Follower CTA: If pillar is "meta_automation" or relates to agentic AI, showcase the open-source GitHub repo (https://github.com/sunmughan/meta-automation). Invite developers, founders, and engineers to star/fork the repo, ask questions, and follow @${founder.threadsUsername || "sunmughan"} for daily agentic AI and architecture breakdowns.
-   - Discussion Question & Soft Follower CTA: End with an open question inviting founders, developers, or operators to comment, plus a natural soft follow hook (e.g. "Follow @${founder.threadsUsername || "sunmughan"} for daily breakdowns on agentic AI & software architecture").
+   ${metaUrl ? `- GitHub Open-Source Highlight & Follower CTA: If pillar is "meta_automation" or relates to agentic AI, showcase the open-source GitHub repo (${metaUrl}). Invite developers, founders, and engineers to star/fork the repo, ask questions, and follow ${followHandle} for daily agentic AI and architecture breakdowns.` : ""}
+   - Discussion Question & Soft Follower CTA: End with an open question inviting founders, developers, or operators to comment, plus a natural soft follow hook (e.g. "Follow ${followHandle} for daily breakdowns on agentic AI & software architecture").
    - CRITICAL LENGTH CONSTRAINT: Threads enforces a strict 500-character maximum per post. The "caption" MUST be between 180 and 420 characters. Keep it punchy and concise!
 2. If format is SINGLE_CARD:
    - Provide "quote": A punchy, memorable 1-2 sentence quote or perspective for a dark-mode visual card.
@@ -139,7 +145,7 @@ INSTRUCTIONS:
 3. If format is CAROUSEL:
    - Provide exactly 5 slides for a mini-deck:
      * Slides 1-4: Core architecture, lessons, or operational breakdowns (title, subtitle, and 2-3 structured cards with num, title, desc).
-     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Star Meta Automation", subtitle: "Follow @${founder.threadsUsername || "sunmughan"} • github.com/sunmughan/meta-automation", cards: [{ num: "01", title: "Star on GitHub", desc: "Access the full production-ready multi-agent codebase" }, { num: "02", title: "Daily Architecture", desc: "Follow @${founder.threadsUsername || "sunmughan"} for real engineering workflows" }]).
+     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Star Open Source Repo", subtitle: "${slide5Subtitle}", cards: [{ num: "01", title: "Star on GitHub", desc: "Access the full production-ready multi-agent codebase" }, { num: "02", title: "Daily Architecture", desc: "${slide5Desc}" }]).
 4. If format is CODE_SNIPPET:
    - Provide "code_title": Short title (e.g. "Agentic Concurrency Queue").
    - Provide "code_snippet": 6-10 clean, realistic lines of TypeScript/Node.js architecture code.
@@ -206,8 +212,8 @@ OUTPUT STRICT JSON:
    */
   async verifyPostOnProfile(page, postText, username = null) {
     const founder = knowledge.getFounderInfo();
-    const activeUsername = username || founder.threadsUsername || CONFIG.THREADS_USERNAME || "sunmughan";
-    const profileUrl = `https://www.threads.com/@${activeUsername}`;
+    const activeUsername = username || founder.threadsUsername || CONFIG.THREADS_USERNAME || "";
+    const profileUrl = activeUsername ? `https://www.threads.com/@${activeUsername}` : "https://www.threads.com";
     logger.info(`[THREADS POSTER] Navigating to profile feed (${profileUrl}) for multi-signal live post verification...`);
     try {
       await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 35000 });

@@ -91,7 +91,7 @@ class ReplyMonitor {
       previousMessages: [
         ...(existingConv.previousMessages || []),
         { sender: replyData.username, text: replyData.incomingText, timestamp: new Date().toISOString() },
-        { sender: "CodeAir", text: decision.response_message, timestamp: new Date().toISOString() }
+        { sender: "SELF", isOutgoing: true, text: decision.response_message, timestamp: new Date().toISOString() }
       ],
       newAction: "REPLY_PROCESSED",
       newActionDetails: { replyId, identity: decision.identity }

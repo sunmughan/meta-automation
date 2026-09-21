@@ -157,8 +157,8 @@ class KnowledgeEngine {
   parseProfilesMarkdown(content) {
     const profiles = {
       founder: {
-        name: "Sunmughan Swamy",
-        role: "Founder / CEO / Technical Architect",
+        name: "",
+        role: "",
         github: "",
         facebook: "",
         instagram: "",
@@ -167,7 +167,7 @@ class KnowledgeEngine {
         threadsUsername: ""
       },
       company: {
-        name: "CodeAir Software Solutions",
+        name: "",
         website: "",
         pixelgo: "",
         whatsapp: "",
@@ -244,10 +244,8 @@ class KnowledgeEngine {
           else if ((contextLine.includes("whatsapp") || url.includes("wa.me") || url.includes("whatsapp.com")) && !profiles.company.whatsapp) {
             profiles.company.whatsapp = url;
           }
-          else if ((contextLine.includes("website") || contextLine.includes("site") || contextLine.includes("home") || contextLine.includes("domain") || contextLine.includes("codeair.tech")) && !profiles.company.website) {
-            profiles.company.website = url.includes("codeair.tech") && !url.includes("www.")
-              ? url.replace("codeair.tech", "www.codeair.tech")
-              : url;
+          else if ((contextLine.includes("website") || contextLine.includes("site") || contextLine.includes("home") || contextLine.includes("domain")) && !profiles.company.website) {
+            profiles.company.website = url;
           }
           else if (contextLine.includes("linkedin") && !profiles.company.linkedin) profiles.company.linkedin = url;
           else if (contextLine.includes("instagram") && !profiles.company.instagram) profiles.company.instagram = url;
@@ -426,7 +424,7 @@ class KnowledgeEngine {
       github: profiles.founder.github || "",
       instagram: profiles.founder.instagram || "",
       facebook: profiles.founder.facebook || "",
-      whatsapp: profiles.founder.whatsapp || "https://wa.me/codeair",
+      whatsapp: profiles.founder.whatsapp || "",
       threadsUsername,
       primaryProfileUrl: profiles.founder.linkedin || profiles.founder.github || profiles.founder.instagram || ""
     };
@@ -443,7 +441,7 @@ class KnowledgeEngine {
     const badgeName = shortName.toUpperCase();
     const website = profiles.company.website || (companyParsed.website ? (companyParsed.website.startsWith("http") ? companyParsed.website : `https://${companyParsed.website}`) : "");
     const productUrl = profiles.company.pixelgo || "";
-    const whatsapp = profiles.company.whatsapp || profiles.founder.whatsapp || "https://wa.me/codeair";
+    const whatsapp = profiles.company.whatsapp || profiles.founder.whatsapp || "";
     const description = companyParsed.type || "Custom software development, web platforms, and automated cloud systems.";
 
     return {
@@ -534,7 +532,7 @@ class KnowledgeEngine {
       (text.includes("profile") || text.includes("social") || text.includes("link"))
     ) {
       const compWord = (company.shortName || "company").toLowerCase();
-      if (text.includes(compWord) || text.includes("codeair") || text.includes("company") || text.includes("agency")) {
+      if (text.includes(compWord) || text.includes("company") || text.includes("agency")) {
         return {
           target: "COMPANY",
           platform: "all",
@@ -550,7 +548,7 @@ class KnowledgeEngine {
 
     // Check specific platform mentions with dynamic company name matching
     const compWord = (company.shortName || "company").toLowerCase();
-    const isCompanyExplicit = new RegExp(`\\b(${compWord}|codeair|company|agency|team)\\b`, "i").test(text);
+    const isCompanyExplicit = new RegExp(`\\b(${compWord}|company|agency|team)\\b`, "i").test(text);
 
     if (/\b(github|repo|repositories|repository|\bgit\b)\b/i.test(text)) {
       return {
