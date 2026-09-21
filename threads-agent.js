@@ -10,7 +10,7 @@
  *   node threads-agent.js replies   - Process incoming comment replies
  *   node threads-agent.js dms       - Process incoming Direct Messages
  *   node threads-agent.js run       - Continuous autonomous / approval orchestrator loop
- *   node threads-agent.js status    - Display comprehensive system, rate-limit & engagement report
+ *   node threads-agent.js status    - Display comprehensive system, rate-limit & engagement report\n *   node threads-agent.js health    - Verify live browser tabs and action telemetry
  *   node threads-agent.js test      - Run automated diagnostic test suite
  */
 
@@ -45,6 +45,8 @@ const commentGenerator = require("./src/engagement/comment-generator");
 const { checkLinkedInConnectionRequests, checkLinkedInMessages, checkLinkedInNotifications } = require("./src/platforms/linkedin/linkedin-activity");
 const { checkFacebookNotifications, checkFacebookMessages } = require("./src/platforms/facebook/facebook-activity");
 const logger = require("./src/logging/logger");
+const featureHealth = require("./src/agent/feature-health");
+const telemetry = require("./src/telemetry/action-telemetry");
 
 async function commandAuth() {
   const argTarget = (process.argv[3] || "").toLowerCase();
@@ -390,6 +392,29 @@ async function commandApprove() {
   }
 
   rl.close();
+  return 0;
+}
+
+async function commandHealth() {
+  console.log("\n==============================================");
+  console.log("     VERIFIED AGENTIC BROWSER HEALTH");
+  console.log("==============================================");
+  console.log(`Browser CDP : ${CONFIG.CDP_URL}`);
+  try {
+    const tabs = await browserManager.ensureAllPlatformTabs();
+    for (const [platform, page] of Object.entries({
+      threads: tabs.threadsPage,
+      linkedin: tabs.linkedInPage,
+      facebook: tabs.facebookPage
+    })) {
+      telemetry.record({type:"TAB_HEALTH",platform,action:"TAB",targetId:page.url(),evidence:{url:page.url(),title:await page.title().catch(()=>""),alive:browserManager.isPageAlive(page)}});
+      console.log(`${platform.toUpperCase().padEnd(10)} ${browserManager.isPageAlive(page) ? "PASS" : "FAIL"}  ${page.url()}`);
+    }
+  } catch (e) {
+    console.log(`Browser health FAILED: ${e.message}`);
+  }
+  featureHealth.print();
+  browserManager.disconnect();
   return 0;
 }
 
@@ -1036,6 +1061,9 @@ async function main() {
     case "status":
       process.exit(await commandStatus());
       break;
+    case "health":
+      process.exit(await commandHealth());
+      break;
     case "test":
       await (require("./tests/suite").runAllTests());
       process.exit(0);
@@ -1065,6 +1093,7 @@ module.exports = {
   commandReplies,
   commandDms,
   commandStatus,
+  commandHealth,
   commandOnboard,
   isPeakEngagementWindow,
   checkAndPublishScheduledPost,
