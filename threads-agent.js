@@ -10,7 +10,7 @@
  *   node threads-agent.js replies   - Process incoming comment replies
  *   node threads-agent.js dms       - Process incoming Direct Messages
  *   node threads-agent.js run       - Continuous autonomous / approval orchestrator loop
- *   node threads-agent.js status    - Display comprehensive system, rate-limit & engagement report
+ *   node threads-agent.js status    - Display comprehensive system, rate-limit & engagement report\n *   node threads-agent.js health    - Verify live browser tabs and action telemetry
  *   node threads-agent.js test      - Run automated diagnostic test suite
  */
 
@@ -45,6 +45,8 @@ const commentGenerator = require("./src/engagement/comment-generator");
 const { checkLinkedInConnectionRequests, checkLinkedInMessages, checkLinkedInNotifications } = require("./src/platforms/linkedin/linkedin-activity");
 const { checkFacebookNotifications, checkFacebookMessages } = require("./src/platforms/facebook/facebook-activity");
 const logger = require("./src/logging/logger");
+const featureHealth = require("./src/agent/feature-health");
+const telemetry = require("./src/telemetry/action-telemetry");
 
 async function commandAuth() {
   const argTarget = (process.argv[3] || "").toLowerCase();
@@ -125,38 +127,12 @@ async function commandScan(options = {}) {
 }
 
 function getLeadPriorityScore(post) {
+  // AI-first architecture: deterministic ordering is limited to operational state.
+  // No content/keyword/regex signals are used to rank leads before semantic AI.
   let score = 0;
   if (post.status === "COMMENT_PENDING") score += 5000;
-  if (post.source === "SEARCH" || post.source === "FACEBOOK_KEYWORD_SEARCH" || post.source === "FACEBOOK_GROUP_SEARCH") score += 2000;
-  const text = (post.text || "").toLowerCase();
-
-  // Generic intent verbs (seeking, hiring, wanting)
-  const buyerPatterns = [
-    /\b(looking for|need|hiring|hire|seeking|searching for|want to build|want an?)\b/i,
-    /\b(recommend a|anyone know a|can someone build|who can build)\b/i
-  ];
-  for (const regex of buyerPatterns) {
-    if (regex.test(text)) score += 500;
-  }
-
-  // Dynamic service keywords grounded in Knowledge Engine
-  const approved = knowledge.getApprovedServices();
-  if (approved && approved.length > 0) {
-    for (const service of approved) {
-      const words = service.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      for (const word of words) {
-        if (text.includes(word)) {
-          score += 300;
-          break;
-        }
-      }
-    }
-  }
-
-  const ageHours = (Date.now() - new Date(post.discoveredAt || 0).getTime()) / (1000 * 60 * 60);
-  if (ageHours < 24) {
-    score += Math.max(0, Math.round(24 - ageHours) * 10);
-  }
+  if (post.status === "COMMENT_FAILED") score += 1000;
+  if (post.source === "SEARCH" || post.source === "FACEBOOK_KEYWORD_SEARCH" || post.source === "FACEBOOK_GROUP_SEARCH") score += 500;
   return score;
 }
 
@@ -416,6 +392,29 @@ async function commandApprove() {
   }
 
   rl.close();
+  return 0;
+}
+
+async function commandHealth() {
+  console.log("\n==============================================");
+  console.log("     VERIFIED AGENTIC BROWSER HEALTH");
+  console.log("==============================================");
+  console.log(`Browser CDP : ${CONFIG.CDP_URL}`);
+  try {
+    const tabs = await browserManager.ensureAllPlatformTabs();
+    for (const [platform, page] of Object.entries({
+      threads: tabs.threadsPage,
+      linkedin: tabs.linkedInPage,
+      facebook: tabs.facebookPage
+    })) {
+      telemetry.record({type:"TAB_HEALTH",platform,action:"TAB",targetId:page.url(),evidence:{url:page.url(),title:await page.title().catch(()=>""),alive:browserManager.isPageAlive(page)}});
+      console.log(`${platform.toUpperCase().padEnd(10)} ${browserManager.isPageAlive(page) ? "PASS" : "FAIL"}  ${page.url()}`);
+    }
+  } catch (e) {
+    console.log(`Browser health FAILED: ${e.message}`);
+  }
+  featureHealth.print();
+  browserManager.disconnect();
   return 0;
 }
 
@@ -1062,6 +1061,9 @@ async function main() {
     case "status":
       process.exit(await commandStatus());
       break;
+    case "health":
+      process.exit(await commandHealth());
+      break;
     case "test":
       await (require("./tests/suite").runAllTests());
       process.exit(0);
@@ -1091,6 +1093,7 @@ module.exports = {
   commandReplies,
   commandDms,
   commandStatus,
+  commandHealth,
   commandOnboard,
   isPeakEngagementWindow,
   checkAndPublishScheduledPost,

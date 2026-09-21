@@ -10,6 +10,7 @@ const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const knowledge = require("../../knowledge/knowledge-engine");
 const logger = require("../../logging/logger");
+const telemetry = require("../../telemetry/action-telemetry");
 
 function getFacebookSearchQueries() {
   const queries = knowledge.getSearchQueries("facebook");
@@ -55,12 +56,15 @@ class FacebookSearchEngine {
 
       const searchUrl = this.buildSearchUrl(query);
       logger.info(`[FACEBOOK SEARCH] Searching high-intent query: "${query}"...`, { action: "FACEBOOK_SEARCH_START", query });
-
-      await page.goto(searchUrl, {
-        waitUntil: "domcontentloaded",
-        timeout: 45000
-      });
+      await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
       await new Promise(r => setTimeout(r, 3500));
+
+      const currentUrl = page.url();
+      const title = await page.title().catch(() => "");
+      if (!currentUrl.includes("facebook.com")) {
+        throw new Error(`Facebook navigation verification failed: ${currentUrl}`);
+      }
+      telemetry.record({type:"NAVIGATION_VERIFIED", platform:"facebook", action:"SEARCH", targetId:query, evidence:{url:currentUrl,title}});
 
       // 1. Try to apply "Recent Posts" filter on left sidebar if present
       await page.evaluate(() => {

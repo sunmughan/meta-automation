@@ -111,8 +111,8 @@ class AiQueue {
 
 class AiRuntime {
   constructor() {
-    this.model = CONFIG.MODEL || "gemini-3.6-flash";
-    const maxConcurrency = Number(process.env.AI_MAX_CONCURRENCY) || 1;
+    this.model = CONFIG.MODEL || "gemini-3.8-flash-high";
+    const maxConcurrency = Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || 3);
     this.queue = new AiQueue(maxConcurrency);
   }
 
