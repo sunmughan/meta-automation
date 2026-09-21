@@ -65,6 +65,7 @@ class AiDecisionEngine {
       comment = this.sanitizeCommentForPlatform(comment, postPlatform);
 
       return {
+        qualified: true,
         intent: analysis.intent || "BUYER",
         requirement: analysis.requirement || "Custom software requirement",
         target_entity: analysis.target_entity || "EITHER",
@@ -72,6 +73,8 @@ class AiDecisionEngine {
         matched_capability: analysis.matched_capability || "Custom Software",
         matched_services: analysis.matched_services || [analysis.matched_capability || "Custom Software"],
         matched_categories: analysis.matched_categories || [analysis.matched_capability || "Web Development"],
+        matchedServices: analysis.matched_services || [analysis.matched_capability || "Custom Software"],
+        matchedCategories: analysis.matched_categories || [analysis.matched_capability || "Web Development"],
         representation: rep,
         decision: "QUALIFIED",
         temperature: analysis.temperature || "HOT",
@@ -86,6 +89,7 @@ class AiDecisionEngine {
 
     // Ignored or Non-buyer post
     return {
+      qualified: false,
       intent: analysis.intent || "IRRELEVANT",
       requirement: analysis.requirement || null,
       target_entity: analysis.target_entity || null,
@@ -93,6 +97,8 @@ class AiDecisionEngine {
       matched_capability: analysis.matched_capability || null,
       matched_services: [],
       matched_categories: [],
+      matchedServices: [],
+      matchedCategories: [],
       representation: analysis.representation || "IGNORE",
       decision: analysis.decision || "IGNORED",
       temperature: "IGNORE",
@@ -126,18 +132,8 @@ class AiDecisionEngine {
       };
     }
 
-    // Community Opinion Polls & Audience Surveys (Strict Non-Buyer Disqualification)
-    if (/\b(what\s+tech\s+stack\s+are\s+you|go-to\s+backend\s+framework|most\s+important\s+thing\s+for\s+high\s+converting|what\s+ai\s+tools\s+or\s+automation\s+workflows\s+are\s+saving\s+you|what\s+outreach\s+strategy\s+is\s+working\s+best)\b/i.test(text)) {
-      return {
-        intent: "COMMUNITY_DISCUSSION",
-        decision: "IGNORED",
-        is_genuine_buyer: false,
-        service_match: false,
-        representation: "IGNORE",
-        should_reply: false,
-        reason: "General community discussion or opinion poll, not an actionable buyer lead."
-      };
-    }
+    // All classification — including community polls, opinion surveys, and tech discussions —
+    // is handled by the Antigravity AI reasoning engine. Zero regex pre-filters.
 
     try {
       const prompt = this.buildFullSemanticPrompt(post);
@@ -190,6 +186,7 @@ class AiDecisionEngine {
       const isWarm = intent === "INDUSTRY_LEAD" || intent === "NETWORKING" || aiRes.temperature === "WARM";
 
       return {
+        qualified: true,
         intent: intent || "BUYER",
         requirement: aiRes.requirement || postText.slice(0, 100),
         target_entity: aiRes.target_entity || "EITHER",
@@ -209,6 +206,7 @@ class AiDecisionEngine {
     }
 
     return {
+      qualified: false,
       intent: intent || "IRRELEVANT",
       requirement: aiRes.requirement || null,
       target_entity: null,
@@ -501,7 +499,7 @@ OUTPUT STRICT JSON:
     if (!comment || typeof comment !== "string") return comment;
 
     const profiles = knowledge.getOfficialProfiles();
-    const companyUrl = profiles.company.website || "https://www.codeair.tech";
+    const companyUrl = profiles.company.website || knowledge.getCompanyInfo().website || "";
 
     if (platform === "facebook" || platform === "linkedin") {
       // Replace ALL linkedin.com/in/* profile URLs with company website
@@ -525,7 +523,7 @@ OUTPUT STRICT JSON:
     const postPlatform = post?.platform || (String(post?.postId || "").startsWith("fb") ? "facebook" : (String(post?.postId || "").startsWith("li") ? "linkedin" : "threads"));
     const isFacebook = postPlatform === "facebook";
     // On Facebook, NEVER share LinkedIn URLs because Facebook's preview scraper gets blocked by Cloudflare reCAPTCHA!
-    const founderUrl = isFacebook ? (companyUrl || "https://www.codeair.tech") : rawFounderUrl;
+    const founderUrl = isFacebook ? (companyUrl || "") : rawFounderUrl;
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:

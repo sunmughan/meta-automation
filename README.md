@@ -1,8 +1,8 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
-[![Omnichannel](https://img.shields.io/badge/Omnichannel-Threads%20%7C%20LinkedIn%20%7C%20Facebook-success.svg?style=for-the-badge)](#-omnichannel-multi-platform-architecture-v141)
+[![Omnichannel](https://img.shields.io/badge/Omnichannel-Threads%20%7C%20LinkedIn%20%7C%20Facebook-success.svg?style=for-the-badge)](#1-omnichannel-multi-platform-lead-discovery--pipeline)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
@@ -18,7 +18,10 @@ Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this e
 
 ## 🌟 Key Architectural Highlights
 
-- **Omnichannel Autonomous Social Operations (v1.4.1)**: Unified concurrent and sequential multi-tab architecture operating across **LinkedIn**, **Facebook**, and **Threads** in your real authenticated desktop browser session with zero external API fees.
+- **Omnichannel Autonomous Social Operations (v1.5.0)**: Unified concurrent and sequential multi-tab architecture operating across **LinkedIn**, **Facebook**, and **Threads** in your real authenticated desktop browser session with zero external API fees.
+- **100% Zero-Heuristic AI Architecture**: Complete elimination of regex pre-filters, static keyword tables, and hardcoded comment templates. All qualification and engagement synthesis are delegated to the live Gemini 3.8 Flash model.
+- **Externalized Dynamic Search Queries**: Search queries for all platforms are centralized in `knowledge/search-queries.md` with hot-reloading.
+- **Pure Multi-Brand Neutrality**: Multi-brand state isolation, dynamic sender checking, and instant brand adaptation via `npm run onboard`.
 - **LinkedIn Inbound & Outbound Pipeline**:
   - Automatically manages connection requests: accepts individual profile requests (`/in/`) and automatically rejects or ignores company page follows, group invites, and event spam.
   - Direct Messages monitoring: continuously inspects unread DMs, grounds context in dynamic business knowledge, and synthesizes helpful conversion-oriented replies with zero self-reply loops.

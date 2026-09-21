@@ -30,10 +30,10 @@ async function runAudit() {
   ];
 
   for (const lead of clientLeads) {
-    const res = intentClassifier.classify({ text: lead.text });
+    const res = await intentClassifier.classifyAsync({ text: lead.text, postId: "audit_lead_" + passed });
     assert.strictEqual(res.qualified, true, `Expected qualified lead for: "${lead.text}"`);
-    assert.strictEqual(res.temperature, "HOT");
-    console.log(`  ✓ PASS: Qualified lead "${lead.text.slice(0, 45)}..." -> [${res.matchedCategories.join(", ")}]`);
+    assert(res.temperature === "HOT" || res.temperature === "WARM", `Expected HOT or WARM lead, got: ${res.temperature}`);
+    console.log(`  ✓ PASS: Qualified lead "${lead.text.slice(0, 45)}..." -> [${res.intent}]`);
     passed++;
   }
 

@@ -1338,12 +1338,12 @@ const orchestrator = new AgenticPipeline({
     const teaser = spec.teaser || "SOMETHING EXCITING IS COMING";
     const techTag = spec.techTag || "HTML";
     const tagline = spec.tagline || spec.subtitle || "Because Every Great Website Has A Developer Behind It";
-    const defaultSite = (profiles.company?.website || companyInfo.website || "https://www.codeair.tech");
+    const defaultSite = (profiles.company?.website || companyInfo.website || "");
     const websiteUrl = spec.website || defaultSite;
     const registerLabel = spec.registerLabel || "REGISTER YOUR INTEREST HERE:";
     const dateText = spec.date || "OCTOBER 29TH, 2026";
     const verticalText = (spec.verticalText || "DEVELOPERS CONNECT").toUpperCase();
-    const brandName = (spec.brandName || companyInfo.name || "CodeAir").toUpperCase();
+    const brandName = (spec.brandName || companyInfo.name || "").toUpperCase();
     const logoDataUri = spec.logoDataUri || getCodeAirLogoUri();
 
     let cards = spec.cards;

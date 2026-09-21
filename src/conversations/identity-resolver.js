@@ -32,9 +32,9 @@ class IdentityResolver {
 
     const company = knowledge.getCompanyInfo();
     const founder = knowledge.getFounderInfo();
-    const companyClean = (company.name || "codeair").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const companyWords = (company.name || "codeair").trim().split(/\s+/).map(w => w.replace(/[^a-z0-9]/gi, "")).filter(Boolean);
-    const companyPattern = Array.from(new Set([companyClean, companyWords.join("\\s+"), companyWords[0], "codeair"])).filter(Boolean).join("|");
+    const companyClean = (company.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const companyWords = (company.name || "").trim().split(/\s+/).map(w => w.replace(/[^a-z0-9]/gi, "")).filter(Boolean);
+    const companyPattern = Array.from(new Set([companyClean, companyWords.join("\\s+"), companyWords[0], (company.shortName || "").toLowerCase()])).filter(Boolean).join("|") || "company";
 
     const founderClean = (founder.name || "founder").toLowerCase().replace(/[^a-z0-9]/g, "");
     const founderWords = (founder.name || "founder").trim().split(/\s+/).map(w => w.replace(/[^a-z0-9]/gi, "")).filter(Boolean);

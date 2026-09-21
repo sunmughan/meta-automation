@@ -7,20 +7,13 @@
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
+const knowledge = require("../../knowledge/knowledge-engine");
 const logger = require("../../logging/logger");
 
-const HIGH_INTENT_LINKEDIN_QUERIES = [
-  "looking for web developer",
-  "hire software developer",
-  "looking for fullstack developer",
-  "need custom software",
-  "seeking MVP developer",
-  "hire flutter developer",
-  "looking for software development agency",
-  "looking for an agency to build",
-  "need software developers",
-  "looking for AI developer"
-];
+function getLinkedInSearchQueries() {
+  const queries = knowledge.getSearchQueries("linkedin");
+  return queries.length > 0 ? queries : ["looking for web developer", "hire software developer"];
+}
 
 class LinkedInScanner {
   /**
@@ -170,7 +163,8 @@ class LinkedInScanner {
    * Searches LinkedIn Content posts by high-intent keywords.
    */
   async searchLinkedInKeywords(options = {}) {
-    const query = options.query || HIGH_INTENT_LINKEDIN_QUERIES[Math.floor(Math.random() * HIGH_INTENT_LINKEDIN_QUERIES.length)];
+    const queries = getLinkedInSearchQueries();
+    const query = options.query || queries[Math.floor(Math.random() * queries.length)];
     let browser = null;
     let page = null;
 
@@ -285,6 +279,10 @@ class LinkedInScanner {
 const linkedInScanner = new LinkedInScanner();
 module.exports = {
   linkedInScanner,
+  getLinkedInSearchQueries,
+  get HIGH_INTENT_LINKEDIN_QUERIES() {
+    return getLinkedInSearchQueries();
+  },
   scanLinkedInFeed: (opts) => linkedInScanner.scanLinkedInFeed(opts),
   searchLinkedInKeywords: (opts) => linkedInScanner.searchLinkedInKeywords(opts)
 };

@@ -8,35 +8,26 @@
 const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
+const knowledge = require("../../knowledge/knowledge-engine");
 const logger = require("../../logging/logger");
 
-const HIGH_INTENT_FACEBOOK_QUERIES = [
-  "looking for a web developer",
-  "need someone to build a website",
-  "looking for software development agency",
-  "need an MVP developer",
-  "who can build an app for my business",
-  "looking for flutter developer",
-  "need a fullstack developer for project",
-  "seeking recommendations for software agency",
-  "need custom CRM software",
-  "looking for AI automation developer",
-  "hire react developer freelance",
-  "need mobile app developer for startup"
-];
+function getFacebookSearchQueries() {
+  const queries = knowledge.getSearchQueries("facebook");
+  return queries.length > 0 ? queries : ["looking for a web developer", "need someone to build a website"];
+}
 
-const HIGH_INTENT_GROUP_TOPICS = [
-  "SaaS Founders & Entrepreneurs",
-  "Startup Founders Hub",
-  "Freelance Web Developers and Clients",
-  "Shopify & E-commerce Store Owners",
-  "Small Business Owners Network"
-];
+function getFacebookGroupTopics() {
+  const topics = knowledge.getGroupTopics("facebook");
+  return topics.length > 0 ? topics : ["SaaS Founders & Entrepreneurs", "Startup Founders Hub"];
+}
 
 class FacebookSearchEngine {
-  constructor() {
-    this.queries = HIGH_INTENT_FACEBOOK_QUERIES;
-    this.groupTopics = HIGH_INTENT_GROUP_TOPICS;
+  get queries() {
+    return getFacebookSearchQueries();
+  }
+
+  get groupTopics() {
+    return getFacebookGroupTopics();
   }
 
   /**
@@ -226,8 +217,8 @@ class FacebookSearchEngine {
    */
   async searchFacebookGroupPosts(options = {}) {
     const topic = options.topic || this.groupTopics[Math.floor(Math.random() * this.groupTopics.length)];
-    const buyerQueries = ["looking for developer", "need website", "need MVP", "hiring software agency"];
-    const subQuery = buyerQueries[Math.floor(Math.random() * buyerQueries.length)];
+    const buyerQueries = getFacebookSearchQueries().slice(0, 6);
+    const subQuery = buyerQueries[Math.floor(Math.random() * buyerQueries.length)] || "looking for developer";
     const combinedQuery = `${topic} ${subQuery}`;
 
     logger.info(`[FACEBOOK GROUP DISCOVERY] Scanning public group buyer inquiries for: "${combinedQuery}"...`);
@@ -242,8 +233,14 @@ const facebookSearchEngine = new FacebookSearchEngine();
 
 module.exports = {
   facebookSearchEngine,
-  HIGH_INTENT_FACEBOOK_QUERIES,
-  HIGH_INTENT_GROUP_TOPICS,
+  getFacebookSearchQueries,
+  getFacebookGroupTopics,
+  get HIGH_INTENT_FACEBOOK_QUERIES() {
+    return getFacebookSearchQueries();
+  },
+  get HIGH_INTENT_GROUP_TOPICS() {
+    return getFacebookGroupTopics();
+  },
   searchFacebookPosts: (opts) => facebookSearchEngine.searchFacebookPosts(opts),
   searchFacebookGroupPosts: (opts) => facebookSearchEngine.searchFacebookGroupPosts(opts)
 };

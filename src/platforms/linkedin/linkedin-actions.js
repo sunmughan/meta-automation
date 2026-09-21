@@ -19,7 +19,9 @@ class LinkedInActions {
   sanitizeForLinkedIn(text) {
     if (!text || typeof text !== "string") return text;
     // LinkedIn profile URLs in comments trigger reCAPTCHA preview cards
-    return text.replace(/https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi, "https://www.codeair.tech");
+    const knowledge = require("../../knowledge/knowledge-engine");
+    const companyUrl = knowledge.getCompanyInfo().website || knowledge.getProfileLink("COMPANY", "website") || "";
+    return companyUrl ? text.replace(/https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi, companyUrl) : text;
   }
 
   /**
