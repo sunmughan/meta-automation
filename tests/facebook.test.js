@@ -39,6 +39,13 @@ async function runFacebookTests() {
   console.log("  FACEBOOK PUBLIC PROFILE ADAPTER AUDIT SUITE");
   console.log("==================================================\n");
 
+  // Isolate Facebook test actions from rate limiter
+  for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
+    if (v.platform === "facebook") {
+      delete stateStore.state.actions[k];
+    }
+  }
+
   // 1. Facebook Auth Signature
   await test("1. checkFacebookAuth function is properly exported and structured", () => {
     assert.strictEqual(typeof checkFacebookAuth, "function", "checkFacebookAuth must be a function");

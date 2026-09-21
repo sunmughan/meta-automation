@@ -685,14 +685,18 @@ async function runLinkedInCycle(cycle) {
     const liSearchRes = await searchLinkedInKeywords();
     console.log(`LinkedIn search query "${liSearchRes.query}": ${liSearchRes.scannedCount} visible, ${liSearchRes.newCount} new`);
 
-    // 6. Executive feed scan
+    // 6. Immediate qualification & comment on discovered search posts (while on search page)
+    console.log("\n[LINKEDIN SEARCH ENGAGEMENT] Evaluating and commenting on active B2B search results...");
+    await commandAnalyze({ platform: "linkedin", maxPosts: 5, maxLiveComments: 1 });
+
+    // 7. Executive feed scan
     console.log("\n[LINKEDIN FEED] Scanning LinkedIn home feed for executive & founder updates...");
-    const liFeedRes = await scanLinkedInFeed({ maxPosts: 10 });
+    const liFeedRes = await scanLinkedInFeed({ maxPosts: 8 });
     console.log(`LinkedIn feed: ${liFeedRes.scannedCount} visible, ${liFeedRes.newCount} new`);
 
-    // 7. Lead qualification & comments on discovered LinkedIn posts
-    console.log("\n[LINKEDIN ENGAGEMENT] Evaluating LinkedIn leads for executive & agency pitches...");
-    await commandAnalyze({ platform: "linkedin", maxPosts: 10, maxLiveComments: 2 });
+    // 8. Lead qualification & comments on feed posts (while on feed page)
+    console.log("\n[LINKEDIN FEED ENGAGEMENT] Evaluating LinkedIn feed leads for executive & agency pitches...");
+    await commandAnalyze({ platform: "linkedin", maxPosts: 5, maxLiveComments: 1 });
 
     console.log(`[LINKEDIN WORKER] Completed cycle #${cycle} operations.`);
   } catch (err) {

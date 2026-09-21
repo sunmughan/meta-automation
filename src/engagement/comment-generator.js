@@ -114,7 +114,10 @@ class CommentGenerator {
     const companyName = company.name || "our team";
     const companyWebsite = knowledge.getProfileLink("COMPANY", "website") || company.website || "";
     const pixelgoUrl = knowledge.getProfileLink("COMPANY", "pixelgo") || company.productUrl || "";
-    const founderLinkedin = knowledge.getProfileLink("FOUNDER", "linkedin") || founder.linkedin || "";
+    const isFacebook = Boolean(params && (params.platform === "facebook" || (params.post && params.post.platform === "facebook")));
+    // On Facebook, NEVER share LinkedIn URLs because Facebook's preview crawler gets blocked by Cloudflare reCAPTCHA!
+    const founderLink = isFacebook ? companyWebsite : (knowledge.getProfileLink("FOUNDER", "linkedin") || founder.linkedin || companyWebsite);
+    const founderConnectLabel = isFacebook ? `at ${founderLink}` : `on LinkedIn at ${founderLink}`;
 
     const topic = this.determineTopic(cleanText, matchedCategories);
 
@@ -148,7 +151,7 @@ class CommentGenerator {
 
     // ============================================================
     // MODE 2: FOUNDER (First-Person Perspective, Founder Link ONLY)
-    // NEVER pushes company website when acting as Founder
+    // NEVER pushes company website when acting as Founder (except Facebook where LinkedIn is blocked)
     // ============================================================
     if (identity === "FOUNDER") {
       if (topic === "HOSPITALITY") {
@@ -160,45 +163,45 @@ class CommentGenerator {
 
       if (topic === "WEB") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I'd love to help build this! I'm ${founderName}, software engineer and ${founderRole} at ${companyName}. I specialize in React, Next.js, and modern full-stack web applications with clean code and fast turnaround. Connect with me on LinkedIn at ${founderLinkedin} or send a DM to talk through your project scope!`,
-          `${greeting}I can definitely help with your React and web applications! I build fast, clean, and responsive web apps. Feel free to connect with me on LinkedIn at ${founderLinkedin} or drop a DM and let's discuss your project requirements!`,
-          `${greeting}If you're looking for a React developer who writes clean, maintainable code and ships fast, let's connect! You can reach me directly on LinkedIn at ${founderLinkedin} or message me with your project details.`
-        ]), founderLinkedin);
+          `${greeting}I'd love to help build this! I'm ${founderName}, software engineer and ${founderRole} at ${companyName}. I specialize in React, Next.js, and modern full-stack web applications with clean code and fast turnaround. Connect with me ${founderConnectLabel} or send a DM to talk through your project scope!`,
+          `${greeting}I can definitely help with your React and web applications! I build fast, clean, and responsive web apps. Feel free to connect with me ${founderConnectLabel} or drop a DM and let's discuss your project requirements!`,
+          `${greeting}If you're looking for a React developer who writes clean, maintainable code and ships fast, let's connect! You can reach me directly ${founderConnectLabel} or message me with your project details.`
+        ]), founderLink);
       }
 
       if (topic === "MOBILE") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I can definitely help you build this! I'm ${founderName}, software engineer and ${founderRole} at ${companyName}. We build fast Flutter mobile apps for both iOS and Android. Connect with me on LinkedIn at ${founderLinkedin} or send a DM with your app idea!`,
-          `${greeting}Building a mobile app with Flutter gives you great performance on both iOS and Android from one codebase. Connect with me on LinkedIn at ${founderLinkedin} and let's talk through your project!`
-        ]), founderLinkedin);
+          `${greeting}I can definitely help you build this! I'm ${founderName}, software engineer and ${founderRole} at ${companyName}. We build fast Flutter mobile apps for both iOS and Android. Connect with me ${founderConnectLabel} or send a DM with your app idea!`,
+          `${greeting}Building a mobile app with Flutter gives you great performance on both iOS and Android from one codebase. Connect with me ${founderConnectLabel} and let's talk through your project!`
+        ]), founderLink);
       }
 
       if (topic === "AI") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I build custom AI automations and reliable business workflows. Feel free to connect on LinkedIn at ${founderLinkedin} or send a DM to discuss what you'd like to automate!`,
-          `${greeting}Building reliable AI automations and smart workflows is my main focus as a founder. Connect with me on LinkedIn at ${founderLinkedin}. What repetitive tasks are you looking to automate?`
-        ]), founderLinkedin);
+          `${greeting}I build custom AI automations and reliable business workflows. Feel free to connect ${founderConnectLabel} or send a DM to discuss what you'd like to automate!`,
+          `${greeting}Building reliable AI automations and smart workflows is my main focus as a founder. Connect with me ${founderConnectLabel}. What repetitive tasks are you looking to automate?`
+        ]), founderLink);
       }
 
       if (topic === "SAAS") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I help founders design and build scalable SaaS platforms and MVPs. Connect with me on LinkedIn at ${founderLinkedin} to talk through your product roadmap and core features!`,
-          `${greeting}Keeping your code and database simple early on is key for shipping an MVP fast. Let's connect on LinkedIn at ${founderLinkedin} and discuss your product launch plan!`
-        ]), founderLinkedin);
+          `${greeting}I help founders design and build scalable SaaS platforms and MVPs. Connect with me ${founderConnectLabel} to talk through your product roadmap and core features!`,
+          `${greeting}Keeping your code and database simple early on is key for shipping an MVP fast. Let's connect ${founderConnectLabel} and discuss your product launch plan!`
+        ]), founderLink);
       }
 
       if (topic === "BUSINESS") {
         return this.enforceSingleUrl(this.pickVariation([
-          `${greeting}I build custom internal tools, admin dashboards, and CRM systems for businesses. Let's connect on LinkedIn at ${founderLinkedin} to talk through your operational workflows!`,
-          `${greeting}If you need a custom CRM, dashboard, or business system built with clean architecture, reach out on LinkedIn at ${founderLinkedin} or drop me a DM!`
-        ]), founderLinkedin);
+          `${greeting}I build custom internal tools, admin dashboards, and CRM systems for businesses. Let's connect ${founderConnectLabel} to talk through your operational workflows!`,
+          `${greeting}If you need a custom CRM, dashboard, or business system built with clean architecture, reach out ${founderConnectLabel} or drop me a DM!`
+        ]), founderLink);
       }
 
       // Founder general web / software development
       return this.enforceSingleUrl(this.pickVariation([
-        `${greeting}I'd love to help you with this! I'm ${founderName}, ${founderRole} at ${companyName}. We build fast web apps, mobile apps, and custom platforms. Feel free to connect on LinkedIn at ${founderLinkedin} or send over a DM!`,
-        `${greeting}If you're looking for a developer to build this with clean code and fast delivery, let's connect! You can reach me directly on LinkedIn at ${founderLinkedin}. What are your main goals and timeline?`
-      ]), founderLinkedin);
+        `${greeting}I'd love to help you with this! I'm ${founderName}, ${founderRole} at ${companyName}. We build fast web apps, mobile apps, and custom platforms. Feel free to connect ${founderConnectLabel} or send over a DM!`,
+        `${greeting}If you're looking for a developer to build this with clean code and fast delivery, let's connect! You can reach me directly ${founderConnectLabel}. What are your main goals and timeline?`
+      ]), founderLink);
     }
 
     // ============================================================

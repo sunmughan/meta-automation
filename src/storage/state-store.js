@@ -142,18 +142,74 @@ class StateStore {
   }
 
   // --- COMMENTS ---
-  hasCommented(postId, platform = "threads") {
+  normalizeUrl(url) {
+    if (!url || typeof url !== "string") return "";
+    try {
+      const u = new URL(url);
+      u.searchParams.delete("__cft__");
+      u.searchParams.delete("__tn__");
+      u.searchParams.delete("ref");
+      u.searchParams.delete("source");
+      return (u.origin + u.pathname).replace(/\/$/, "");
+    } catch (e) {
+      return url.split("?")[0].replace(/\/$/, "");
+    }
+  }
+
+  hasCommented(postId, platform = "threads", url = null, text = null) {
     const key = this.getPostKey(platform, postId);
     if (this.state.comments[key] || this.state.comments[postId]) return true;
     const post = this.state.posts[key] || this.state.posts[postId];
-    return Boolean(
+    if (
       post && (
         post.status === "COMMENT_POSTED" ||
         post.status === "COMMENTED" ||
         post.status === "POSTED_LIVE" ||
         post.commentPosted === true
       )
-    );
+    ) {
+      return true;
+    }
+
+    // URL-based deduplication across all recorded comments and posts
+    const targetUrl = url || (post && post.url);
+    if (targetUrl && typeof targetUrl === "string" && targetUrl.startsWith("http")) {
+      const normTarget = this.normalizeUrl(targetUrl);
+      if (normTarget && normTarget.length > 15) {
+        const commentList = Object.values(this.state.comments);
+        for (const c of commentList) {
+          if (c && c.platform === platform && c.url) {
+            if (this.normalizeUrl(c.url) === normTarget) {
+              return true;
+            }
+          }
+        }
+        const postList = Object.values(this.state.posts);
+        for (const p of postList) {
+          if (p && p.platform === platform && p.url && (p.commentPosted || p.status === "COMMENTED")) {
+            if (this.normalizeUrl(p.url) === normTarget) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // Text snippet deduplication (prevents re-commenting on identical post content)
+    const postText = text || (post && post.text);
+    if (postText && typeof postText === "string" && postText.length > 25) {
+      const snip = postText.slice(0, 50).toLowerCase().trim();
+      const postList = Object.values(this.state.posts);
+      for (const p of postList) {
+        if (p && p.platform === platform && p.postId !== postId && (p.commentPosted || p.status === "COMMENTED")) {
+          if (p.text && p.text.slice(0, 50).toLowerCase().trim() === snip) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   recordComment(postId, commentData, platform = "threads") {

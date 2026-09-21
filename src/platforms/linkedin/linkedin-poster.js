@@ -156,5 +156,4 @@ OUTPUT STRICT JSON:
 const linkedInPoster = new LinkedInPoster();
 module.exports = linkedInPoster;
 module.exports.linkedInPoster = linkedInPoster;
-module.exports.publishPost = (opts) => linkedInPoster.publishPost(opts);
-module.exports.publishLinkedInPost = (opts) => linkedInPoster.publishPost(opts);
+module.exports.LinkedInPoster = LinkedInPoster;

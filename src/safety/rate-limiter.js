@@ -21,10 +21,12 @@ class RateLimiter {
       : actionType;
     const windowActions = stateStore.getActionsInWindow(null, 3600 * 1000); // 1 hour
 
-    // Filter out any mock/test actions from test runs
+    // Filter out mock/test actions and isolate by platform
     const realActions = windowActions.filter(a => {
       const tid = String(a.targetId || "").toLowerCase();
       const user = String(a.username || "").toLowerCase();
+      const actPlatform = a.platform || (tid.startsWith("fb") ? "facebook" : (tid.startsWith("li") ? "linkedin" : "threads"));
+      if (platform && actPlatform !== platform) return false;
       return !tid.includes("test") && !tid.includes("mock") && !user.includes("test") && !user.includes("mock");
     });
 
