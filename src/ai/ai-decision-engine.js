@@ -368,6 +368,20 @@ class AiDecisionEngine {
   }
 
   /**
+   * Primary entry point for inbound replies and direct messages across platforms.
+   */
+  async handleInboundReply(options = {}) {
+    return this.generateConversationReply({
+      incomingMessage: options.text || options.incomingMessage || "",
+      incomingText: options.text || "",
+      username: options.username || "user",
+      platform: options.platform || "threads",
+      conversationStage: options.conversationStage || "DISCOVERY",
+      replyToText: options.replyToText || ""
+    });
+  }
+
+  /**
    * Constructs prompt for multi-turn DM or reply conversation turn.
    */
   buildConversationTurnPrompt(context) {
