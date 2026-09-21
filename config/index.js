@@ -78,6 +78,7 @@ const CONFIG = {
   APPROVAL_MODE: process.env.APPROVAL_MODE !== "false",
   DRY_RUN: process.env.DRY_RUN !== "false",
   POSTING_ENABLED: process.env.POSTING_ENABLED === "true",
+  EXECUTION_MODE: (process.env.EXECUTION_MODE || "concurrent").toLowerCase(),
 
   // Rate Limits (per hour)
   MAX_NEW_POST_REPLIES_PER_HOUR: Number(process.env.MAX_NEW_POST_REPLIES_PER_HOUR) || 5,
