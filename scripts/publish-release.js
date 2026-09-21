@@ -52,11 +52,15 @@ const fs = require("fs");
     }
 
     // 2. Set Title & Body
-    const titleInput = await ghPage.$("#release_name") || await ghPage.$("input[name=\"release[name]\"]");
-    if (titleInput) {
-      await titleInput.click({ clickCount: 3 });
-      await titleInput.type(`${tag} - Omnichannel Autonomous Engagement Engine (LinkedIn, Facebook & Threads)`, { delay: 5 });
-    }
+    console.log("Setting title and release notes...");
+    await ghPage.evaluate((titleText) => {
+      const el = document.querySelector("#release_name, input[name=\"release[name]\"]");
+      if (el) {
+        el.value = titleText;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }, `${tag} - Omnichannel Autonomous Engagement Engine (LinkedIn, Facebook & Threads)`);
 
     const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
     if (bodyTextarea) {

@@ -60,20 +60,33 @@ class LinkedInActions {
       await page.bringToFront().catch(() => {});
 
       logger.info(`Navigating to LinkedIn post: ${post.url || post.postId}...`);
-      if (post.url) {
+      if (post.url && post.url.startsWith("http") && !post.url.includes("/search/results/")) {
         await page.goto(post.url, { waitUntil: "domcontentloaded", timeout: 45000 });
         await new Promise(r => setTimeout(r, 2500));
       }
 
       // Find and click comment trigger button if input not already expanded
-      const commentBtn = await page.$("button[aria-label*='Comment' i], button.comment-button, .social-actions-button--comment");
-      if (commentBtn) {
+      let commentBtn = await page.$("button[aria-label*='Comment' i], button.comment-button, .social-actions-button--comment");
+      if (!commentBtn) {
+        // Fallback: evaluate text content
+        const clicked = await page.evaluate(() => {
+          const btns = Array.from(document.querySelectorAll("button, [role='button']"));
+          const b = btns.find(el => (el.innerText || "").trim().toLowerCase() === "comment" || (el.getAttribute("aria-label") || "").toLowerCase().includes("comment"));
+          if (b) {
+            b.scrollIntoView({ behavior: "smooth", block: "center" });
+            b.click();
+            return true;
+          }
+          return false;
+        });
+        if (clicked) await new Promise(r => setTimeout(r, 1200));
+      } else {
         await commentBtn.click();
         await new Promise(r => setTimeout(r, 1200));
       }
 
       // Locate contenteditable editor or textbox
-      const editorSelector = ".editor-content [contenteditable='true'], .ql-editor, div[role='textbox'][aria-label*='comment' i], .comments-comment-box__form-container [contenteditable='true']";
+      const editorSelector = ".editor-content [contenteditable='true'], .ql-editor, div[role='textbox'][aria-label*='comment' i], .comments-comment-box__form-container [contenteditable='true'], [contenteditable='true'][role='textbox'], .comments-comment-box__form [contenteditable='true']";
       await page.waitForSelector(editorSelector, { timeout: 10000 });
       const editor = await page.$(editorSelector);
 
@@ -93,8 +106,18 @@ class LinkedInActions {
       await new Promise(r => setTimeout(r, 1000));
 
       // Find and click post submit button
-      const submitBtnSelector = "button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-button--cr, button[aria-label*='Post' i].comments-comment-box__submit-button";
-      const submitBtn = await page.$(submitBtnSelector);
+      const submitBtnSelector = "button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-button--cr, button[aria-label*='Post' i].comments-comment-box__submit-button, button.comments-comment-box__submit-button--cr";
+      let submitBtn = await page.$(submitBtnSelector);
+      if (!submitBtn) {
+        // Fallback evaluate for Comment/Post button inside comments box
+        submitBtn = await page.evaluateHandle(() => {
+          const btns = Array.from(document.querySelectorAll("button, [role='button']"));
+          return btns.find(b => {
+            const text = (b.innerText || b.value || "").trim().toLowerCase();
+            return (text === "comment" || text === "post") && !b.disabled;
+          }) || null;
+        });
+      }
 
       if (!submitBtn) {
         throw new Error("Could not locate LinkedIn comment submit button");
@@ -206,8 +229,8 @@ class LinkedInActions {
 }
 
 const linkedInActions = new LinkedInActions();
-module.exports = {
-  linkedInActions,
-  postComment: (post, text, opts) => linkedInActions.postComment(post, text, opts),
-  quotePost: (post, text, opts) => linkedInActions.quotePost(post, text, opts)
-};
+module.exports = linkedInActions;
+module.exports.linkedInActions = linkedInActions;
+module.exports.postComment = (post, text, opts) => linkedInActions.postComment(post, text, opts);
+module.exports.quotePost = (post, text, opts) => linkedInActions.quotePost(post, text, opts);
+
