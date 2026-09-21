@@ -60,41 +60,43 @@ const fs = require("fs");
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
       }
-    }, `${tag} - Zero-Heuristic Omnichannel AI Social Growth Engine (LinkedIn, Facebook & Threads)`);
+    }, `${tag} - Agentic Browser Controller, 2026 Live-DOM Adapters & Omnichannel AI Growth Engine`);
 
     const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
     if (bodyTextarea) {
       const releaseNotes = `## What's New in ${tag}
 
-### 🧠 100% Zero-Heuristic AI Architecture (Gemini 3.8 Flash High)
-- **Zero Regex Pre-Filtering**: Complete eradication of static keyword heuristics, buyer intent regexes, and hand-crafted classification scores.
-- **Pure Antigravity AI Reasoning**: Every post is qualified directly by Gemini 3.8 Flash High via live Antigravity IDE Connect-RPC session.
-- **Dynamic Bespoke Comments**: Purged static comment variation templates. The AI generates bespoke, grounded comments with strict Single-URL Discipline.
-- **Zero-Heuristic Quarantine**: When AI reasoning is unavailable or times out, posts are quarantined without guessing or falling back to regex.
+### 🎮 Agentic Browser Controller Architecture
+- **Live DOM as Ground Truth**: Operates directly with the live browser DOM over Chrome DevTools Protocol (\`CDP\` :9222). Bypasses brittle third-party APIs, sandbox limitations, 2FA hurdles, and rate limit bans.
+- **9-Level Semantic Fallback Locator**: Completely eliminates brittle single-selector dependencies across: (1) ARIA role + accessible name, (2) visible text, (3) \`aria-label\`, (4) \`title\`, (5) \`placeholder\`, (6) semantic DOM attributes, (7) candidate multi-selectors, (8) contextual parent scoping, and (9) bounding box coordinates.
+- **Truthful Action State Machine**: Strict lifecycle (\`DISCOVERED ➔ DECIDING ➔ ATTEMPTED ➔ SUBMITTED ➔ VERIFIED\`). Zero unverified confirmations — actions are only marked \`VERIFIED\` after independent out-of-composer DOM inspection.
+- **Automated Failure Diagnostics**: Captures full-page screenshots and DOM dumps to \`logs/screenshots/\` on any blocked or unverified attempt.
 
-### 🌐 Complete Omnichannel Support (LinkedIn + Facebook + Threads)
-- **LinkedIn Inbound Operations**:
-  - Automatically manages connection requests: accepts individual profile requests (\`/in/\`) and rejects company page follows, group invites, and event spam.
-  - Direct Messages monitoring: inspects unread DMs, grounds context in dynamic business knowledge, and synthesizes helpful conversion replies with zero self-reply loops.
-  - Inbound comment replies: tracks notifications on posts/comments, responding warmly with user tags (\`@Name\`).
-  - Daily B2B Thought-Leadership cross-posting: publishes daily authoritative technical posts reusing visual media.
-- **Facebook Inbound & Outbound Operations**:
-  - Inbound comment notification monitoring with personalized tagged replies.
-  - Messenger direct message processing with grounded AI sales reasoning.
-  - Commercial buyer keyword search and public agency/founder group discovery.
-- **Threads Continuous Presence**:
-  - Live feed and keyword scanning with active lead qualification and verified commenting.
-  - Inbound activity reply monitor and direct message responder.
+### ✍️ 2026 TipTap & ProseMirror Rich-Text Dispatch Engine
+- **Block Editor State Synchronization**: Specialized injection pipeline for LinkedIn post modals, LinkedIn comment boxes, and Facebook Comet composers.
+- **Synthetic InputEvent & Typing Jitter**: Dispatches \`beforeinput\` and \`InputEvent("input", { inputType: "insertText", data: char, bubbles: true })\` with human-like variable cadence (30–95ms jitter).
+- **ProseMirror Empty Node Cleansing**: Replaces \`<p class="is-editor-empty">\` to trigger internal virtual DOM document updates and cleanly enable post/comment submit buttons.
 
-### 🔗 Dynamic Grounding & WhatsApp Booking Link
-- **WhatsApp Meeting Booking Link**: Updated official WhatsApp booking link to \`https://wa.me/codeair\` across all dynamic profile lookups and DM scheduling flows.
-- **Centralized Search Queries**: All 42 discovery search queries and group topics centralized in \`knowledge/search-queries.md\` with dynamic cache hot-reloading.
-- **Multi-Brand Neutrality**: Complete brand isolation verified by automated multi-brand test suites. Onboard any agency or personal brand in seconds via \`npm run onboard\`.
+### 📜 Virtualized Container-Level Programmatic Scrolling
+- **Overcoming SPA Viewport Traps**: Replaces non-functional \`window.scrollBy\` with container-level scrolling on \`main#workspace, #workspace, .scaffold-layout__main\`.
+- **Triggering IntersectionObservers**: Ensures continuous feed recycling and captures live dynamic posts without getting stuck.
 
-### ⚡ Performance & Multi-Browser Engine
-- **Dedicated Browser Tab Instances**: Mutex-guarded dedicated tabs for Threads, LinkedIn, and Facebook with automatic foreground switching (\`bringToFront: true\`).
-- **Sequential and Concurrent Multi-Tab Execution Modes**: Seamless switching between sequential round-robin execution and concurrent multi-threading.
-- **Universal Multi-Browser Support**: 1-click support for Chrome, Edge, Brave, and Chromium across Linux, macOS, Windows, and Android Termux.
+### 🖱️ CDP Native Mouse Click Dispatch (\`page.mouse.click(x, y)\`)
+- **Ember.js & React SPA Route Navigation**: Calculates bounding boxes and sends genuine OS-level hardware mouse clicks, ensuring conversation switching in LinkedIn messaging and modal triggers succeed without event dropping.
+
+### 📱 Android Termux + Termux:X11 Parity
+- **Full Mobile Autonomy**: Run 24/7 on Android devices without root via Termux and Termux:X11.
+- **Android 12+ Optimization Guidelines**: Comprehensive documentation for disabling Phantom Process Killer via ADB and setting battery to Unrestricted.
+- **1-Click Master Runner**: \`./start-termux\` manages X11 display, launches Chromium with CDP flags, and connects the engine automatically.
+
+### 🌐 Omnichannel Coverage (LinkedIn + Facebook + Threads)
+- **LinkedIn Outbound & Inbound**: TipTap post publishing, container scrolling feed discovery, connection triage (\`/in/\` accepted, spam rejected), unread DM triage & AI conversion replies, inbound comment replies with \`@Name\` tags.
+- **Facebook Operations**: Founder & agency group discovery, commercial buyer search, timeline post publishing, Messenger direct message triage, comment notification replies.
+- **Threads Continuous Presence**: High-intent keyword discovery, home feed scanning, viral quote-posting, activity replies, direct messages.
+
+### ⚡ Round-Robin Tab Isolation & Performance
+- **Visual Foreground Switching**: Sequential execution cycles Threads ➔ Facebook ➔ LinkedIn with \`bringToFront: true\`, preventing focus-stealing and keyboard collisions.
+- **Dynamic Knowledge Grounding**: 100% brand isolation with live hot-reloading from \`knowledge/*.md\`. Official WhatsApp booking link (\`https://wa.me/codeair\`).
 
 ---
 

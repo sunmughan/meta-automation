@@ -1,8 +1,8 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
-[![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
-[![Omnichannel](https://img.shields.io/badge/Omnichannel-Threads%20%7C%20LinkedIn%20%7C%20Facebook-success.svg?style=for-the-badge)](#1-omnichannel-multi-platform-lead-discovery--pipeline)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](#-1-click-native-installers--cross-platform-runners)
+[![Omnichannel](https://img.shields.io/badge/Omnichannel-Threads%20%7C%20LinkedIn%20%7C%20Facebook-success.svg?style=for-the-badge)](#-core-capabilities)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
@@ -16,51 +16,220 @@ Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this e
 
 ---
 
-## 🌟 Key Architectural Highlights
+## 🌟 Key Architectural Highlights (v1.6.0)
 
-- **Agentic Browser Controller Architecture (v1.5.0)**: Operates with the live browser DOM as the absolute source of truth:
-  $$\text{AI Reasoning} \longrightarrow \text{Live Browser State} \longrightarrow \text{Semantic Action} \longrightarrow \text{Real Browser Execution} \longrightarrow \text{Post-Condition Verification} \longrightarrow \text{Structured Telemetry}$$
+### 1. Agentic Browser Controller Architecture (v1.6.0)
+Operates with the live browser DOM as the absolute source of truth:
+$$\text{AI Reasoning} \longrightarrow \text{Live Browser State} \longrightarrow \text{Semantic Action} \longrightarrow \text{Real Browser Execution} \longrightarrow \text{Post-Condition Verification} \longrightarrow \text{Structured Telemetry}$$
+- **Zero API Dependency & Zero 2FA Friction**: Connects over Chrome DevTools Protocol (`CDP` port 9222) to your existing, logged-in browser session (Chrome, Edge, Brave, Chromium). Eliminates external API deprecations, sandbox restrictions, SMS 2FA hurdles, and account bans.
+- **2026 TipTap & ProseMirror Rich-Text Dispatch Engine**: Modern platforms (LinkedIn post modals, LinkedIn comment boxes, Facebook Comet composers) utilize complex virtual DOM rich-text editors (TipTap / ProseMirror / Lexical). Standard `input.value = ...` fails because internal virtual DOM state stores ignore synthetic assignments. The Agentic Controller uses a specialized dispatch pipeline: focuses the contenteditable container (`div.tiptap.ProseMirror`, `div[role="textbox"]`), cleans placeholder nodes, dispatches `beforeinput` and `InputEvent("input", { inputType: "insertText", data: char, bubbles: true })` with human-like typing jitter (30–95ms), and synchronizes the internal document model so action submit buttons properly enable.
+- **Virtualized Container-Level Programmatic Scrolling**: Modern Single Page Applications (SPAs) like LinkedIn and Facebook do not scroll the `window` or `document.documentElement`. They recycle items inside internal scroll containers (`main#workspace`, `#workspace`, `.scaffold-layout__main`, `div[role="feed"]`). Calling `window.scrollBy(0, 500)` moves 0 pixels and fails to trigger lazy-loading observers. The Agentic Controller detects the true active scrolling container and applies programmatic delta scrolling (`container.scrollTop += delta`), guaranteeing continuous feed loading and dynamic post discovery.
+- **CDP Native Mouse Click Dispatch (`page.mouse.click(x, y)`)**: Frameworks like Ember.js (LinkedIn messaging) and React (Facebook/Threads) attach event listeners high in the DOM tree and reject synthetic `element.click()` due to untrusted event guards (`isTrusted: false`). The Agentic Controller calculates element viewport bounding boxes (`element.boundingBox()`) and dispatches authentic OS-level mouse clicks, guaranteeing reliable route transitions, tab switches, and conversation navigation.
 - **9-Level Semantic Fallback Resolution**: Completely eliminates brittle single-selector dependencies. Dynamic locator engine resolves interactive elements across: (1) ARIA role + accessible name, (2) visible text, (3) `aria-label`, (4) `title`, (5) `placeholder`, (6) semantic DOM attributes, (7) candidate multi-selectors, (8) contextual parent scoping, and (9) bounding box viewport coordinates.
-- **Truthful Action State Machine**: Enforces a strict state transition lifecycle (`DISCOVERED ➔ DECIDING ➔ ATTEMPTED ➔ SUBMITTED ➔ VERIFIED`) with truthful failure states (`BLOCKED`, `FAILED`, `UNVERIFIED`, `QUARANTINED`). An action is marked `VERIFIED` ONLY when post-condition DOM inspection outside the draft composer confirms the mutation. Unverified or failed attempts automatically capture full-page screenshots and DOM dumps to `logs/screenshots/`.
-- **Strict Round-Robin Multi-Tab Isolation**: Sequential execution mode defaults to dedicated focus cycles in strict user-specified order:
+- **Truthful Action State Machine & Post-Condition Verification**: Enforces a strict state transition lifecycle (`DISCOVERED ➔ DECIDING ➔ ATTEMPTED ➔ SUBMITTED ➔ VERIFIED`) with truthful failure states (`BLOCKED`, `FAILED`, `UNVERIFIED`, `QUARANTINED`). An action is marked `VERIFIED` ONLY when post-condition DOM inspection outside the draft composer confirms the mutation (e.g. comment thread presence, profile timeline update, outgoing chat bubble confirmation). Unverified or failed attempts automatically capture full-page screenshots and DOM dumps to `logs/screenshots/`.
+- **Strict Round-Robin Multi-Tab Isolation**: Sequential execution mode defaults to dedicated focus cycles in strict order:
   $$\textbf{Threads} \longrightarrow \textbf{Facebook} \longrightarrow \textbf{LinkedIn}$$
-  Eliminates concurrent tab focus contention, input focus-stealing, and keyboard event collisions across tabs.
-- **Omnichannel Autonomous Social Operations**: Unified multi-platform architecture operating across **Threads**, **Facebook**, and **LinkedIn** directly within your real authenticated desktop browser session over Chrome DevTools Protocol (`CDP`) with zero external API fees.
+  With foreground tab switching (`bringToFront: true`), eliminating concurrent tab focus contention, input focus-stealing, and keyboard collisions.
 - **100% Zero-Heuristic AI Architecture**: Complete elimination of regex pre-filters, static keyword tables, and hardcoded comment templates. All qualification and engagement synthesis are delegated to the live Gemini 3.8 Flash model.
-- **Externalized Dynamic Search Queries**: Search queries for all platforms are centralized in `knowledge/search-queries.md` with hot-reloading.
-- **Pure Multi-Brand Neutrality**: Multi-brand state isolation, dynamic sender checking, and instant brand adaptation via `npm run onboard`.
-- **LinkedIn Inbound & Outbound Pipeline**:
-  - Automatically manages connection requests: accepts individual profile requests (`/in/`) and automatically rejects or ignores company page follows, group invites, and event spam.
-  - Direct Messages monitoring: continuously inspects unread DMs, grounds context in dynamic business knowledge, and synthesizes helpful conversion-oriented replies with zero self-reply loops.
-  - Inbound comment replies: tracks notifications on your posts and comments, responding warmly with user tags (`@Name`).
-  - Daily B2B Thought-Leadership cross-posting: publishes daily authoritative technical posts reusing the visual media generated for Threads.
-  - 2026 Modern DOM traversal for high-intent B2B keyword searches and executive feed monitoring.
-- **Facebook Commercial Discovery & Messenger**:
-  - Inbound comment notification monitoring with personalized tagged replies.
-  - Messenger direct message processing with grounded AI sales reasoning.
-  - Commercial buyer keyword search and public agency/founder group discovery.
-- **Multi-Tab Execution Modes**:
-  - **Round-Robin Mode (`--mode=round-robin` / default)**: Sequentially cycles through Threads ➔ Facebook ➔ LinkedIn with foreground tab switching (`bringToFront: true`) for conflict-free, human-observable operations.
-  - **Concurrent Mode (`--mode=concurrent`)**: Executes independent continuous background loops for Threads, LinkedIn, and Facebook with mutex isolation.
-- **Live Browser Acceptance & Telemetry**:
-  - `npm run e2e:browser`: Live 12-point CDP and authenticated DOM verification test suite.
-  - `node threads-agent.js health`: Live multi-platform authenticated state verification.
-  - `node threads-agent.js accept`: Live acceptance suite cycling across Threads ➔ Facebook ➔ LinkedIn.
-- **Dynamic Antigravity AI Socket & CSRF Discovery**: Automatically discovers the active Antigravity language server listening port and dynamically parses `/proc/<pid>/cmdline` for real-time CSRF tokens. Eliminates process hangs and delivers sub-15-second AI reasoning.
-- **100% Dynamic Knowledge Grounding & Zero Hardcoding**: Complete elimination of all hardcoded brand strings, static fallback templates, fixed keywords, and hardcoded URLs across the entire codebase (`threads-agent.js`, `threads-html-renderer.js`, `threads-poster.js`, `ai-decision-engine.js`, `comment-generator.js`, `threads-media.js`). All brand names, founder personas, official websites, and social handles resolve dynamically from `knowledge/*.md` at runtime.
-- **Universal Multi-User Brand Customization & Isolation**: Any user or business can onboard their personal brand, agency, or software product in seconds via `npm run onboard`. Automated test suites verify 100% brand isolation with zero bleed.
-- **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
-- **Pure Antigravity AI-First Brain (Zero Regex Pre-Filtering)**: Every post discovered on screen is evaluated directly by the authenticated Antigravity IDE agent session (`src/ai/ai-decision-engine.js`) running `gemini-3.8-flash-high` over Connect-RPC.
-- **Official WhatsApp Meeting Booking Link**: When prospects in DMs request discovery calls, scoping sessions, or phone consultations, the agent grounds on the direct WhatsApp booking link dynamically parsed from knowledge base profiles.
-- **Viral Quote-Posting Engine**: Synthesizes sharp, expert technical commentary on trending builder/founder threads, leveraging Threads' 4–5x non-follower recommendation multiplier.
-- **Rich Visual Code & Architecture Cards**: Renders dark-mode terminal window code snippets and node topology diagrams to maximize technical developer engagement and follower conversion.
-- **Algorithmic Peak-Window Pacing**: Intelligently times posts during global peak tech traffic windows (8–11am EST / 6–9pm EST) while maintaining the strict 4 posts / 24h cadence.
-- **Dynamic In-Context Grounding (RAG)**: The engine reads `knowledge/*.md` on-the-fly (`founder.md`, `company.md`, `profiles.md`, `services.md`, `pillars.md`) and injects structured contracts directly into the AI prompt context at runtime with 100% brand isolation.
-- **Tech Networking & Peer Builder Engagement**: Deep semantic classification identifies fellow software developers, AI builders, and tech founders seeking connections, engaging warmly with verified LinkedIn and GitHub credentials.
-- **Transaction-Verified Action Execution**: Modal dismissal is never assumed to be a successful submission. Comments and posts require multi-signal confirmation (DOM snippet detection, confirmation toasts, profile feed presence).
-- **Strict 6-Hour Publishing Cadence (4 Posts / 24 Hours)**: Automatically publishes high-value discussion posts and carousel decks across 5 core pillars exactly 4 times every 24 hours. The scheduler evaluates only `VERIFIED_PUBLISHED` posts to prevent scheduling drift.
-- **Contextual Representation & Single-URL Discipline**: Dynamically adopts `FOUNDER`, `COMPANY`, `BOTH`, or `NEUTRAL` identity with strict single-URL discipline (Founder LinkedIn for individual/dev requests; Company Website / Product for agency/product requests; maximum 1 link).
-- **Stripe/Linear-Grade Graphic Rendering**: Renders 1080x1080 high-contrast social cards, metric grids, and multi-slide carousel decks directly with headless CSS/HTML rendering and official SVG/WebP branding.
+- **Cross-Platform Parity**: Full native support across **Linux x64**, **macOS (Intel & Apple Silicon)**, **Windows 10/11 (PowerShell & Batch)**, and **Android (Termux + Termux:X11)**.
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+flowchart TB
+    subgraph Browser ["🖥️ Authenticated Desktop/Mobile Session (CDP :9222)"]
+        CDP["CDP Remote Debugging Port :9222"]
+        Threads["Threads Tab (Feed, Search, Activity, DMs)"]
+        LinkedIn["LinkedIn Tab (Grow /in/, DMs, Notifications, Posts)"]
+        Facebook["Facebook Tab (Feed, Groups, Messenger DMs, Notifications)"]
+    end
+
+    subgraph BrowserController ["🎮 Agentic Browser Controller (v1.6.0)"]
+        DOMAdapter["2026 Live DOM Adapters (TipTap / ProseMirror / Lexical)"]
+        ContainerScroll["Container-Level Virtualized Scroller (main#workspace)"]
+        NativeMouse["CDP Native Mouse Click Dispatcher (x, y)"]
+        SemanticResolver["9-Level Semantic Fallback Locator"]
+        ActionVerifier["Post-Condition Mutation Verifier (Out-of-Composer DOM)"]
+    end
+
+    subgraph TabManager ["📑 Tab Orchestrator & Mode Engine"]
+        RoundRobin["Round-Robin Sequential Loop (Threads ➔ Facebook ➔ LinkedIn)"]
+        Concurrent["Concurrent Multi-Tab Daemon (Mutex-Guarded)"]
+        VisualFocus["Active Tab BringToFront & Visual Switching"]
+    end
+
+    subgraph CoreEngine ["⚡ Meta Automation Omnichannel Engine"]
+        Scanner["Multi-Platform Scanner & Search Dispatcher"]
+        AiQueue["Antigravity AI Dynamic CSRF Discovery & Queue"]
+        AIBrain["Antigravity AI Cognitive Brain (gemini-3.8-flash-high)"]
+        Knowledge["Dynamic Knowledge Engine (SSOT: founder, company, services)"]
+        Identity["Representation Resolver (FOUNDER, COMPANY, BOTH, NEUTRAL)"]
+        Composer["Conversational Engagement Composer (Single-URL Discipline)"]
+        Renderer["HTML Graphic Renderer (1080x1080 Cards & 5-Slide Decks)"]
+        Scheduler["Cadence Engine (6h Cadence across 5 Pillars)"]
+        Safety["Rate Limiter & Duplicate Guard (Per-Platform Jitter & Quotas)"]
+    end
+
+    subgraph StateStorage ["💾 Local JSON State & Telemetry"]
+        State["Engagement State Store (threads-engagement-state.json)"]
+        Leads["Leads Database (threads-leads.json)"]
+        Audit["Audit Logs & Diagnostics (logs/audit.log, logs/screenshots/)"]
+    end
+
+    CDP <--> BrowserController
+    BrowserController <--> TabManager
+    TabManager <--> Scanner
+    Scanner --> AiQueue
+    AiQueue --> AIBrain
+    AIBrain <--> Knowledge
+    AIBrain --> Identity
+    Identity --> Composer
+    Composer --> Safety
+    Scheduler --> Renderer
+    Renderer --> Safety
+    Safety <--> BrowserController
+    CoreEngine <--> StateStorage
+    BrowserController --> ActionVerifier
+    ActionVerifier --> StateStorage
+```
+
+---
+
+## 🎯 Core Capabilities
+
+### 1. Omnichannel Multi-Platform Lead Discovery & Pipeline
+The engine executes synchronized multi-platform discovery across home feeds, public groups, and targeted search discovery channels:
+- **Threads Discovery**: 13 high-intent search channels (`"need a website"`, `"looking for a developer to build our SaaS"`, `"need custom CRM"`, etc.).
+- **LinkedIn Outbound & Inbound**:
+  - Executive B2B searches (`"looking for software development agency"`, `"need full stack engineer"`, etc.).
+  - Auto-accepts genuine profile connection requests (`/in/`) while rejecting page follow spam, group invites, and event invitations.
+  - TipTap ProseMirror contenteditable comment editor and daily B2B thought-leadership post publisher.
+  - Native CDP mouse click messaging triage: inspects unread DMs, grounds context in dynamic business knowledge, and synthesizes helpful conversion-oriented replies with zero self-reply loops.
+  - Inbound comment replies with tagged user mentions (`@Name`).
+- **Facebook Commercial & Group Discovery**:
+  - Commercial buyer keyword search across feeds and public founder/business groups.
+  - Messenger direct message monitoring with grounded AI response generation.
+  - Inbound comment reply monitoring with tagged replies.
+
+### 2. Pure Antigravity AI Semantic Reasoning
+Every captured post enters the Antigravity AI Cognitive Brain directly:
+- **Client Demand Analysis**: Distinguishes genuine buyers with project budgets from service providers selling their own services, job seekers seeking employment, and corporate HR recruitment ads.
+- **Natural Language Requirement Extraction**: Synthesizes the prospect's exact project needs in natural language.
+- **Knowledge Base Matching**: Grounds requirements against CodeAir's approved services catalogue (`knowledge/services.md`).
+- **Zero Heuristic Guessing**: Posts with AI runtime failures are quarantined (`QUARANTINED`) rather than guessed by regex heuristics.
+
+### 3. Representation-Aware Engagement (Single-URL Discipline)
+- **Founder Identity (`FOUNDER`)**: Triggered when users request a freelancer, solo developer, technical architect, or ask founder questions. Includes Founder LinkedIn (`https://www.linkedin.com/in/sunmughan/`).
+- **Company Identity (`COMPANY`)**: Triggered when users request an agency, company, software firm, or product demonstrations for **[PixelGo HMS](https://pixelgo.live)**. Includes Company Website (`https://www.codeair.tech`).
+- **Dual Representation (`BOTH`)**: Deployed when prospects are open to either agency or lead engineer.
+- **Single-URL Rule**: Maximum of 1 contextually verified link per comment; never dumps multiple links.
+- **Official WhatsApp Meeting Booking Link**: Prospects asking to schedule calls, discovery chats, or consultations receive the direct WhatsApp booking link (`https://wa.me/codeair`).
+
+### 4. High-Fidelity HTML Visual Card & Slide Renderer
+Say goodbye to tacky, cheap social graphics. The built-in renderer produces aesthetic, executive-level visual assets:
+- **Dark Elegance**: Pitch-black background (`#0A0D12`), ultra-fine glassmorphic borders (`rgba(255,255,255,0.08)`), and electric cyan (`#00F0FF`) / emerald green (`#00E599`) glows.
+- **Structured Typography**: High-legibility sans-serif with metadata chips, stat cards, metric pills, and executive quote layouts.
+- **Official Brand Markings**: Embeds authentic brand logos and official website watermarks.
+
+### 5. Content Strategy & Automated Publishing
+Every **6 hours** (exactly 4 posts / 24 hours), the scheduler selects the next content pillar in rotation, renders a tailored graphic or 5-slide carousel, writes an engaging post, and publishes it:
+1. **`pixelgo_hms`**: Hospital management operations, clinical workflows, and modern patient EHR software.
+2. **`builder_network`**: Architecture teardowns, full-stack scaling, and modern product engineering.
+3. **`founders_revolution`**: Bootstrapping, enterprise automation, and founder-led execution.
+4. **`tech_mentorship`**: Real engineering insights, anti-guru pragmatism, and clean code practices.
+5. **`agentic_ai`**: Multi-agent systems, local LLM orchestration, and deterministic business tools.
+
+---
+
+## ⚡ 1-Click Native Installers & Cross-Platform Runners
+
+Install and configure all dependencies in under 60 seconds on your target platform:
+
+### 🐧 Linux (Ubuntu, Debian, Zorin, Fedora, Arch)
+```bash
+./installers/install-linux.sh
+```
+Or start directly with the 1-click script:
+```bash
+./start-automation
+```
+
+### 🍎 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
+```bash
+./installers/install-macos.sh
+```
+Or start directly:
+```bash
+./start-automation
+```
+
+### 🪟 Windows (Windows 10 / 11)
+Open PowerShell as Administrator:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\installers\install-windows.ps1
+```
+Or double-click the 1-click batch runner:
+```cmd
+start-automation.bat
+```
+To inspect status or stop:
+```powershell
+.\status-automation.ps1
+.\stop-automation.ps1
+```
+
+---
+
+## 📱 Android Deep-Dive: Termux & Termux:X11 Guide
+
+Meta Automation runs natively on Android without root using **Termux** and the **Termux:X11** companion app.
+
+### ⚠️ Critical Prerequisite: Use F-Droid (NOT Google Play)
+The Google Play version of Termux is **deprecated, abandoned, and broken**. You **must** install Termux and Termux:X11 from F-Droid or GitHub Releases:
+1. Install **Termux** from [F-Droid](https://f-droid.org/en/packages/com.termux/).
+2. Install **Termux:X11** from [GitHub Releases](https://github.com/termux/termux-x11/releases).
+
+### Step 1: Fix Android 12+ Background Process Restrictions
+On Android 12, 13, 14+, the OS "Phantom Process Killer" terminates background terminal processes consuming CPU or spawning child threads.
+- **Option A (Via ADB - Recommended)**:
+  Enable Developer Options & USB Debugging on your phone, connect to PC or run Wireless ADB, and execute:
+  ```bash
+  adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"
+  ```
+- **Option B (In Android Settings)**:
+  - Long press the Termux app icon ➔ **App Info** ➔ **Battery** ➔ Select **Unrestricted**.
+  - Disable "Pause app activity if unused".
+  - Inside Termux, run:
+    ```bash
+    termux-wake-lock
+    ```
+
+### Step 2: Install Core Packages & Dependencies
+Inside Termux, execute:
+```bash
+pkg update -y
+pkg install -y git nodejs-lts x11-repo chromium
+```
+
+### Step 3: Clone & Install Meta Automation
+```bash
+git clone https://github.com/sunmughan/meta-automation.git
+cd meta-automation
+npm install
+```
+
+### Step 4: Run the Termux 1-Click Master Runner
+```bash
+./start-termux
+```
+The runner will:
+1. Verify `termux-wake-lock`.
+2. Start the `termux-x11 :0` display server in the background.
+3. Launch `chromium` on `DISPLAY=:0` with `--remote-debugging-port=9222`, `--no-sandbox`, and `--disable-dev-shm-usage`.
+4. Open the **Termux:X11** companion app so you can view the browser, log into your Threads, LinkedIn, and Facebook accounts once.
+5. Connect Meta Automation directly to the browser session and begin autonomous round-robin operations!
 
 ---
 
@@ -95,115 +264,7 @@ All brand identity files live in `knowledge/` and serve as the single source of 
 - **`knowledge/services.md`**: List of approved services vs. excluded non-core categories.
 - **`knowledge/pillars.md`**: The 5 content pillars used for automated 6-hour posting rotation.
 - **`knowledge/voice.md`**: Tone guidelines, anti-canned-response rules, and conversational framing.
-
-### 3. Customizing Your 5 Social Publishing Pillars (`knowledge/pillars.md`)
-Every 6 hours, the engine publishes high-value content across 5 pillars defined in `knowledge/pillars.md`:
-- **Pillar 1**: Flagship Product / Core Platform (`pixelgo_hms` — PixelGo HMS Unified Hospitality Operations System)
-- **Pillar 2**: Industry Collaboration / Talent Network (`builder_network` — CodeAir Builder Network & Engineering Rev-Share)
-- **Pillar 3**: Founder Insights & Strategy (`founders_revolution` — Practical Startup Engineering, MVPs & Tech Strategy)
-- **Pillar 4**: Technical Mentorship / Educational Deep-Dives (`tech_mentorship` — Architecture, Clean Code & Systems Design)
-- **Pillar 5**: Practical AI & Modern Trends (`agentic_ai` — Antigravity Agentic Reasoning & Enterprise Automation)
-
----
-
-## 🏛️ System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Browser ["🖥️ Authenticated Desktop Session (Chrome / Edge / Brave CDP :9222)"]
-        CDP["CDP Remote Debugging Port :9222"]
-        Threads["Threads Tab (Feed, Search, Activity, DMs)"]
-        LinkedIn["LinkedIn Tab (Network Grow /in/, DMs, Notifications, Posts)"]
-        Facebook["Facebook Tab (Feed, Groups, Messenger DMs, Notifications)"]
-    end
-
-    subgraph MultiTabManager ["📑 Concurrency & Tab Orchestrator"]
-        ModeSeq["Sequential Loop (Threads -> LinkedIn -> Facebook)"]
-        ModeCon["Concurrent Multi-Tab Daemon (Mutex-Guarded)"]
-        TabFocus["Active Tab BringToFront & Visual Switching"]
-    end
-
-    subgraph CoreEngine ["⚡ Meta Automation Omnichannel Engine"]
-        Scanner["Multi-Platform Scanner & Search Dispatcher"]
-        AiQueue["Antigravity AI Dynamic CSRF Discovery & Queue"]
-        AIBrain["Antigravity AI Cognitive Brain (gemini-3.8-flash-high)"]
-        Knowledge["Dynamic Knowledge Engine (SSOT: founder, company, services)"]
-        Identity["Representation Resolver (FOUNDER, COMPANY, BOTH, NEUTRAL)"]
-        Composer["Conversational Engagement Composer (Single-URL Discipline)"]
-        Renderer["HTML Graphic Renderer (1080x1080 Cards & 5-Slide Decks)"]
-        Scheduler["Cadence Engine (6h Cadence across 5 Pillars)"]
-        Safety["Rate Limiter & Duplicate Guard (Per-Platform Jitter & Quotas)"]
-    end
-
-    subgraph StateStorage ["💾 Local JSON State & Telemetry"]
-        State["Engagement State Store (threads-engagement-state.json)"]
-        Leads["Leads Database (threads-leads.json)"]
-        Audit["Audit Logs (logs/audit.log, logs/daemon.log)"]
-    end
-
-    CDP <--> MultiTabManager
-    MultiTabManager <--> Scanner
-    Scanner --> AiQueue
-    AiQueue --> AIBrain
-    AIBrain <--> Knowledge
-    AIBrain --> Identity
-    Identity --> Composer
-    Composer --> Safety
-    Scheduler --> Renderer
-    Renderer --> Safety
-    Safety <--> MultiTabManager
-    CoreEngine <--> StateStorage
-```
-
----
-
-## 🎯 Core Capabilities
-
-### 1. Omnichannel Multi-Platform Lead Discovery & Pipeline
-The engine executes synchronized multi-platform discovery across home feeds, public groups, and targeted search discovery channels:
-- **Threads Discovery**: 13 high-intent search channels (`"need a website"`, `"looking for a developer to build our SaaS"`, `"need custom CRM"`, etc.).
-- **LinkedIn Outbound & Inbound**:
-  - Executive B2B searches (`"looking for software development agency"`, `"need full stack engineer"`, etc.).
-  - Auto-accepts genuine profile connection requests (`/in/`) while rejecting page follow spam, group invites, and event invitations.
-  - Inbound comment replies with tagged user mentions (`@Name`).
-  - Automated B2B thought-leadership cross-posting with branded visual cards.
-- **Facebook Commercial & Group Discovery**:
-  - Commercial buyer keyword search across feeds and public founder/business groups.
-  - Messenger direct message monitoring with grounded AI response generation.
-  - Inbound comment reply monitoring with tagged replies.
-
-### 2. Pure Antigravity AI Semantic Reasoning
-Every captured post enters the Antigravity AI Cognitive Brain directly:
-- **Client Demand Analysis**: Distinguishes genuine buyers with project budgets from service providers selling their own services, job seekers seeking employment, and corporate HR recruitment ads.
-- **Natural Language Requirement Extraction**: Synthesizes the prospect's exact project needs in natural language.
-- **Knowledge Base Matching**: Grounds requirements against CodeAir's approved services catalogue (`knowledge/services.md`).
-- **Zero Heuristic Guessing**: Posts with AI runtime failures are quarantined (`QUARANTINED`) rather than guessed by regex heuristics.
-
-### 3. Representation-Aware Engagement (Single-URL Discipline)
-- **Founder Identity (`FOUNDER`)**: Triggered when users request a freelancer, solo developer, technical architect, or ask founder questions. Includes Founder LinkedIn (`https://www.linkedin.com/in/sunmughan/`).
-- **Company Identity (`COMPANY`)**: Triggered when users request an agency, company, software firm, or product demonstrations for **[PixelGo HMS](https://pixelgo.live)**. Includes Company Website (`https://www.codeair.tech`).
-- **Dual Representation (`BOTH`)**: Deployed when prospects are open to either agency or lead engineer.
-- **Single-URL Rule**: Maximum of 1 contextually verified link per comment; never dumps multiple links.
-
-### 4. High-Fidelity HTML Visual Card & Slide Renderer
-Say goodbye to tacky, cheap social graphics. The built-in renderer produces aesthetic, executive-level visual assets:
-- **Dark Elegance**: Pitch-black background (`#0A0D12`), ultra-fine glassmorphic borders (`rgba(255,255,255,0.08)`), and electric cyan (`#00F0FF`) / emerald green (`#00E599`) glows.
-- **Structured Typography**: High-legibility sans-serif with metadata chips, stat cards, metric pills, and executive quote layouts.
-- **Official Brand Markings**: Embeds the authentic CodeAir logo with `www.codeair.tech` and the PixelGo calligraphic emblem with `pixelgo.live`.
-
-### 5. Content Strategy & Automated Publishing
-Every **6 hours** (exactly 4 posts / 24 hours), the scheduler selects the next content pillar in rotation, renders a tailored graphic or 5-slide carousel, writes an engaging post, and publishes it:
-1. **`pixelgo_hms`**: Hospital management operations, clinical workflows, and modern patient EHR software.
-2. **`builder_network`**: Architecture teardowns, full-stack scaling, and modern product engineering.
-3. **`founders_revolution`**: Bootstrapping, enterprise automation, and founder-led execution.
-4. **`tech_mentorship`**: Real engineering insights, anti-guru pragmatism, and clean code practices.
-5. **`agentic_ai`**: Multi-agent systems, local LLM orchestration, and deterministic business tools.
-
-### 6. Anti-Bot Stealth & Operational Guardrails
-- **Human Typing Simulation**: Key strokes are typed with human-like variable cadence and random jitter.
-- **Duplicate Prevention**: Multi-hash lookup prevents ever commenting on the same thread twice or sending duplicate direct messages.
-- **Dynamic Rate Limiter Governance**: Action velocity governed by rate limiter quotas and exponential backoff rather than hardcoded cycle caps.
-- **Dry-Run & Approval Modes**: Test all actions safely in simulation mode before enabling autonomous live execution.
+- **`knowledge/search-queries.md`**: All 42 discovery search queries across platforms with dynamic hot-reloading.
 
 ---
 
@@ -222,24 +283,31 @@ meta-automation/
 │   ├── founder.md                   # Founder profile, positioning, credentials
 │   ├── pricing.md                   # Transparent pricing tiers & billing models
 │   ├── services.md                  # Detailed service catalog (Web, Mobile, AI, CRM)
-│   └── voice.md                     # Tone guidelines, rules of engagement, anti-slop rules
-├── scripts/                         # Operational helper scripts
-│   ├── launch-brave-cdp.sh          # Launches Brave browser with remote debugging port 9222
-│   ├── start-agent.sh               # Background daemon launcher with process tracking
-│   ├── status-agent.sh              # Telemetry reporting script
-│   └── stop-agent.sh                # Graceful process termination script
+│   ├── voice.md                     # Tone guidelines, rules of engagement, anti-slop rules
+│   └── search-queries.md            # Centralized search queries for discovery
 ├── src/                             # Core modular architecture
+│   ├── agent/                       # Agentic Browser Controller & Action Verifier
+│   │   ├── browser-agent.js         # Unified browser agent controller
+│   │   ├── action-verifier.js       # Post-condition DOM mutation verification
+│   │   └── feature-health.js        # Live session health check engine
 │   ├── ai/                          # AI decision engines & Antigravity/Gemini adapters
-│   ├── browser/                     # Puppeteer CDP connection manager & page pooling
+│   ├── browser/                     # Puppeteer CDP connection manager & browser operator
 │   ├── conversations/               # Identity resolver & multi-turn dialog manager
 │   ├── engagement/                  # Contextual comment generator, reply & DM monitors
 │   ├── knowledge/                   # Markdown parser & knowledge retrieval engine
 │   ├── leads/                       # Intent classification & service matching algorithms
 │   ├── logging/                     # Colored console logger & audit loggers
-│   ├── platforms/                   # Threads & Instagram scanners, post composers & renderers
+│   ├── platforms/                   # Platform scanners, composers, and live DOM adapters
+│   │   ├── threads/                 # Threads scanners, actions, and publishers
+│   │   ├── linkedin/                # LinkedIn TipTap poster, container scroller, DMs & actions
+│   │   └── facebook/                # Facebook Comet search, group scanner, DMs & actions
 │   ├── safety/                      # Rate limiters, duplicate guards, approval gates
-│   └── storage/                     # Atomic state store & leads persistence
+│   ├── storage/                     # Atomic state store & leads persistence
+│   └── telemetry/                   # Action telemetry, execution metrics & screenshot auditor
 ├── tests/                           # Verification suite
+│   ├── suite.js                     # Comprehensive end-to-end scenario tests
+│   ├── browser-e2e.js               # Live 12-point CDP and authenticated DOM test suite
+│   └── cross-platform-audit.js      # Cross-platform runner & browser catalog audit
 ├── installers/                      # Native 1-click platform installers
 │   ├── install-linux.sh             # Linux installer (Debian, Ubuntu, Fedora, Arch)
 │   ├── install-macos.sh             # macOS installer (Intel & Apple Silicon)
@@ -247,26 +315,6 @@ meta-automation/
 │   ├── install-windows.bat          # Windows 1-click batch installer wrapper
 │   └── install-android-termux.sh    # Android Termux:X11 1-click installer
 ├── release/                         # Distribution archives & release builds
-├── scripts/                         # Operational helper scripts
-│   ├── launch-browser-cdp.js        # Universal cross-platform browser CDP launcher
-│   ├── launch-brave-cdp.sh          # Shell CDP launcher (Linux / macOS / Termux)
-│   ├── launch-brave-cdp.ps1         # Windows PowerShell CDP launcher
-│   ├── launch-brave-cdp.bat         # Windows Batch CDP launcher
-│   ├── start-agent.sh               # Background daemon launcher
-│   ├── status-agent.sh              # Telemetry reporting script
-│   └── stop-agent.sh                # Graceful process termination script
-├── src/                             # Core modular architecture
-├── tests/                           # Verification suite
-│   ├── suite.js                     # 47 comprehensive end-to-end scenario tests
-│   ├── pillar-and-search-audit.js   # Pillar & search verification
-│   └── cross-platform-audit.js      # Cross-platform runner & installer audit
-├── ANTIGRAVITY_GUIDE.md             # Master Antigravity setup, prompts & orchestration
-├── .env.example                     # Environment template
-├── .gitignore                       # Git ignore rules for state, secrets, and logs
-├── LICENSE                          # MIT License
-├── package.json                     # Project manifest & CLI entrypoints
-├── README.md                        # Master documentation
-├── SPONSORS.md                      # Sponsorship information
 ├── start-automation                 # Linux/macOS 1-Click daemon launcher
 ├── status-automation                # Linux/macOS 1-Click status inspector
 ├── stop-automation                  # Linux/macOS 1-Click graceful shutdown
@@ -280,107 +328,11 @@ meta-automation/
 
 ---
 
-## ⚡ 1-Click Native Installers
-
-Install and configure all dependencies in under 60 seconds on your target platform:
-
-### 🐧 Linux (Ubuntu, Debian, Zorin, Fedora, Arch)
-```bash
-./installers/install-linux.sh
-```
-
-### 🍎 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
-```bash
-./installers/install-macos.sh
-```
-
-### 🪟 Windows (Windows 10 / 11)
-Open PowerShell or double-click:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\installers\install-windows.ps1
-```
-*(Or simply double-click `installers\install-windows.bat`)*
-
-### 📱 Android (Termux + Termux:X11)
-Inside the Termux terminal on Android:
-```bash
-pkg update -y && pkg install -y git
-git clone https://github.com/sunmughan/meta-automation.git
-cd meta-automation
-./installers/install-android-termux.sh
-```
-> **Tip:** The installer automatically configures `Termux:X11` on `DISPLAY=:1`, enables port 9222 CDP, and creates a 1-tap Android home screen widget: `~/start-meta.sh`.
-
----
-
-## 🪐 Antigravity AI Orchestration & Prompts
-
-Meta Automation is designed to run with **Google Antigravity** as its cognitive engine.
-Read the **[ANTIGRAVITY_GUIDE.md](ANTIGRAVITY_GUIDE.md)** for:
-- Full setup instructions on Linux, macOS, Windows, and Termux.
-- Ready-to-copy Master Prompts (Autonomous Growth Mode, Lead Discovery Scan, Human Approval Mode, Carousel Deck Generation).
-- Running inside Antigravity vs. running as a 24/7 background headless daemon.
-
----
-
-## 🚀 Getting Started (Manual Setup)
-
-### Prerequisites
-- **Node.js**: `v18.0.0` or higher.
-- **Operating System**: Linux, macOS, Windows 10/11, or Android (Termux).
-- **Browser**: Brave Browser, Google Chrome, or Chromium.
-
-### Installation
-Clone the repository:
-```bash
-git clone https://github.com/sunmughan/meta-automation.git
-cd meta-automation
-npm install
-```
-
-### Environment Configuration
-Copy the configuration template:
-```bash
-cp .env.example .env
-```
-Edit `.env` to suit your requirements:
-```ini
-# Chrome DevTools Protocol & Display
-THREADS_CDP_URL=http://127.0.0.1:9222
-DISPLAY=:0
-
-# Operational Safety Modes
-APPROVAL_MODE=false      # Set to 'true' to require human review before posting
-DRY_RUN=false            # Set to 'true' to simulate actions without publishing
-POSTING_ENABLED=true     # Master switch for live publishing
-
-# AI Runtime
-AI_RUNTIME=antigravity   # Primary runtime
-AI_MODEL=gemini-3.6-flash
-```
-
-### Launching the Browser in CDP Mode
-The engine communicates with your existing logged-in browser session via CDP.
-Launch the browser with remote debugging enabled:
-```bash
-# Universal (All Platforms):
-node scripts/launch-browser-cdp.js
-
-# Or native wrappers:
-./scripts/launch-brave-cdp.sh          # Linux / macOS / Termux
-powershell .\scripts\launch-brave-cdp.ps1 # Windows
-```
-> **Tip:** You can log into Threads (`threads.net`) and Instagram (`instagram.com`) normally in this window. Your session, cookies, and tabs will remain completely intact.
-
----
-
 ## ⚡ Operational Commands
 
 ### Daemon Management (Background Service)
-Manage the autonomous agent with 1-click control scripts:
-
 ```bash
-# Start automation daemon in background (attaches to Brave CDP)
+# Start automation daemon in background (attaches to Browser CDP)
 ./start-automation
 
 # Check live system health, rate limits, scanned posts, and lead stats
@@ -391,8 +343,6 @@ Manage the autonomous agent with 1-click control scripts:
 ```
 
 ### Direct CLI Usage
-You can also run specific tasks directly via `threads-agent.js`:
-
 ```bash
 # Run continuous Round-Robin orchestrator (Threads ➔ Facebook ➔ LinkedIn with tab switching)
 node threads-agent.js run --mode=round-robin
@@ -409,16 +359,14 @@ npm run e2e:browser
 # Live Browser Health Verification (Verifies authenticated session state across all tabs)
 node threads-agent.js health
 
-# Live Browser Acceptance Mode (Executes visible actions in strict Round-Robin order: Threads ➔ Facebook ➔ LinkedIn)
+# Live Browser Acceptance Mode (Executes visible actions in strict Round-Robin order)
 node threads-agent.js accept
-# Or with environment flag:
-AGENT_ACCEPTANCE_MODE=true node threads-agent.js --once
 
-# Validate authentication status across all platforms (Threads, Instagram, LinkedIn, Facebook)
-node threads-agent.js auth [threads|instagram|linkedin|facebook|all]
+# Validate authentication status across all platforms (Threads, LinkedIn, Facebook)
+node threads-agent.js auth [threads|linkedin|facebook|all]
 
 # Perform a feed scan on a specific platform
-node threads-agent.js scan [threads|instagram|linkedin|facebook]
+node threads-agent.js scan [threads|linkedin|facebook]
 
 # Qualify leads and synthesize contextual comments
 node threads-agent.js analyze
@@ -454,13 +402,13 @@ Every capability across all 3 platforms has been implemented, tested, and valida
 | **Threads** | Activity | ✅ Yes | ✅ Yes | ✅ Yes | `threadsActivityWatcher.checkActivity` (Inbound mentions & notifications) |
 | **Threads** | DM | ✅ Yes | ✅ Yes | ✅ Yes | `ActionVerifier.verifyOutgoingMessage` (Outgoing chat bubble confirmed) |
 | **Threads** | Publishing | ✅ Yes | ✅ Yes | ✅ Yes | `threadsPoster.publishPost` (Profile feed presence verified) |
-| **LinkedIn** | Feed | ✅ Yes | ✅ Yes | ✅ Yes | `linkedin:FEED_SCAN` (`https://www.linkedin.com/feed/`) |
+| **LinkedIn** | Feed | ✅ Yes | ✅ Yes | ✅ Yes | `linkedin:FEED_SCAN` (`main#workspace` container scroll) |
 | **LinkedIn** | Search | ✅ Yes | ✅ Yes | ✅ Yes | `linkedin:SEARCH` (Executive B2B high-intent search channels) |
 | **LinkedIn** | Notifications | ✅ Yes | ✅ Yes | ✅ Yes | `checkLinkedInNotifications` (Notification card navigation & replies) |
 | **LinkedIn** | Connections | ✅ Yes | ✅ Yes | ✅ Yes | `checkLinkedInConnectionRequests` (`/in/` accepted, company ignored) |
-| **LinkedIn** | Messages | ✅ Yes | ✅ Yes | ✅ Yes | `checkLinkedInMessages` (Unread DMs inspected, zero self-replies) |
-| **LinkedIn** | Comments | ✅ Yes | ✅ Yes | ✅ Yes | `linkedInActions.postComment` (Verified comment DOM insertion) |
-| **LinkedIn** | Publishing | ✅ Yes | ✅ Yes | ✅ Yes | `linkedInPoster.publishPost` (Daily B2B thought-leadership post) |
+| **LinkedIn** | Messages | ✅ Yes | ✅ Yes | ✅ Yes | `checkLinkedInMessages` (Native CDP mouse clicks, zero self-replies) |
+| **LinkedIn** | Comments | ✅ Yes | ✅ Yes | ✅ Yes | `linkedInActions.postComment` (TipTap ProseMirror comment editor) |
+| **LinkedIn** | Publishing | ✅ Yes | ✅ Yes | ✅ Yes | `linkedInPoster.publishPost` (TipTap ProseMirror post publisher) |
 | **Facebook** | Feed | ✅ Yes | ✅ Yes | ✅ Yes | `facebookProfileManager.scanProfileFeed` (`https://www.facebook.com/sunmughans/`) |
 | **Facebook** | Search | ✅ Yes | ✅ Yes | ✅ Yes | `searchFacebookPosts` (Comet DOM `div[data-pagelet*='SearchResult']`) |
 | **Facebook** | Groups | ✅ Yes | ✅ Yes | ✅ Yes | `searchFacebookGroupPosts` (Public agency & founder group discovery) |
@@ -473,39 +421,17 @@ Every capability across all 3 platforms has been implemented, tested, and valida
 
 ## 🧪 Verification & Automated Test Suite
 
-The engine includes an exhaustive test suite auditing 33 real-world scenarios:
+The engine includes an exhaustive test suite auditing all scenarios:
 - Genuine website, SaaS, AI automation, and CRM buyer detection
 - Anti-noise rejection (recruitment, job seekers, generic sellers, graphics requests)
 - Founder vs. Company identity resolution
 - Deduplication and rate limiter safety
 - 5-Pillar visual slide rendering and keyword search coverage
+- Cross-platform runner & browser catalog audit
 
 Run the suite anytime:
 ```bash
 npm test
-```
-
-Expected output:
-```text
-==================================================
-  CODEAIR AUTOMATION SUITE: 18 SCENARIO AUDIT
-==================================================
-  ✓ PASS: 1. Genuine website buyer
-  ✓ PASS: 2. Genuine SaaS buyer
-  ✓ PASS: 3. Genuine AI automation buyer
-  ...
-==================================================
-  PILLAR, SEARCH & LEAD AUDIT (USER FEEDBACK FIXES)
-==================================================
-  ✓ PASS: High-intent search discovery configured with 20 buyer queries
-  ✓ PASS: Configured 6-hour publishing interval (POST_INTERVAL_HOURS=6, exactly 4 posts / 24h)
-  ✓ PASS: Verified 5-slide deck & quote card for pillar: [pixelgo_hms]
-  ...
---------------------------------------------------
-Test Results: 50 Passed, 0 Failed
-Audit Summary: 15 Passed, 0 Failed
-Cross-Platform Results: 17 Passed, 0 Failed
---------------------------------------------------
 ```
 
 ---
