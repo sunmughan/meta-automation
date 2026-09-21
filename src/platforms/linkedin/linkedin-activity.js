@@ -348,11 +348,20 @@ class LinkedInActivityWatcher {
           }
           await new Promise(r => setTimeout(r, 1000));
 
-          // Click Post / Submit
           const submitBtn = await page.$("button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-btn");
           if (submitBtn) {
             await submitBtn.click();
             await new Promise(r => setTimeout(r, 3000));
+            const verification = await verifyTextPresence(page, replyMessage, {
+              platform:"linkedin",
+              action:"NOTIFICATION_REPLY",
+              targetId:notifId,
+              timeout:12000
+            });
+            if (!verification.verified) {
+              telemetry.record({type:"ACTION_UNVERIFIED",platform:"linkedin",action:"NOTIFICATION_REPLY",targetId:notifId,username:notif.username,reason:verification.reason});
+              continue;
+            }
             duplicateGuard.recordExecuted({
               platform: "linkedin",
               actionType: "REPLY",
@@ -360,9 +369,13 @@ class LinkedInActivityWatcher {
               text: replyMessage,
               username: notif.username
             });
-            logger.info(`✅ Live LinkedIn reply sent to @${notif.username}!`);
+            logger.info(`✅ Live LinkedIn reply sent to @${notif.username} and verified!`);
             repliesSent++;
+          } else {
+            telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"NOTIFICATION_REPLY",targetId:notifId,username:notif.username,error:"Submit button not found"});
           }
+        } else {
+          telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"NOTIFICATION_REPLY",targetId:notifId,username:notif.username,error:"Comment editor not found"});
         }
       }
 
