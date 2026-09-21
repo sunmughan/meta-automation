@@ -134,6 +134,9 @@ class LinkedInActivityWatcher {
       });
 
       logger.info(`[LINKEDIN MESSAGES] Found ${conversationList.length} conversations (${conversationList.filter(c => c.unread).length} unread).`);
+      if (!conversationList.length) {
+        telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"DM_SCAN",targetId:"inbox",error:"No conversation rows discovered; DOM adapter likely stale"});
+      }
 
       let processedCount = 0;
       for (let idx = 0; idx < conversationList.length; idx++) {
@@ -150,7 +153,10 @@ class LinkedInActivityWatcher {
           return false;
         }, idx);
 
-        if (!opened) continue;
+        if (!opened) {
+          telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"DM_OPEN",targetId:conv.username,error:"Conversation row could not be clicked"});
+          continue;
+        }
         await new Promise(r => setTimeout(r, 2000));
 
         // Inspect messages in active conversation
@@ -228,6 +234,16 @@ class LinkedInActivityWatcher {
           if (sendBtn) {
             await sendBtn.click();
             await new Promise(r => setTimeout(r, 2000));
+            const verification = await verifyTextPresence(page, replyMessage, {
+              platform:"linkedin",
+              action:"DM_SEND",
+              targetId:convId,
+              timeout:12000
+            });
+            if (!verification.verified) {
+              telemetry.record({type:"ACTION_UNVERIFIED",platform:"linkedin",action:"DM_SEND",targetId:convId,username:conv.username,reason:verification.reason});
+              continue;
+            }
             duplicateGuard.recordExecuted({
               platform: "linkedin",
               actionType: "DM",
@@ -235,8 +251,10 @@ class LinkedInActivityWatcher {
               text: replyMessage,
               username: conv.username
             });
-            logger.info(`✅ Sent live LinkedIn message response to @${conv.username}!`);
+            logger.info(`✅ Sent live LinkedIn message response to @${conv.username} and verified it!`);
             processedCount++;
+          } else {
+            telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"DM_SEND",targetId:convId,username:conv.username,error:"Send button not found"});
           }
         }
       }
