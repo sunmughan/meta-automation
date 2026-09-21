@@ -465,7 +465,25 @@ class KnowledgeEngine {
   getWhatsAppUrl() {
     this.loadAll();
     const profiles = this.getOfficialProfiles();
-    return profiles.company?.whatsapp || profiles.founder?.whatsapp || "https://wa.me/codeair";
+    return profiles.company?.whatsapp || profiles.founder?.whatsapp || "";
+  }
+
+  /**
+   * Dynamically resolves the open-source meta-automation GitHub repository URL.
+   * Reads from pillars.md referenceUrl for the meta_automation pillar.
+   * Falls back to the founder's GitHub profile if not found in pillars.
+   */
+  getMetaAutomationUrl() {
+    this.loadAll();
+    const pillars = this.getContentPillars();
+    const metaPillar = pillars.find(p => p.id === "meta_automation" || p.id === "meta-automation");
+    if (metaPillar && metaPillar.referenceUrl) return metaPillar.referenceUrl;
+    const profiles = this.getOfficialProfiles();
+    // Try to find the meta-automation specific URL from profiles
+    const raw = this.getRaw("profiles.md");
+    const repoMatch = raw.match(/https?:\/\/github\.com\/[^\s]+\/meta-automation/i);
+    if (repoMatch) return repoMatch[0];
+    return profiles.founder?.github || "";
   }
 
   getContentPillars() {
