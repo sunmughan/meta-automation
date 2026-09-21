@@ -51,8 +51,37 @@ if (prompt.includes("test_quarantine_fail")) {
  * Discovers host, port, and CSRF token for the running Antigravity IDE language server.
  */
 function discoverAntigravitySession() {
-  let address = process.env.ANTIGRAVITY_LS_ADDRESS || "localhost:41977";
+  let address = process.env.ANTIGRAVITY_LS_ADDRESS || "";
   let token = process.env.ANTIGRAVITY_CSRF_TOKEN || "";
+  let port = 0;
+
+  // 1. First attempt dynamic socket inspection to match listening port with exact process token
+  if (process.platform !== "win32") {
+    try {
+      const fs = require("fs");
+      const ss = execSync("ss -tulpn 2>/dev/null", { encoding: "utf8" });
+      const lines = ss.split("\n");
+      for (const line of lines) {
+        if (line.includes("language_server")) {
+          const portMatch = line.match(/:(\d+)\s+/);
+          const pidMatch = line.match(/pid=(\d+)/);
+          if (portMatch && pidMatch) {
+            const candidatePort = parseInt(portMatch[1], 10);
+            const pid = pidMatch[1];
+            try {
+              const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8");
+              const tokenMatch = cmdline.match(/--csrf_token\x00([a-zA-Z0-9-]+)/) || cmdline.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
+              if (tokenMatch) {
+                port = candidatePort;
+                token = tokenMatch[1];
+                break;
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (e) {}
+  }
 
   if (!token) {
     if (process.platform === "win32") {
@@ -63,31 +92,33 @@ function discoverAntigravitySession() {
         if (tokenMatch) token = tokenMatch[1];
       } catch (e) {}
     } else {
-      // Linux / macOS / Android Termux
-      const cmds = [
-        "ps aux 2>/dev/null",
-        "ps -ef 2>/dev/null",
-        "ps -A -o pid,args 2>/dev/null"
-      ];
+      // Fallback process scan
+      const cmds = ["ps aux 2>/dev/null", "ps -ef 2>/dev/null"];
       for (const cmd of cmds) {
         try {
           const psOutput = execSync(cmd, { encoding: "utf8" });
-          if (psOutput && psOutput.includes("language_server")) {
-            const tokenMatch = psOutput.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
-            if (tokenMatch) {
-              token = tokenMatch[1];
-              break;
+          const lines = psOutput.split("\n");
+          for (const l of lines) {
+            if (l.includes("language_server") && l.includes("--csrf_token")) {
+              const tokenMatch = l.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
+              if (tokenMatch) {
+                token = tokenMatch[1];
+                break;
+              }
             }
           }
+          if (token) break;
         } catch (e) {}
       }
     }
   }
 
-  const [host, portStr] = address.split(":");
-  const port = parseInt(portStr, 10) || 41977;
+  if (!port) {
+    const [host, portStr] = (address || "localhost:41977").split(":");
+    port = parseInt(portStr, 10) || 41977;
+  }
 
-  return { host: host || "localhost", port, token };
+  return { host: "127.0.0.1", port, token };
 }
 
 /**

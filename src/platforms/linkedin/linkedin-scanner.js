@@ -10,14 +10,16 @@ const stateStore = require("../../storage/state-store");
 const logger = require("../../logging/logger");
 
 const HIGH_INTENT_LINKEDIN_QUERIES = [
+  "looking for web developer",
+  "hire software developer",
+  "looking for fullstack developer",
+  "need custom software",
+  "seeking MVP developer",
+  "hire flutter developer",
+  "looking for software development agency",
   "looking for an agency to build",
   "need software developers",
-  "seeking recommendations for web app",
-  "looking for fullstack developer",
-  "hire flutter developer",
-  "need custom CRM software",
-  "seeking dev shop MVP",
-  "looking for AI automation engineer"
+  "looking for AI developer"
 ];
 
 class LinkedInScanner {
@@ -34,7 +36,8 @@ class LinkedInScanner {
 
     try {
       browser = await browserManager.connect();
-      page = await browserManager.getLinkedInPage();
+      page = await browserManager.getLinkedInPage({ bringToFront: true });
+      await page.bringToFront().catch(() => {});
 
       if (!page.url().includes("/feed")) {
         await page.goto(CONFIG.LINKEDIN_HOME || "https://www.linkedin.com/feed/", {
@@ -161,36 +164,62 @@ class LinkedInScanner {
 
     try {
       browser = await browserManager.connect();
-      page = await browserManager.getLinkedInPage();
+      page = await browserManager.getLinkedInPage({ bringToFront: true });
+      await page.bringToFront().catch(() => {});
 
       const searchUrl = `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(query)}&sortBy=%22date_posted%22`;
       logger.info(`[LINKEDIN SEARCH] Searching query: "${query}"...`);
       await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 2500));
 
-      // Expand see more
-      await page.evaluate(() => {
-        const seeMoreBtns = document.querySelectorAll(".feed-shared-inline-show-more-text button, button.see-more");
-        for (const btn of seeMoreBtns) {
-          try { btn.click(); } catch (e) {}
-        }
-      });
+      // Scroll smoothly and expand see more so user sees live visual operation
+      for (let s = 0; s < 3; s++) {
+        await page.evaluate(() => {
+          const seeMoreBtns = document.querySelectorAll(".feed-shared-inline-show-more-text button, button.see-more");
+          for (const btn of seeMoreBtns) {
+            try { btn.click(); } catch (e) {}
+          }
+          window.scrollBy({ top: 400, behavior: "smooth" });
+        });
+        await new Promise(r => setTimeout(r, 1000));
+      }
 
       const postsData = await page.evaluate(() => {
-        const updates = Array.from(document.querySelectorAll(".feed-shared-update-v2, [data-urn*='activity']"));
+        let updates = Array.from(document.querySelectorAll(".feed-shared-update-v2, [data-urn*='activity'], [role='listitem'][componentkey*='update-card'], [componentkey*='expanded'], [data-view-name='feed-full-update']"));
+        if (!updates.length) {
+          const commentButtons = Array.from(document.querySelectorAll("button")).filter(b => (b.innerText || "").trim().toLowerCase() === "comment");
+          const cardSet = new Set();
+          for (const btn of commentButtons) {
+            let card = btn;
+            for (let i = 0; i < 8 && card.parentElement; i++) {
+              card = card.parentElement;
+              if ((card.innerText || "").includes("Comment") && (card.innerText || "").length > 60) {
+                break;
+              }
+            }
+            if (card && !cardSet.has(card)) {
+              cardSet.add(card);
+              updates.push(card);
+            }
+          }
+        }
+
         return updates.map(el => {
           const urn = el.getAttribute("data-urn") || "";
-          const permalinkEl = el.querySelector("a[href*='/feed/update/'], a[href*='/posts/']");
+          const permalinkEl = el.querySelector("a[href*='/feed/update/'], a[href*='/posts/'], a[href*='activity']");
           const url = permalinkEl ? permalinkEl.href : "";
           
-          const actorNameEl = el.querySelector(".update-components-actor__name, .feed-shared-actor__name");
-          const username = actorNameEl ? actorNameEl.innerText.trim().replace(/[\r\n]+/g, " ") : "linkedin_user";
+          const actorLink = el.querySelector("a[href*='/in/'], a[href*='/company/']");
+          const actorNameEl = el.querySelector(".update-components-actor__name, .feed-shared-actor__name, [data-view-name='actor-title'] span, .update-components-actor__title");
+          const actorText = actorNameEl ? (actorNameEl.innerText || actorNameEl.textContent || "") : (actorLink ? (actorLink.innerText || actorLink.textContent || actorLink.href.split("/in/")[1]?.replace(/\//g, "") || "") : "");
+          const username = String(actorText || "linkedin_user").trim().replace(/[\r\n]+/g, " ").replace(/Feed post/g, "").replace(/Follow/g, "").trim() || "linkedin_user";
 
           const headlineEl = el.querySelector(".update-components-actor__description, .feed-shared-actor__description");
-          const headline = headlineEl ? headlineEl.innerText.trim().replace(/[\r\n]+/g, " ") : "";
+          const headline = headlineEl ? (headlineEl.innerText || headlineEl.textContent || "").trim().replace(/[\r\n]+/g, " ") : "";
 
           const textEl = el.querySelector(".feed-shared-update-v2__description, .update-components-text, .feed-shared-inline-show-more-text");
-          const text = textEl ? textEl.innerText.trim() : "";
+          let text = textEl ? (textEl.innerText || textEl.textContent || "") : ((el.innerText || el.textContent || "").slice(0, 800));
+          text = String(text || "").replace(/Feed post/g, "").replace(/Like\s*Comment\s*Repost\s*Send/gi, "").trim();
 
           const postId = urn || (url.match(/urn:li:activity:([0-9]+)/) || [])[1] || `li_srch_${Math.abs(text.slice(0, 40).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`;
 
