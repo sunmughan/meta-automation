@@ -1,7 +1,8 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
+[![Omnichannel](https://img.shields.io/badge/Omnichannel-Threads%20%7C%20LinkedIn%20%7C%20Facebook-success.svg?style=for-the-badge)](#-omnichannel-multi-platform-architecture-v141)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
@@ -9,15 +10,30 @@
 [![CodeAir](https://img.shields.io/badge/Engineered%20By-CodeAir-00F0FF.svg?style=for-the-badge)](https://www.codeair.tech)
 [![PixelGo](https://img.shields.io/badge/Product-PixelGo%20HMS-00E599.svg?style=for-the-badge)](https://pixelgo.live)
 
-**Meta Automation** is an enterprise-grade autonomous social discovery, AI lead generation, and conversational engagement engine designed for **Threads** and **Instagram**.
+**Meta Automation** is an enterprise-grade omnichannel autonomous social discovery, AI lead generation, and conversational engagement engine designed for **Threads**, **LinkedIn**, and **Facebook** (with Instagram DM support).
 
-Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds and search queries, passes every discovered post directly to the **Antigravity AI Cognitive Brain** (`gemini-3.8-flash-high`) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages multi-turn sales conversations — all while running stealthily on your authenticated browser session with zero external API key costs.
+Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds, executive networks, and search queries across all three platforms simultaneously. It passes every discovered interaction directly to the **Antigravity AI Cognitive Brain** (`gemini-3.8-flash-high`) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages inbound/outbound sales pipelines — all while running stealthily on your authenticated browser session with zero external API key costs.
 
 ---
 
 ## 🌟 Key Architectural Highlights
 
-- **100% Dynamic Knowledge Grounding & Zero Hardcoding (v1.3.0)**: Complete elimination of all hardcoded brand strings, static fallback templates, fixed keywords, and hardcoded URLs across the entire codebase (`threads-agent.js`, `threads-html-renderer.js`, `threads-poster.js`, `ai-decision-engine.js`, `comment-generator.js`, `threads-media.js`). All brand names, founder personas, official websites, and social handles resolve dynamically from `knowledge/*.md` at runtime.
+- **Omnichannel Autonomous Social Operations (v1.4.1)**: Unified concurrent and sequential multi-tab architecture operating across **LinkedIn**, **Facebook**, and **Threads** in your real authenticated desktop browser session with zero external API fees.
+- **LinkedIn Inbound & Outbound Pipeline**:
+  - Automatically manages connection requests: accepts individual profile requests (`/in/`) and automatically rejects or ignores company page follows, group invites, and event spam.
+  - Direct Messages monitoring: continuously inspects unread DMs, grounds context in dynamic business knowledge, and synthesizes helpful conversion-oriented replies with zero self-reply loops.
+  - Inbound comment replies: tracks notifications on your posts and comments, responding warmly with user tags (`@Name`).
+  - Daily B2B Thought-Leadership cross-posting: publishes daily authoritative technical posts reusing the visual media generated for Threads.
+  - 2026 Modern DOM traversal for high-intent B2B keyword searches and executive feed monitoring.
+- **Facebook Commercial Discovery & Messenger**:
+  - Inbound comment notification monitoring with personalized tagged replies.
+  - Messenger direct message processing with grounded AI sales reasoning.
+  - Commercial buyer keyword search and public agency/founder group discovery.
+- **Dual Multi-Tab Execution Modes**:
+  - **Sequential Mode (`--mode=sequential`)**: Smoothly cycles through Threads → LinkedIn → Facebook with active tab foreground switching (`bringToFront: true`) for clear, human-observable operations.
+  - **Concurrent Mode (`--mode=concurrent`)**: Executes independent continuous background loops for Threads, LinkedIn, and Facebook with robust mutex isolation.
+- **Dynamic Antigravity AI Socket & CSRF Discovery**: Automatically discovers the active Antigravity language server listening port and dynamically parses `/proc/<pid>/cmdline` for real-time CSRF tokens. Eliminates process hangs and delivers sub-15-second AI reasoning.
+- **100% Dynamic Knowledge Grounding & Zero Hardcoding**: Complete elimination of all hardcoded brand strings, static fallback templates, fixed keywords, and hardcoded URLs across the entire codebase (`threads-agent.js`, `threads-html-renderer.js`, `threads-poster.js`, `ai-decision-engine.js`, `comment-generator.js`, `threads-media.js`). All brand names, founder personas, official websites, and social handles resolve dynamically from `knowledge/*.md` at runtime.
 - **Universal Multi-User Brand Customization & Isolation**: Any user or business can onboard their personal brand, agency, or software product in seconds via `npm run onboard`. Automated test suites verify 100% brand isolation with zero bleed.
 - **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
 - **Pure Antigravity AI-First Brain (Zero Regex Pre-Filtering)**: Every post discovered on screen is evaluated directly by the authenticated Antigravity IDE agent session (`src/ai/ai-decision-engine.js`) running `gemini-3.8-flash-high` over Connect-RPC.
@@ -80,31 +96,39 @@ Every 6 hours, the engine publishes high-value content across 5 pillars defined 
 
 ```mermaid
 flowchart TB
-    subgraph Browser ["🖥️ Authenticated Desktop Session (Brave / Chrome CDP)"]
-        CDP["CDP Remote Port :9222"]
-        Threads["Threads.com (Feed, Search, Activity, DMs)"]
-        Instagram["Instagram.com (Feed & Notifications)"]
+    subgraph Browser ["🖥️ Authenticated Desktop Session (Chrome / Edge / Brave CDP :9222)"]
+        CDP["CDP Remote Debugging Port :9222"]
+        Threads["Threads Tab (Feed, Search, Activity, DMs)"]
+        LinkedIn["LinkedIn Tab (Network Grow /in/, DMs, Notifications, Posts)"]
+        Facebook["Facebook Tab (Feed, Groups, Messenger DMs, Notifications)"]
     end
 
-    subgraph CoreEngine ["⚡ Meta Automation Engine"]
-        Scanner["Scanner & Search Dispatcher<br/>(Feed Capture & Discovery Channels)"]
-        AiQueue["Antigravity AI Queue & Worker<br/>(Priority Scheduling & Concurrency)"]
-        AIBrain["Antigravity AI Cognitive Brain<br/>(Semantic Intent, Requirements & Entity)"]
-        Knowledge["Dynamic Knowledge Engine (SSOT)<br/>(services.md, company.md, profiles.md)"]
-        Identity["Representation & Identity Resolver<br/>(FOUNDER, COMPANY, BOTH, NEUTRAL)"]
-        Composer["Conversational Engagement Composer<br/>(Contextual Value & Single-URL Rule)"]
-        Renderer["HTML Graphic Renderer<br/>(1080x1080 Cards & 5-Slide Carousels)"]
-        Scheduler["Cadence Engine<br/>(3h Interval across 5 Pillars)"]
-        Safety["Rate Limiter & Duplicate Guard<br/>(Jitter Delays & Dynamic Limits)"]
+    subgraph MultiTabManager ["📑 Concurrency & Tab Orchestrator"]
+        ModeSeq["Sequential Loop (Threads -> LinkedIn -> Facebook)"]
+        ModeCon["Concurrent Multi-Tab Daemon (Mutex-Guarded)"]
+        TabFocus["Active Tab BringToFront & Visual Switching"]
+    end
+
+    subgraph CoreEngine ["⚡ Meta Automation Omnichannel Engine"]
+        Scanner["Multi-Platform Scanner & Search Dispatcher"]
+        AiQueue["Antigravity AI Dynamic CSRF Discovery & Queue"]
+        AIBrain["Antigravity AI Cognitive Brain (gemini-3.8-flash-high)"]
+        Knowledge["Dynamic Knowledge Engine (SSOT: founder, company, services)"]
+        Identity["Representation Resolver (FOUNDER, COMPANY, BOTH, NEUTRAL)"]
+        Composer["Conversational Engagement Composer (Single-URL Discipline)"]
+        Renderer["HTML Graphic Renderer (1080x1080 Cards & 5-Slide Decks)"]
+        Scheduler["Cadence Engine (6h Cadence across 5 Pillars)"]
+        Safety["Rate Limiter & Duplicate Guard (Per-Platform Jitter & Quotas)"]
     end
 
     subgraph StateStorage ["💾 Local JSON State & Telemetry"]
-        State["Engagement State Store<br/>(threads-engagement-state.json)"]
-        Leads["Leads Database<br/>(threads-leads.json)"]
-        Audit["Audit Logs<br/>(logs/audit.log, logs/daemon.log)"]
+        State["Engagement State Store (threads-engagement-state.json)"]
+        Leads["Leads Database (threads-leads.json)"]
+        Audit["Audit Logs (logs/audit.log, logs/daemon.log)"]
     end
 
-    CDP <--> Scanner
+    CDP <--> MultiTabManager
+    MultiTabManager <--> Scanner
     Scanner --> AiQueue
     AiQueue --> AIBrain
     AIBrain <--> Knowledge
@@ -113,7 +137,7 @@ flowchart TB
     Composer --> Safety
     Scheduler --> Renderer
     Renderer --> Safety
-    Safety <--> CDP
+    Safety <--> MultiTabManager
     CoreEngine <--> StateStorage
 ```
 
@@ -121,12 +145,18 @@ flowchart TB
 
 ## 🎯 Core Capabilities
 
-### 1. High-Intent Lead Discovery
-The engine captures posts from organic home feeds and 13 dedicated search discovery channels covering direct purchase inquiries:
-- `"need a website"` / `"looking for a web designer"` / `"need someone to build a website"`
-- `"looking for a developer to build our SaaS"` / `"need a full stack developer"`
-- `"looking for AI development team"` / `"automate customer support using AI"`
-- `"need a custom CRM"` / `"looking for hospital management system"`
+### 1. Omnichannel Multi-Platform Lead Discovery & Pipeline
+The engine executes synchronized multi-platform discovery across home feeds, public groups, and targeted search discovery channels:
+- **Threads Discovery**: 13 high-intent search channels (`"need a website"`, `"looking for a developer to build our SaaS"`, `"need custom CRM"`, etc.).
+- **LinkedIn Outbound & Inbound**:
+  - Executive B2B searches (`"looking for software development agency"`, `"need full stack engineer"`, etc.).
+  - Auto-accepts genuine profile connection requests (`/in/`) while rejecting page follow spam, group invites, and event invitations.
+  - Inbound comment replies with tagged user mentions (`@Name`).
+  - Automated B2B thought-leadership cross-posting with branded visual cards.
+- **Facebook Commercial & Group Discovery**:
+  - Commercial buyer keyword search across feeds and public founder/business groups.
+  - Messenger direct message monitoring with grounded AI response generation.
+  - Inbound comment reply monitoring with tagged replies.
 
 ### 2. Pure Antigravity AI Semantic Reasoning
 Every captured post enters the Antigravity AI Cognitive Brain directly:
@@ -350,7 +380,13 @@ Manage the autonomous agent with 1-click control scripts:
 You can also run specific tasks directly via `threads-agent.js`:
 
 ```bash
-# Run continuous sequential multi-platform orchestrator (Threads -> LinkedIn -> Facebook)
+# Run continuous sequential multi-platform orchestrator (Threads -> LinkedIn -> Facebook with tab switching)
+node threads-agent.js run --mode=sequential
+
+# Run continuous concurrent multi-tab orchestrator (Simultaneous background execution)
+node threads-agent.js run --mode=concurrent
+
+# Default run (defaults to sequential multi-platform mode)
 node threads-agent.js run
 
 # Validate authentication status across all platforms (Threads, Instagram, LinkedIn, Facebook)
