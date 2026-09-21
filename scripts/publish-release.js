@@ -55,36 +55,29 @@ const fs = require("fs");
     const titleInput = await ghPage.$("#release_name") || await ghPage.$("input[name=\"release[name]\"]");
     if (titleInput) {
       await titleInput.click({ clickCount: 3 });
-      await titleInput.type(`${tag} - WhatsApp Booking, Viral Quote-Posting & Rich Technical Cards`, { delay: 5 });
+      await titleInput.type(`${tag} - 100% Dynamic Knowledge Architecture & Zero Hardcoding Engine`, { delay: 5 });
     }
 
     const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
     if (bodyTextarea) {
-      const releaseNotes = `## What's New in v1.2.6
+      const releaseNotes = `## What's New in ${tag}
 
-### 🚀 WhatsApp Direct Discovery Call Link
-- Added official **WhatsApp Meeting Booking Link** (\`https://wa.me/codeair\`, username: \`codeair\`) into founder and company profiles.
-- Dynamically parsed by the Knowledge Engine and grounded by the Antigravity AI Cognitive Brain when prospects in DMs request direct calls, scheduling, or phone consultation.
-- Strict single-URL discipline ensures high conversion without link clutter.
+### 🧠 100% Dynamic Knowledge Grounding (Zero Hardcoding)
+- Eliminated all hardcoded brand strings, URLs, handles, and static fallback templates across the entire codebase (\`threads-agent.js\`, \`threads-html-renderer.js\`, \`threads-poster.js\`, \`ai-decision-engine.js\`, \`comment-generator.js\`, \`threads-media.js\`).
+- Dynamic single source of truth: \`knowledge/*.md\` (\`founder.md\`, \`company.md\`, \`profiles.md\`, \`services.md\`, \`pillars.md\`).
+- Brand names, handles, websites, and personas are dynamically resolved at runtime with complete brand isolation.
 
-### ⚡ Viral Quote-Posting Engine
-- Leverages the Threads algorithm's **4–5x non-follower recommendation multiplier** on high-substance engineering posts.
-- Synthesizes authoritative 2–3 sentence technical commentary on trending builder/founder threads.
-- Visibly types and submits quotes live via Brave browser CDP with strict rate limiting (max 1–2 per 24h).
+### 🌐 Universal Multi-Brand Customization & Isolation
+- Onboard any brand or personal profile in seconds via \`npm run onboard\`.
+- Automated test suites verify 100% brand isolation with zero bleed.
 
-### 🎨 Dark-Mode Code Snippets & Architecture Diagram Cards
-- **Dark-Mode Terminal Code Cards**: 1080x1080 square visuals with macOS traffic lights, syntax token highlighting, and CodeAir branding.
-- **System Architecture Topology Diagrams**: Node cards and connector arrows detailing deterministic state machines and AI pipelines.
-- Rotated automatically into high-substance technical pillars (\`agentic_ai\`, \`tech_mentorship\`).
+### 🎨 Fully Dynamic Social Cards & Carousel Visuals
+- 1080x1080 social media cards, dark-mode terminal code snippets, and system topology diagrams render dynamically with official SVG/WebP assets and brand badges.
+- Footer spans and branding automatically adapt to the configured company and founder persona.
 
-### ⏰ Algorithmic Peak-Window Pacing
-- Posts are intelligently timed to hit global developer/founder peak traffic windows:
-  - **Morning Window**: 8:00 AM – 11:00 AM EST (13:00 – 16:00 UTC)
-  - **Evening Window**: 6:00 PM – 9:00 PM EST (23:00 – 02:00 UTC)
-- Maintains exactly 4 strategic posts per 24 hours with flexible 5–7h pacing.
-
-### 📈 Soft Follower-Conversion CTAs
-- Natural follow hooks integrated into Slide 5 of carousels and deep discussion captions (\`"Follow @sunmughan for daily breakdowns on agentic AI & software architecture"\`).
+### ⚡ Complete Autonomous Agentic Intelligence
+- Pure Gemini 3.8 Flash High agentic reasoning with zero regex pre-filters or heuristic discards.
+- Intelligent intent classification, contextual representation (\`FOUNDER\`, \`COMPANY\`, \`BOTH\`, \`NEUTRAL\`), and single-URL discipline.
 
 ---
 

@@ -1,6 +1,6 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.2.6-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation#1-click-native-installers)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -17,15 +17,16 @@ Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this e
 
 ## 🌟 Key Architectural Highlights
 
+- **100% Dynamic Knowledge Grounding & Zero Hardcoding (v1.3.0)**: Complete elimination of all hardcoded brand strings, static fallback templates, fixed keywords, and hardcoded URLs across the entire codebase (`threads-agent.js`, `threads-html-renderer.js`, `threads-poster.js`, `ai-decision-engine.js`, `comment-generator.js`, `threads-media.js`). All brand names, founder personas, official websites, and social handles resolve dynamically from `knowledge/*.md` at runtime.
+- **Universal Multi-User Brand Customization & Isolation**: Any user or business can onboard their personal brand, agency, or software product in seconds via `npm run onboard`. Automated test suites verify 100% brand isolation with zero bleed.
 - **Universal Multi-Browser Engine**: Auto-detects and connects directly to your existing logged-in browser session — **Google Chrome**, **Microsoft Edge**, **Brave Browser**, or **Chromium** — over Chrome DevTools Protocol (`CDP`). **Zero risk of credential theft, session invalidation, or SMS 2FA prompts.**
-- **Pure Antigravity AI-First Brain (Zero Regex / Zero Hardcoding)**: Every post discovered on screen is evaluated directly by the authenticated Antigravity IDE agent session (`src/ai/ai-decision-engine.js`) running `gemini-3.8-flash-high` over Connect-RPC (`http://127.0.0.1:41977`). **Zero keyword lists, regex pre-filters, or static response templates.**
-- **Official WhatsApp Meeting Booking Link (v1.2.6)**: When prospects in DMs request discovery calls, scoping sessions, or phone consultations, the agent grounds on the direct WhatsApp booking link (`https://wa.me/codeair`).
-- **Viral Quote-Posting Engine (v1.2.6)**: Synthesizes sharp, expert technical commentary on trending builder/founder threads, leveraging Threads' 4–5x non-follower recommendation multiplier.
-- **Rich Visual Code & Architecture Cards (v1.2.6)**: Renders dark-mode terminal window code snippets and node topology diagrams to maximize technical developer engagement and follower conversion.
-- **Algorithmic Peak-Window Pacing (v1.2.6)**: Intelligently times posts during global peak tech traffic windows (8–11am EST / 6–9pm EST) while maintaining the strict 4 posts / 24h cadence.
-- **Universal Multi-User Brand Customization**: Any user or business can onboard their personal brand, agency, or software product in seconds via `npm run onboard`. Zero hardcoded company/founder names anywhere in the engine.
+- **Pure Antigravity AI-First Brain (Zero Regex Pre-Filtering)**: Every post discovered on screen is evaluated directly by the authenticated Antigravity IDE agent session (`src/ai/ai-decision-engine.js`) running `gemini-3.8-flash-high` over Connect-RPC.
+- **Official WhatsApp Meeting Booking Link**: When prospects in DMs request discovery calls, scoping sessions, or phone consultations, the agent grounds on the direct WhatsApp booking link dynamically parsed from knowledge base profiles.
+- **Viral Quote-Posting Engine**: Synthesizes sharp, expert technical commentary on trending builder/founder threads, leveraging Threads' 4–5x non-follower recommendation multiplier.
+- **Rich Visual Code & Architecture Cards**: Renders dark-mode terminal window code snippets and node topology diagrams to maximize technical developer engagement and follower conversion.
+- **Algorithmic Peak-Window Pacing**: Intelligently times posts during global peak tech traffic windows (8–11am EST / 6–9pm EST) while maintaining the strict 4 posts / 24h cadence.
 - **Dynamic In-Context Grounding (RAG)**: The engine reads `knowledge/*.md` on-the-fly (`founder.md`, `company.md`, `profiles.md`, `services.md`, `pillars.md`) and injects structured contracts directly into the AI prompt context at runtime with 100% brand isolation.
-- **Tech Networking & Peer Builder Engagement (v1.2.5)**: Deep semantic classification identifies fellow software developers, AI builders, and tech founders seeking connections, engaging warmly as **Sunmughan Swamy** (`FOUNDER`) with verified LinkedIn credentials.
+- **Tech Networking & Peer Builder Engagement**: Deep semantic classification identifies fellow software developers, AI builders, and tech founders seeking connections, engaging warmly with verified LinkedIn and GitHub credentials.
 - **Transaction-Verified Action Execution**: Modal dismissal is never assumed to be a successful submission. Comments and posts require multi-signal confirmation (DOM snippet detection, confirmation toasts, profile feed presence).
 - **Strict 6-Hour Publishing Cadence (4 Posts / 24 Hours)**: Automatically publishes high-value discussion posts and carousel decks across 5 core pillars exactly 4 times every 24 hours. The scheduler evaluates only `VERIFIED_PUBLISHED` posts to prevent scheduling drift.
 - **Contextual Representation & Single-URL Discipline**: Dynamically adopts `FOUNDER`, `COMPANY`, `BOTH`, or `NEUTRAL` identity with strict single-URL discipline (Founder LinkedIn for individual/dev requests; Company Website / Product for agency/product requests; maximum 1 link).
