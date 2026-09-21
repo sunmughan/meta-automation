@@ -1385,6 +1385,49 @@ async function runAllTests() {
     assert.strictEqual(isPeakEngagementWindow(offPeak), false, "08:00 UTC must be recognized as off-peak");
   });
 
+  // 76. Guaranteed Rich Carousel Cards (Zero Empty Canvas Space)
+  await test("76. ThreadsHtmlRenderer generates rich carousel slides with guaranteed cards (zero empty space)", () => {
+    const renderer = require("../src/platforms/threads/threads-html-renderer");
+    // Case A: Even when cards are completely omitted, fallback must generate 3 structured cards
+    const emptySpecHtml = renderer.generateSlideHtml({
+      title: "Clean Architecture in Production",
+      subtitle: "Deterministic state machines and automated verification",
+      badge: "SYSTEM DESIGN"
+    });
+    assert(emptySpecHtml.includes('class="card"'), "Must render card containers");
+    assert(emptySpecHtml.includes("01"), "Must include card number 01");
+    assert(emptySpecHtml.includes("02"), "Must include card number 02");
+    assert(emptySpecHtml.includes("03"), "Must include card number 03");
+    assert(emptySpecHtml.includes("System Architecture"), "Must include fallback architecture card");
+
+    // Case B: Explicit cards are preserved and rendered
+    const customSpecHtml = renderer.generateSlideHtml({
+      title: "Hotel Tech Unified",
+      cards: [
+        { num: "01", title: "Single Source of Truth", desc: "No API sync delay" },
+        { num: "02", title: "Automated Folios", desc: "Digital guest check-in" }
+      ]
+    });
+    assert(customSpecHtml.includes("Single Source of Truth"), "Custom cards must be preserved");
+    assert(customSpecHtml.includes("Automated Folios"), "Custom cards must be preserved");
+  });
+
+  // 77. Executive Quote Infographic with 3-Part Strategic Principles Panel
+  await test("77. ThreadsHtmlRenderer generates executive quote card with 3-part strategic principles panel", () => {
+    const renderer = require("../src/platforms/threads/threads-html-renderer");
+    const quoteHtml = renderer.generateQuoteCardHtml({
+      quote: "Clean architecture and fast shipping create real market value.",
+      badge: "FOUNDER PERSPECTIVE",
+      pillar: "founders_revolution"
+    });
+    assert(quoteHtml.includes("EXECUTIVE HIGHLIGHTS & ARCHITECTURAL PRINCIPLES"), "Must include executive principles header");
+    assert(quoteHtml.includes("takeaway-card"), "Must render takeaway card containers");
+    assert(quoteHtml.includes("01"), "Must include takeaway 01");
+    assert(quoteHtml.includes("02"), "Must include takeaway 02");
+    assert(quoteHtml.includes("03"), "Must include takeaway 03");
+    assert(quoteHtml.includes("Clean architecture and fast shipping create real market value."), "Must include perspective quote");
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {

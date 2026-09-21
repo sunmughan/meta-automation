@@ -138,8 +138,8 @@ INSTRUCTIONS:
    - Provide "badge": A short 2-3 word topic tag (e.g. "OPEN SOURCE AI", "FOUNDER MINDSET", "SYSTEMS ARCHITECTURE").
 3. If format is CAROUSEL:
    - Provide exactly 5 slides for a mini-deck:
-     * Slides 1-4: Core architecture, lessons, or operational breakdowns (title & subtitle).
-     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Star Meta Automation", subtitle: "Follow @${founder.threadsUsername || "sunmughan"} • github.com/sunmughan/meta-automation").
+     * Slides 1-4: Core architecture, lessons, or operational breakdowns (title, subtitle, and 2-3 structured cards with num, title, desc).
+     * Slide 5: Strategic takeaway with soft follower conversion CTA (e.g. title: "Star Meta Automation", subtitle: "Follow @${founder.threadsUsername || "sunmughan"} • github.com/sunmughan/meta-automation", cards: [{ num: "01", title: "Star on GitHub", desc: "Access the full production-ready multi-agent codebase" }, { num: "02", title: "Daily Architecture", desc: "Follow @${founder.threadsUsername || "sunmughan"} for real engineering workflows" }]).
 4. If format is CODE_SNIPPET:
    - Provide "code_title": Short title (e.g. "Agentic Concurrency Queue").
    - Provide "code_snippet": 6-10 clean, realistic lines of TypeScript/Node.js architecture code.
@@ -154,7 +154,13 @@ OUTPUT STRICT JSON:
   "quote": "string",
   "badge": "string",
   "carousel_slides": [
-    { "title": "string", "subtitle": "string" }
+    {
+      "title": "string",
+      "subtitle": "string",
+      "cards": [
+        { "num": "01", "title": "string", "desc": "string" }
+      ]
+    }
   ],
   "code_title": "string or null",
   "code_snippet": "string or null",
@@ -179,7 +185,18 @@ OUTPUT STRICT JSON:
       return {
         caption: `Building real software comes down to clean architecture, fast iterations, and talking to users every day. What are you building this week?`,
         quote: "Clean architecture and fast shipping create real market value.",
-        badge: `${compBadge} • ${pillarTag}`
+        badge: `${compBadge} • ${pillarTag}`,
+        carousel_slides: [
+          {
+            title: "Architecture Over Hype",
+            subtitle: "Why lean systems win in production",
+            cards: [
+              { num: "01", title: "Clean Domain Boundaries", desc: "Eliminates cascading failures and spaghetti dependencies." },
+              { num: "02", title: "Deterministic Pipelines", desc: "Strict verification gates ensure 100% predictable outcomes." },
+              { num: "03", title: "Relentless Shipping", desc: "Turn customer feedback into deployed production code in hours." }
+            ]
+          }
+        ]
       };
     }
   }
@@ -189,7 +206,7 @@ OUTPUT STRICT JSON:
    */
   async verifyPostOnProfile(page, postText, username = null) {
     const founder = knowledge.getFounderInfo();
-    const activeUsername = username || founder.threadsUsername || CONFIG.THREADS_USERNAME || "user";
+    const activeUsername = username || founder.threadsUsername || CONFIG.THREADS_USERNAME || "sunmughan";
     const profileUrl = `https://www.threads.com/@${activeUsername}`;
     logger.info(`[THREADS POSTER] Navigating to profile feed (${profileUrl}) for multi-signal live post verification...`);
     try {
@@ -198,25 +215,33 @@ OUTPUT STRICT JSON:
 
       const snippet = postText.replace(/https?:\/\/[^\s]+/g, "").slice(0, 35).trim();
       for (let attempt = 1; attempt <= 6; attempt++) {
+        if (attempt === 3) {
+          logger.info(`[THREADS POSTER] Attempt 3: Performing cache-busting reload on ${profileUrl} for newly indexed post...`);
+          await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
+          await new Promise(r => setTimeout(r, 2500));
+        }
+
         const found = await page.evaluate((snip) => {
+          const cleanSnip = snip.toLowerCase().replace(/[^a-z0-9]/g, "");
           const articles = Array.from(document.querySelectorAll('article, [data-pressable-container="true"]'));
           return articles.some(a => {
             if (a.tagName === 'SCRIPT' || a.tagName === 'STYLE') return false;
             const content = (a.innerText || a.textContent || "").trim();
-            return content.includes(snip);
+            const cleanContent = content.toLowerCase().replace(/[^a-z0-9]/g, "");
+            return cleanContent.includes(cleanSnip) || content.includes(snip);
           });
         }, snippet);
 
         if (found) {
-          logger.info(`[THREADS POSTER] ✅ Post verified present on @${username} profile feed DOM (attempt ${attempt}/6)!`);
-          return { verified: true, reason: `Verified live on @${username} profile feed DOM` };
+          logger.info(`[THREADS POSTER] ✅ Post verified present on @${activeUsername} profile feed DOM (attempt ${attempt}/6)!`);
+          return { verified: true, reason: `Verified live on @${activeUsername} profile feed DOM` };
         }
 
         await page.evaluate(() => window.scrollBy({ top: 300, left: 0, behavior: "smooth" }));
         await new Promise(r => setTimeout(r, 2000));
       }
 
-      return { verified: false, reason: `Post not found on @${username} profile feed DOM after submission` };
+      return { verified: false, reason: `Post not found on @${activeUsername} profile feed DOM after submission` };
     } catch (err) {
       return { verified: false, reason: `Profile verification navigation failed: ${err.message}` };
     }
@@ -451,7 +476,30 @@ OUTPUT STRICT JSON:
 
     // Give Threads backend a moment to process the newly submitted post
     if (isModalDismissed) {
-      await new Promise(r => setTimeout(r, 3500));
+      if (mediaPaths && mediaPaths.length > 0) {
+        logger.info(`[THREADS POSTER] Monitoring in-flight media upload (${mediaPaths.length} attachments)...`);
+        for (let upWait = 0; upWait < 15; upWait++) {
+          const isStillUploading = await page.evaluate(() => {
+            const text = (document.body.innerText || "").toLowerCase();
+            const hasPostingToast = text.includes("posting...") || 
+                                    text.includes("posting your thread") || 
+                                    text.includes("finishing up") || 
+                                    text.includes("uploading");
+            const hasProgress = !!document.querySelector('[role="progressbar"], [data-upload-state="uploading"]');
+            return hasPostingToast || hasProgress;
+          });
+
+          if (!isStillUploading) {
+            logger.info(`[THREADS POSTER] In-flight media upload toast/progress cleared after ${upWait + 1}s.`);
+            break;
+          }
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        // Buffer for Threads server-side media transcoding and ingestion
+        await new Promise(r => setTimeout(r, 4500));
+      } else {
+        await new Promise(r => setTimeout(r, 3500));
+      }
     }
 
     if (!isModalDismissed) {
