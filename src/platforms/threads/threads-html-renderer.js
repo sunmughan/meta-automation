@@ -49,7 +49,14 @@ class ThreadsHtmlRenderer {
     const badge = spec.badge || "CODEAIR • INNOVATION";
     const title = spec.title || "";
     const subtitle = spec.subtitle || "";
-    const cards = spec.cards || [];
+    let cards = spec.cards;
+    if (!Array.isArray(cards) || cards.length === 0) {
+      cards = [
+        { num: "01", title: "System Architecture", desc: subtitle || "Engineered for high-concurrency throughput and fault tolerance." },
+        { num: "02", title: "Deterministic Pipelines", desc: "Automated verification contracts eliminate silent failures and data drift." },
+        { num: "03", title: "Production Outcome", desc: "Delivers measurable compounding value with zero operational waste." }
+      ];
+    }
     const slideNum = spec.slide_num || 1;
     const totalSlides = spec.total_slides || 5;
     const author = spec.author || "Sunmughan Swamy • Founder";
@@ -169,8 +176,10 @@ class ThreadsHtmlRenderer {
     z-index: 10;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin: 28px 0;
+    gap: 18px;
+    margin: 24px 0;
+    flex: 1;
+    justify-content: center;
   }
   .card {
     display: flex;
@@ -178,9 +187,9 @@ class ThreadsHtmlRenderer {
     gap: 22px;
     padding: 22px 26px;
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
   .card-num {
     font-size: 15px;
@@ -305,6 +314,8 @@ class ThreadsHtmlRenderer {
 
   /**
    * Generates HTML markup for a high-impact single quote or discussion card.
+   * Executive Infographic Layout: Features bold perspective quote and 3-part
+   * architectural / strategic principles panel, completely eliminating empty space.
    */
   generateQuoteCardHtml(spec) {
     const accent = spec.accentColor || "#00F0FF";
@@ -314,6 +325,25 @@ class ThreadsHtmlRenderer {
     const author = spec.author || "Sunmughan Swamy";
     const role = spec.role || "Founder, CodeAir Software Solutions";
     const footerTag = spec.footerTag || "BUILDER NETWORK";
+
+    let takeaways = spec.takeaways || spec.cards || [];
+    if (!Array.isArray(takeaways) || takeaways.length === 0) {
+      takeaways = [
+        { num: "01", title: "Systematic Architecture", desc: "Eliminating fragile glue code with robust deterministic systems and state machines." },
+        { num: "02", title: "Execution Velocity", desc: "Relentless shipping speed driven by direct user feedback loops and verified actions." },
+        { num: "03", title: "Sustainable Scale", desc: "Resilient infrastructure built for sub-second latency, zero waste, and high reliability." }
+      ];
+    }
+
+    const takeawaysHtml = takeaways.slice(0, 3).map(t => `
+      <div class="takeaway-card">
+        <div class="takeaway-badge" style="color: ${accent}; border-color: ${accent}40; background: ${accent}15;">${t.num || "◆"}</div>
+        <div class="takeaway-content">
+          <div class="takeaway-title">${t.title}</div>
+          <div class="takeaway-desc">${t.desc}</div>
+        </div>
+      </div>
+    `).join("");
 
     const isPixelGo = (spec.badge || "").includes("PIXELGO") ||
                       (spec.quote || "").includes("PixelGo") ||
@@ -342,7 +372,7 @@ class ThreadsHtmlRenderer {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 80px;
+    padding: 72px;
   }
   .glow-center {
     position: absolute;
@@ -399,18 +429,18 @@ class ThreadsHtmlRenderer {
   .quote-container {
     position: relative;
     z-index: 10;
-    margin: auto 0;
+    margin: 16px 0 12px 0;
   }
   .quote-mark {
-    font-size: 72px;
+    font-size: 56px;
     font-weight: 800;
     line-height: 1;
     color: ${accent};
-    opacity: 0.6;
-    margin-bottom: 8px;
+    opacity: 0.7;
+    margin-bottom: 4px;
   }
   .quote-text {
-    font-size: 44px;
+    font-size: 36px;
     font-weight: 800;
     line-height: 1.25;
     letter-spacing: -0.03em;
@@ -418,13 +448,82 @@ class ThreadsHtmlRenderer {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+  .takeaways-panel {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 14px 0;
+    flex: 1;
+    justify-content: center;
+  }
+  .takeaways-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2px;
+  }
+  .takeaways-label {
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #64748B;
+  }
+  .takeaways-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  }
+  .takeaways-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .takeaway-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 16px 20px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  }
+  .takeaway-badge {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid;
+    flex-shrink: 0;
+  }
+  .takeaway-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .takeaway-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #F8FAFC;
+    letter-spacing: -0.01em;
+  }
+  .takeaway-desc {
+    font-size: 14.5px;
+    font-weight: 400;
+    color: #94A3B8;
+    line-height: 1.4;
+  }
   .author-card {
     position: relative;
     z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: 32px;
+    padding-top: 24px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
   .author-info {
@@ -433,14 +532,14 @@ class ThreadsHtmlRenderer {
     gap: 18px;
   }
   .author-avatar-img {
-    width: 54px;
-    height: 54px;
+    width: 50px;
+    height: 50px;
     border-radius: 14px;
     object-fit: contain;
     box-shadow: 0 4px 16px rgba(0, 80, 255, 0.4);
   }
   .author-avatar-pixelgo {
-    height: 52px;
+    height: 48px;
     width: auto;
     max-width: 140px;
     object-fit: contain;
@@ -452,13 +551,13 @@ class ThreadsHtmlRenderer {
     gap: 4px;
   }
   .author-name {
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 800;
     color: #F8FAFC;
     letter-spacing: -0.02em;
   }
   .author-role {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 500;
     color: #94A3B8;
   }
@@ -493,6 +592,16 @@ class ThreadsHtmlRenderer {
   <div class="quote-container">
     <div class="quote-mark">“</div>
     <div class="quote-text">${quote}</div>
+  </div>
+
+  <div class="takeaways-panel">
+    <div class="takeaways-header">
+      <span class="takeaways-label">EXECUTIVE HIGHLIGHTS & ARCHITECTURAL PRINCIPLES</span>
+      <span class="takeaways-line"></span>
+    </div>
+    <div class="takeaways-grid">
+      ${takeawaysHtml}
+    </div>
   </div>
   
   <div class="author-card">

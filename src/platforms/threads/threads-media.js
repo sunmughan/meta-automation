@@ -69,14 +69,30 @@ class ThreadsMedia {
       const baseSpecs = this.getDeckSpecs(theme);
       const base0 = baseSpecs[0] || {};
       const compTag = (knowledge.getCompanyInfo().name || "COMPANY").toUpperCase().slice(0, 10);
-      deckSpecs = dynamicSlides.map((s, idx) => ({
-        badge: s.badge || base0.badge || `${compTag} • ARCHITECTURE`,
-        accentColor: base0.accentColor || "#00F0FF",
-        glowColor: base0.glowColor || "rgba(0, 240, 255, 0.12)",
-        title: s.title || `Key Insight #${idx + 1}`,
-        subtitle: s.subtitle || "",
-        footerTag: base0.footerTag || "TECH ARCHITECTURE"
-      }));
+      deckSpecs = dynamicSlides.map((s, idx) => {
+        const base = baseSpecs[idx] || baseSpecs[0] || {};
+        let cards = [];
+        if (Array.isArray(s.cards) && s.cards.length > 0) {
+          cards = s.cards;
+        } else if (Array.isArray(base.cards) && base.cards.length > 0) {
+          cards = base.cards;
+        } else {
+          cards = [
+            { num: "01", title: "Architectural Rationale", desc: s.subtitle || "High-performance modular systems designed for scale." },
+            { num: "02", title: "Deterministic Execution", desc: "Strict verification pipelines and real-time state synchronization." },
+            { num: "03", title: "Enterprise Impact", desc: "Zero operational waste, high velocity, and production-ready reliability." }
+          ];
+        }
+        return {
+          badge: s.badge || base.badge || base0.badge || `${compTag} • ARCHITECTURE`,
+          accentColor: s.accentColor || base.accentColor || base0.accentColor || "#00F0FF",
+          glowColor: s.glowColor || base.glowColor || base0.glowColor || "rgba(0, 240, 255, 0.12)",
+          title: s.title || base.title || `Key Insight #${idx + 1}`,
+          subtitle: s.subtitle || base.subtitle || "",
+          cards,
+          footerTag: s.footerTag || base.footerTag || base0.footerTag || "TECH ARCHITECTURE"
+        };
+      });
     } else {
       deckSpecs = this.getDeckSpecs(theme);
     }
@@ -110,7 +126,9 @@ class ThreadsMedia {
     const spec = {
       ...baseSpec,
       quote: dynamicSpec?.quote || baseSpec.quote,
-      badge: dynamicSpec?.badge || baseSpec.badge
+      badge: dynamicSpec?.badge || baseSpec.badge,
+      takeaways: dynamicSpec?.takeaways || baseSpec.takeaways,
+      cards: dynamicSpec?.cards || baseSpec.cards
     };
     const filename = `quote_${pillar}_${Date.now()}.png`;
     return await this.generateSingleCard(spec, filename);
@@ -136,7 +154,12 @@ class ThreadsMedia {
           quote: "Hotel operations shouldn’t require 6 disconnected software tools. One unified reactive engine changes everything.",
           author: authorName,
           role: authorRole,
-          footerTag: "HOSPITALITY TECH"
+          footerTag: "HOSPITALITY TECH",
+          takeaways: [
+            { num: "01", title: "Single Source of Truth", desc: "Eliminates sync discrepancies between PMS, POS, channel managers & housekeeping." },
+            { num: "02", title: "Automated Guest Journeys", desc: "Zero-touch contactless check-in, dynamic rate updates, and digital folios." },
+            { num: "03", title: "Operational RevPAR Surge", desc: "Direct bookings without intermediary OTA commission loss." }
+          ]
         };
 
       case "founders_revolution":
@@ -148,7 +171,12 @@ class ThreadsMedia {
           quote: "Premature microservices and AI hype kill early startups. Clean architecture and fast shipping create real market value.",
           author: authorName,
           role: authorRole,
-          footerTag: "FOUNDER MINDSET"
+          footerTag: "FOUNDER MINDSET",
+          takeaways: [
+            { num: "01", title: "Monolith Over Microservices", desc: "Keep domain boundaries simple until user scale dictates distributed complexity." },
+            { num: "02", title: "Relentless Shipping Velocity", desc: "Turn real customer feedback loops into deployed features within 24 hours." },
+            { num: "03", title: "Unit Economics First", desc: "Validate paying demand before investing in heavy infrastructure overhead." }
+          ]
         };
 
       case "tech_mentorship":
@@ -160,7 +188,12 @@ class ThreadsMedia {
           quote: "If you're an ambitious developer stuck on database scaling, system design, or launching your first SaaS—let’s talk.",
           author: authorName,
           role: authorRole,
-          footerTag: "DEVELOPER GUIDANCE"
+          footerTag: "DEVELOPER GUIDANCE",
+          takeaways: [
+            { num: "01", title: "System Design Fundamentals", desc: "Master caching layers, database indexing, and event-driven architectures." },
+            { num: "02", title: "Production Code Craftsmanship", desc: "Deterministic testing, clean refactoring, and zero unhandled rejections." },
+            { num: "03", title: "Career & SaaS Scaling", desc: "Transition from junior tasks to architecting mission-critical platforms." }
+          ]
         };
 
       case "agentic_ai":
@@ -172,7 +205,12 @@ class ThreadsMedia {
           quote: "AI prompts without deterministic guardrails are just toys. Enterprise autonomy requires strict schemas and state machines.",
           author: authorName,
           role: authorRole,
-          footerTag: "AI ARCHITECTURE"
+          footerTag: "AI ARCHITECTURE",
+          takeaways: [
+            { num: "01", title: "Deterministic State Machines", desc: "Strict schema contracts prevent hallucinations and runaway agent loops." },
+            { num: "02", title: "Verified Action Handshake", desc: "Every DOM mutation or API write must be verified across multiple signals." },
+            { num: "03", title: "Sub-Second Ingestion", desc: "Aggressive DOM pruning ensures ultra-fast reasoning with minimal latency." }
+          ]
         };
 
       case "meta_automation":
@@ -184,7 +222,12 @@ class ThreadsMedia {
           quote: "Autonomous AI doesn't need costly cloud servers. Open-source agents running locally on Linux, macOS, Windows & Termux with zero token cost change the game.",
           author: authorName,
           role: authorRole,
-          footerTag: "GITHUB: SUNMUGHAN/META-AUTOMATION"
+          footerTag: "GITHUB: SUNMUGHAN/META-AUTOMATION",
+          takeaways: [
+            { num: "01", title: "100% Free & Open-Source", desc: "Zero API token costs using local Antigravity runtime reasoning." },
+            { num: "02", title: "Cross-Platform Everywhere", desc: "Runs 24/7 on Android (Termux:X11), Linux, Windows & macOS." },
+            { num: "03", title: "Community Star & Fork", desc: "Full code and setup guide at github.com/sunmughan/meta-automation." }
+          ]
         };
 
       case "builder_network":
@@ -197,7 +240,12 @@ class ThreadsMedia {
           quote: "Looking for passionate software engineers who want to build real systems, collaborate on client work, and share project revenue.",
           author: authorName,
           role: authorRole,
-          footerTag: "REV-SHARE COLLABORATION"
+          footerTag: "REV-SHARE COLLABORATION",
+          takeaways: [
+            { num: "01", title: "Direct Revenue Share", desc: "Fair, transparent compensation directly tied to delivered project milestones." },
+            { num: "02", title: "Enterprise Stack Standards", desc: "Build using modern TypeScript, Next.js, Node.js, and scalable cloud backends." },
+            { num: "03", title: "Collaborative Velocity", desc: "Work with experienced architects solving real client engineering challenges." }
+          ]
         };
     }
   }
