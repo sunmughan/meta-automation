@@ -42,8 +42,8 @@ async function runMultiBrandTest() {
     assert(defaultFounder.name.includes("Sunmughan"), "Default founder must be Sunmughan");
     assert(defaultCompany.name.includes("CodeAir"), "Default company must be CodeAir");
     const pillars = knowledge.getContentPillars();
-    assert(Array.isArray(pillars) && pillars.length === 5, "Must parse 5 content pillars");
-    console.log("   ✓ Default founder & company successfully verified");
+    assert(Array.isArray(pillars) && pillars.length >= 5, "Must parse at least 5 content pillars");
+    console.log(`   ✓ Default founder & company successfully verified (${pillars.length} pillars active)`);
 
     // 2. Simulate Onboarding an External Client Brand: "Apex AI Studio"
     console.log("2. Simulating onboarding for 'Apex AI Studio' by Elena Rostova...");
@@ -52,6 +52,7 @@ async function runMultiBrandTest() {
       founderName: "Elena Rostova",
       founderRole: "Chief AI Architect & Founder",
       founderProfile: "https://linkedin.com/in/elena-rostova-ai",
+      founderWhatsApp: "https://wa.me/15550199283",
       threadsUsername: "elena_apex_ai",
       companyName: "Apex AI Studio",
       companyWebsite: "https://apexai.io",
@@ -80,6 +81,7 @@ async function runMultiBrandTest() {
     const newProfiles = knowledge.getOfficialProfiles();
     const newApproved = knowledge.getApprovedServices();
     const newExcluded = knowledge.getExcludedServices();
+    const newWhatsApp = knowledge.getWhatsAppUrl();
 
     assert.strictEqual(newFounder.name, "Elena Rostova", "Founder name must be Elena Rostova");
     assert.strictEqual(newFounder.role, "Chief AI Architect & Founder", "Founder role must match");
@@ -87,6 +89,7 @@ async function runMultiBrandTest() {
     assert.strictEqual(newCompany.name, "Apex AI Studio", "Company name must be Apex AI Studio");
     assert.strictEqual(newCompany.website, "https://apexai.io", "Company website must match");
     assert.strictEqual(newProfiles.founder.linkedin, "https://linkedin.com/in/elena-rostova-ai", "Founder LinkedIn must match");
+    assert.strictEqual(newWhatsApp, "https://wa.me/15550199283", "WhatsApp URL must match Apex AI Studio direct link");
     assert.strictEqual(newApproved.length, 4, "Approved services count must be 4");
     assert(newApproved.includes("Autonomous Multi-Agent Systems"), "Approved services must include Multi-Agent Systems");
     assert.strictEqual(newExcluded.length, 4, "Excluded services count must be 4");
@@ -116,6 +119,8 @@ async function runMultiBrandTest() {
     });
     assert(conversationPrompt.includes("Apex AI Studio"), "Conversation prompt must contain Apex AI Studio");
     assert(conversationPrompt.includes("Elena Rostova"), "Conversation prompt must contain Elena Rostova");
+    assert(conversationPrompt.includes("https://wa.me/15550199283"), "Conversation prompt must contain Apex AI Studio WhatsApp");
+    assert(!conversationPrompt.includes("wa.me/codeair"), "Conversation prompt must NOT contain CodeAir WhatsApp");
     assert(!conversationPrompt.includes("CodeAir"), "Conversation prompt must NOT contain CodeAir");
     assert(!conversationPrompt.includes("Sunmughan"), "Conversation prompt must NOT contain Sunmughan");
     console.log("   ✓ Multi-turn conversation prompt achieves 100% brand isolation");

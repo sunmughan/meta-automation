@@ -55,13 +55,33 @@ function discoverAntigravitySession() {
   let token = process.env.ANTIGRAVITY_CSRF_TOKEN || "";
 
   if (!token) {
-    try {
-      const psOutput = execSync("ps aux | grep -v grep | grep language_server_linux_x64", { encoding: "utf8" });
-      const tokenMatch = psOutput.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
-      if (tokenMatch) {
-        token = tokenMatch[1];
+    if (process.platform === "win32") {
+      try {
+        const psCmd = 'powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like \'*language_server*\' } | Select-Object -ExpandProperty CommandLine" 2>nul';
+        const winOutput = execSync(psCmd, { encoding: "utf8" });
+        const tokenMatch = winOutput.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
+        if (tokenMatch) token = tokenMatch[1];
+      } catch (e) {}
+    } else {
+      // Linux / macOS / Android Termux
+      const cmds = [
+        "ps aux 2>/dev/null",
+        "ps -ef 2>/dev/null",
+        "ps -A -o pid,args 2>/dev/null"
+      ];
+      for (const cmd of cmds) {
+        try {
+          const psOutput = execSync(cmd, { encoding: "utf8" });
+          if (psOutput && psOutput.includes("language_server")) {
+            const tokenMatch = psOutput.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
+            if (tokenMatch) {
+              token = tokenMatch[1];
+              break;
+            }
+          }
+        } catch (e) {}
       }
-    } catch (e) {}
+    }
   }
 
   const [host, portStr] = address.split(":");

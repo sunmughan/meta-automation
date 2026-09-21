@@ -137,6 +137,14 @@ Use when:
 - Someone wants to book a quick call or discuss development requirements directly
 - Client asks for WhatsApp or direct phone connection
 
+### Open-Source Meta Automation Repository
+https://github.com/sunmughan/meta-automation
+
+Use when:
+- Mentioning open-source software, agentic automation, or technical architecture
+- Someone asks where the automation source code lives
+- Inviting developers and founders to star/fork the GitHub repository
+
 # ============================================================
 # PROFILE SELECTION RULES
 # ============================================================

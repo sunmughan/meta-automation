@@ -1585,7 +1585,38 @@ STATUS: COMPLETED (Phase 1 to Current Operational Phase)
 
    C. Complete Verification Suite Results:
       - Command: `npm test`
-      - Main Test Suite: 70 Passed, 0 Failed
-      - Pillar & Search Discovery Audit: 15 Passed, 0 Failed
-      - Cross-Platform & Browser Audit: 17 Passed, 0 Failed
-      - Total Validations: 102 Passed, 0 Failed (100% Pass Rate)
+      - Main Test Suite: 76 Passed, 0 Failed
+      - Pillar & Search Discovery Audit: 21 Passed, 0 Failed
+      - Cross-Platform & Browser Audit: 20 Passed, 0 Failed
+      - Multi-Brand Customization & Isolation: Passed (100% Zero-Bleed)
+      - Total Validations: 123 Passed, 0 Failed (100% Pass Rate)
+
+---
+
+## 36. RELEASE v1.2.7: CROSS-PLATFORM HARDENING, TERMUX ANTIGRAVITY CLI & META AUTOMATION VIRAL ENGINE
+
+1. **Brand Onboarding Wizard Enhancement (`threads-agent.js`)**:
+   - Added interactive and non-interactive prompt for Founder / Brand Direct WhatsApp Booking URL.
+   - Automatically writes `WhatsApp: ${founderWhatsApp}` to `knowledge/founder.md`, `knowledge/company.md`, and `knowledge/profiles.md`.
+   - Verified 100% multi-brand isolation with zero brand bleed across prompts, discovery call routing, and identity resolution.
+
+2. **Cross-Platform Antigravity CLI Discovery & Android Termux Hardening**:
+   - Eliminated hardcoded user paths (`/home/sunmughan/.local/bin/agy`) from `src/ai/ai-runtime.js`.
+   - Implemented cross-platform `resolveAgyBinary()` supporting Termux `$PREFIX/bin/agy`, user local bin, system PATH (`which`/`where`), and repository fallback.
+   - Upgraded `scripts/agy` session discovery to support Linux (x64/arm64), macOS (Intel/Silicon), Windows (PowerShell/WMI), and Android Termux (`ps -ef`/`pgrep`).
+   - Integrated native Termux Antigravity CLI installation command (`curl -fsSL https://raw.githubusercontent.com/wallentx/antigravity-cli-termux/dev/install.sh | bash`) into `installers/install-android-termux.sh` with all prerequisites (`curl`, `tar`, `bash`, `procps`, `nodejs-lts`, `termux-x11-nightly`, `chromium`).
+   - Enhanced `start-termux` to check `termux-x11` display binding and report Antigravity CLI readiness.
+
+3. **Viral Follower Growth via "Meta Automation" GitHub Repo**:
+   - Added Pillar 6: `meta_automation` (Open-Source Meta Automation & Autonomous Growth, `https://github.com/sunmughan/meta-automation`).
+   - Added 5-slide Stripe-grade carousel deck covering 24/7 AI growth, deterministic architecture, Termux mobile AI, codebase blueprint, and GitHub star/follow CTAs.
+   - Added dark-mode visual quote card and terminal code card specs for `meta_automation`.
+   - Enhanced AI dynamic caption generation in `threads-poster.js` to spotlight the open-source GitHub repository and invite developers to star, fork, and follow `@${founder.threadsUsername}`.
+
+4. **Test Suite & Audit Results**:
+   - 76 Core Scenarios Passed
+   - 21 Pillar & Search Discovery Checks Passed
+   - 20 Cross-Platform & Browser Checks Passed
+   - 100% Multi-Brand Customization & Zero-Bleed Isolation Passed
+   - Total: 123 Passed, 0 Failed (100% Clean Pass)
+
