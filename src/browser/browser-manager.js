@@ -32,6 +32,22 @@ class BrowserManager {
   }
 
   /**
+   * Checks if a cached page reference is still alive and usable.
+   * Detects detached frames, closed pages, and stale CDP sessions.
+   */
+  isPageAlive(page) {
+    if (!page || page.isClosed()) return false;
+    try {
+      // Attempt to access the main frame — throws if detached
+      const frame = page.mainFrame();
+      if (!frame || frame.isDetached()) return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
    * Fast check whether CDP port is open and responding.
    */
   async isCdpReachable(timeoutMs = 1500) {
@@ -128,7 +144,7 @@ class BrowserManager {
       await this.connect();
     }
 
-    if (this._threadsPage && !this._threadsPage.isClosed()) {
+    if (this.isPageAlive(this._threadsPage)) {
       if (options.bringToFront !== false) {
         await this._threadsPage.bringToFront().catch(() => {});
       }
@@ -142,7 +158,7 @@ class BrowserManager {
     await prevLock;
 
     try {
-      if (this._threadsPage && !this._threadsPage.isClosed()) {
+      if (this.isPageAlive(this._threadsPage)) {
         if (options.bringToFront !== false) {
           await this._threadsPage.bringToFront().catch(() => {});
         }
@@ -150,7 +166,7 @@ class BrowserManager {
       }
 
       const pages = await this.browser.pages();
-      const claimedPages = new Set([this._linkedInPage, this._facebookPage, this._instagramPage].filter(p => p && !p.isClosed()));
+      const claimedPages = new Set([this._linkedInPage, this._facebookPage, this._instagramPage].filter(p => this.isPageAlive(p)));
 
       let selectedPage = pages.find(p => !claimedPages.has(p) && (p.url().includes("threads.com") || p.url().includes("threads.net")));
 
@@ -197,7 +213,7 @@ class BrowserManager {
       await this.connect();
     }
 
-    if (this._instagramPage && !this._instagramPage.isClosed()) {
+    if (this.isPageAlive(this._instagramPage)) {
       if (options.bringToFront !== false) {
         await this._instagramPage.bringToFront().catch(() => {});
       }
@@ -211,12 +227,12 @@ class BrowserManager {
     await prevLock;
 
     try {
-      if (this._instagramPage && !this._instagramPage.isClosed()) {
+      if (this.isPageAlive(this._instagramPage)) {
         return this._instagramPage;
       }
 
       const pages = await this.browser.pages();
-      const claimedPages = new Set([this._threadsPage, this._linkedInPage, this._facebookPage].filter(p => p && !p.isClosed()));
+      const claimedPages = new Set([this._threadsPage, this._linkedInPage, this._facebookPage].filter(p => this.isPageAlive(p)));
 
       let selectedPage = pages.find(p => !claimedPages.has(p) && p.url().includes("instagram.com"));
 
@@ -263,7 +279,7 @@ class BrowserManager {
       await this.connect();
     }
 
-    if (this._linkedInPage && !this._linkedInPage.isClosed()) {
+    if (this.isPageAlive(this._linkedInPage)) {
       if (options.bringToFront !== false) {
         await this._linkedInPage.bringToFront().catch(() => {});
       }
@@ -277,7 +293,7 @@ class BrowserManager {
     await prevLock;
 
     try {
-      if (this._linkedInPage && !this._linkedInPage.isClosed()) {
+      if (this.isPageAlive(this._linkedInPage)) {
         if (options.bringToFront !== false) {
           await this._linkedInPage.bringToFront().catch(() => {});
         }
@@ -285,7 +301,7 @@ class BrowserManager {
       }
 
       const pages = await this.browser.pages();
-      const claimedPages = new Set([this._threadsPage, this._facebookPage, this._instagramPage].filter(p => p && !p.isClosed()));
+      const claimedPages = new Set([this._threadsPage, this._facebookPage, this._instagramPage].filter(p => this.isPageAlive(p)));
 
       let selectedPage = pages.find(p => !claimedPages.has(p) && p.url().includes("linkedin.com"));
 
@@ -332,7 +348,7 @@ class BrowserManager {
       await this.connect();
     }
 
-    if (this._facebookPage && !this._facebookPage.isClosed()) {
+    if (this.isPageAlive(this._facebookPage)) {
       if (options.bringToFront !== false) {
         await this._facebookPage.bringToFront().catch(() => {});
       }
@@ -346,7 +362,7 @@ class BrowserManager {
     await prevLock;
 
     try {
-      if (this._facebookPage && !this._facebookPage.isClosed()) {
+      if (this.isPageAlive(this._facebookPage)) {
         if (options.bringToFront !== false) {
           await this._facebookPage.bringToFront().catch(() => {});
         }
@@ -354,7 +370,7 @@ class BrowserManager {
       }
 
       const pages = await this.browser.pages();
-      const claimedPages = new Set([this._threadsPage, this._linkedInPage, this._instagramPage].filter(p => p && !p.isClosed()));
+      const claimedPages = new Set([this._threadsPage, this._linkedInPage, this._instagramPage].filter(p => this.isPageAlive(p)));
 
       let selectedPage = pages.find(p => !claimedPages.has(p) && p.url().includes("facebook.com"));
 

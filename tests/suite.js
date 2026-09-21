@@ -1428,6 +1428,71 @@ async function runAllTests() {
     assert(quoteHtml.includes("Clean architecture and fast shipping create real market value."), "Must include perspective quote");
   });
 
+  // 78. Platform Link Sanitizer (Anti-reCAPTCHA Defense)
+  await test("78. Platform Link Sanitizer replaces LinkedIn profile URLs with website on FB/LI", () => {
+    const inputWithLinkedIn = "We build custom mobile apps! View founder profile at https://linkedin.com/in/sunmughan or visit https://www.codeair.tech";
+    
+    // Facebook: LinkedIn URLs must be replaced with website URL
+    const fbSanitized = aiDecisionEngine.sanitizeCommentForPlatform(inputWithLinkedIn, "facebook");
+    assert(!fbSanitized.includes("linkedin.com/in/"), "Facebook comment must not contain linkedin.com/in URLs");
+    assert(fbSanitized.includes("https://www.codeair.tech"), "Facebook comment must retain website URL");
+
+    // LinkedIn: LinkedIn profile URLs must also be replaced to avoid scraping reCAPTCHA preview cards
+    const liSanitized = aiDecisionEngine.sanitizeCommentForPlatform(inputWithLinkedIn, "linkedin");
+    assert(!liSanitized.includes("linkedin.com/in/"), "LinkedIn comment must not contain linkedin.com/in URLs");
+    assert(liSanitized.includes("https://www.codeair.tech"), "LinkedIn comment must retain website URL");
+
+    // Threads: Preserves original URL structure
+    const threadsSanitized = aiDecisionEngine.sanitizeCommentForPlatform(inputWithLinkedIn, "threads");
+    assert(threadsSanitized.includes("linkedin.com/in/sunmughan"), "Threads preserves founder URL");
+  });
+
+  // 79. Platform Action Sanitizers (Facebook & LinkedIn Pre-Posting Gate)
+  await test("79. Action level pre-posting sanitizers strip LinkedIn profile URLs", () => {
+    const { facebookActions } = require("../src/platforms/facebook/facebook-actions");
+    const { linkedInActions } = require("../src/platforms/linkedin/linkedin-actions");
+
+    const dirtyText = "Check out my profile https://www.linkedin.com/in/sunmughan-swamy/ for more info";
+    const cleanFb = facebookActions.sanitizeForFacebook(dirtyText);
+    assert(!cleanFb.includes("linkedin.com/in/"), "Facebook action sanitizer must replace LinkedIn profile");
+    assert(cleanFb.includes("codeair.tech"), "Facebook action sanitizer must substitute codeair.tech");
+
+    const cleanLi = linkedInActions.sanitizeForLinkedIn(dirtyText);
+    assert(!cleanLi.includes("linkedin.com/in/"), "LinkedIn action sanitizer must replace LinkedIn profile");
+    assert(cleanLi.includes("codeair.tech"), "LinkedIn action sanitizer must substitute codeair.tech");
+  });
+
+  // 80. Detached Frame Resilience in BrowserManager
+  await test("80. BrowserManager.isPageAlive correctly identifies detached or closed frames", () => {
+    const browserManager = require("../src/browser/browser-manager");
+    
+    // Null/undefined page
+    assert.strictEqual(browserManager.isPageAlive(null), false, "Null page is not alive");
+    assert.strictEqual(browserManager.isPageAlive(undefined), false, "Undefined page is not alive");
+
+    // Closed page mock
+    const closedPage = { isClosed: () => true };
+    assert.strictEqual(browserManager.isPageAlive(closedPage), false, "Closed page is not alive");
+
+    // Detached frame mock
+    const detachedFramePage = {
+      isClosed: () => false,
+      mainFrame: () => ({
+        isDetached: () => true
+      })
+    };
+    assert.strictEqual(browserManager.isPageAlive(detachedFramePage), false, "Detached main frame is not alive");
+
+    // Healthy page mock
+    const healthyPage = {
+      isClosed: () => false,
+      mainFrame: () => ({
+        isDetached: () => false
+      })
+    };
+    assert.strictEqual(browserManager.isPageAlive(healthyPage), true, "Healthy page is alive");
+  });
+
   // Clean up any test actions recorded in stateStore so they never pollute production rate limiter
   for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
     if (v.targetId && v.targetId.startsWith("test_")) {

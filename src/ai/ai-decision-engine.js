@@ -39,6 +39,9 @@ class AiDecisionEngine {
     // Every post captured on screen enters AI reasoning with zero pre-filters or regex shortcuts.
     const analysis = await this.analyzePostSemantics(post, options);
 
+    // Detect platform for link sanitization
+    const postPlatform = post?.platform || (String(post?.postId || "").startsWith("fb") ? "facebook" : (String(post?.postId || "").startsWith("li") ? "linkedin" : "threads"));
+
     // 3. Format complete decision object
     if (analysis.decision === "QUALIFIED" && analysis.is_genuine_buyer) {
       // Determine representation if not already set
@@ -51,12 +54,15 @@ class AiDecisionEngine {
       }
 
       // Synthesize high-quality personalized comment
-      const comment = analysis.generated_comment || commentGenerator.generateEngagingComment({
+      let comment = analysis.generated_comment || commentGenerator.generateEngagingComment({
         text: rawText,
         username: username,
         matchedCategories: analysis.matched_categories || [analysis.matched_capability || "Web Development"],
         identity: rep
       });
+
+      // CRITICAL: Sanitize generated comment for platform-specific link restrictions
+      comment = this.sanitizeCommentForPlatform(comment, postPlatform);
 
       return {
         intent: analysis.intent || "BUYER",
@@ -320,12 +326,14 @@ class AiDecisionEngine {
     const conversationStage = context.conversationStage || "DISCOVERY";
     const username = context.username || context.participant || "user";
     const convId = context.convId || null;
+    const platform = context.platform || "threads";
     const normalizedContext = {
       ...context,
       incomingMessage,
       conversationStage,
       username,
-      convId
+      convId,
+      platform
     };
 
     // Check if human review escalation check is required (legal threats, lawsuits, extreme anger)
@@ -346,6 +354,8 @@ class AiDecisionEngine {
           responseMessage = `Understood. Feel free to connect directly if you have any questions regarding ${company.name}'s custom engineering services.`;
         }
 
+        responseMessage = this.sanitizeCommentForPlatform(responseMessage, platform);
+
         return {
           intent: aiRes.intent || "PROJECT_INQUIRY",
           identity: aiRes.identity || "COMPANY",
@@ -362,11 +372,13 @@ class AiDecisionEngine {
       logger.warn(`[AI Engine] Antigravity AI conversation turn reasoning failed: ${err.message}`);
       const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company?.whatsapp || profiles.founder?.whatsapp || "";
       const isCallRequest = conversationStage === "DISCOVERY_CALL" || /\b(call|schedule|phone|meeting|consultation|whatsapp)\b/i.test(incomingMessage);
-      const fallbackMsg = isCallRequest
+      let fallbackMsg = isCallRequest
         ? (whatsappUrl
             ? `We would be happy to discuss your project requirements! Feel free to connect directly to book a discovery call: ${whatsappUrl}`
             : `We would be happy to discuss your project requirements! Please share your contact details or requirements, and our team will follow up promptly.`)
         : "Thanks for reaching out! A member of our technical team will follow up with you shortly.";
+
+      fallbackMsg = this.sanitizeCommentForPlatform(fallbackMsg, platform);
 
       return {
         intent: isCallRequest ? "PROJECT_INQUIRY" : "AI_ERROR",
@@ -411,8 +423,9 @@ class AiDecisionEngine {
     const profiles = knowledge.getOfficialProfiles();
     const approved = knowledge.getApprovedServices();
     const excluded = knowledge.getExcludedServices();
-    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "";
+    const isFbOrLi = context.platform === "facebook" || context.platform === "linkedin";
     const companyUrl = profiles.company.website || company.website || "";
+    const founderUrl = isFbOrLi ? companyUrl : (profiles.founder.linkedin || profiles.founder.profileUrl || "");
     const productUrl = profiles.company.productUrl || company.productUrl || profiles.company.pixelgo || "";
     const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company.whatsapp || profiles.founder.whatsapp || "";
 
@@ -472,6 +485,31 @@ OUTPUT STRICT JSON:
   "service_match": boolean
 }
 `;
+  }
+
+  /**
+   * Post-processing safety layer: sanitizes AI-generated comments for platform-specific link restrictions.
+   * LinkedIn profile URLs (linkedin.com/in/*) trigger Cloudflare reCAPTCHA on both Facebook AND LinkedIn,
+   * producing ugly "Checking your browser - reCAPTCHA" preview cards. This method guarantees they are replaced
+   * with the company website URL regardless of what the AI model generated.
+   *
+   * @param {string} comment - The AI-generated comment text
+   * @param {string} platform - Target platform: "facebook" | "linkedin" | "threads"
+   * @returns {string} Sanitized comment
+   */
+  sanitizeCommentForPlatform(comment, platform = "threads") {
+    if (!comment || typeof comment !== "string") return comment;
+
+    const profiles = knowledge.getOfficialProfiles();
+    const companyUrl = profiles.company.website || "https://www.codeair.tech";
+
+    if (platform === "facebook" || platform === "linkedin") {
+      // Replace ALL linkedin.com/in/* profile URLs with company website
+      // These URLs trigger Cloudflare reCAPTCHA on both Facebook AND LinkedIn preview scrapers
+      comment = comment.replace(/https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi, companyUrl);
+    }
+
+    return comment;
   }
 
   buildFullSemanticPrompt(post) {

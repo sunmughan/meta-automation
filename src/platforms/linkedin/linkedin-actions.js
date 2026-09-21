@@ -13,12 +13,25 @@ const logger = require("../../logging/logger");
 
 class LinkedInActions {
   /**
+   * Sanitizes comment text for LinkedIn by replacing linkedin.com/in/* profile URLs
+   * (which trigger Cloudflare reCAPTCHA preview cards) with the company website.
+   */
+  sanitizeForLinkedIn(text) {
+    if (!text || typeof text !== "string") return text;
+    // LinkedIn profile URLs in comments trigger reCAPTCHA preview cards
+    return text.replace(/https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi, "https://www.codeair.tech");
+  }
+
+  /**
    * Posts a comment on a LinkedIn post.
    */
   async postComment(post, commentText, options = {}) {
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
     const isApprovalMode = options.approvalMode !== undefined ? options.approvalMode : CONFIG.APPROVAL_MODE;
     const isPostingEnabled = options.postingEnabled !== undefined ? options.postingEnabled : CONFIG.POSTING_ENABLED;
+
+    // CRITICAL: Sanitize LinkedIn profile URLs to prevent reCAPTCHA preview cards
+    commentText = this.sanitizeForLinkedIn(commentText);
 
     if (!commentText || !commentText.trim()) {
       logger.warn(`Cannot post empty comment on LinkedIn post ${post.postId}`);
