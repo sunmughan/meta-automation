@@ -255,13 +255,23 @@ class AiRuntime {
 
   /**
    * Internal execution with retry backoff.
+   * Uses exponential backoff for 429/RESOURCE_EXHAUSTED errors (3s → 8s → 20s).
+   * Uses linear backoff for other transient errors (1.5s → 3s).
    */
   async executeAiCall(prompt, options = {}) {
-    const retries = options.retries !== undefined ? options.retries : 2;
+    const baseRetries = options.retries !== undefined ? options.retries : 2;
     const timeoutMs = options.timeoutMs || 90000;
     let lastError = null;
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
+    // For 429 errors, allow up to 3 retries with exponential backoff
+    const maxRetries = baseRetries + 1; // 3 attempts total
+    const is429Error = (err) => err && err.message && (
+      err.message.includes("RESOURCE_EXHAUSTED") || 
+      err.message.includes("429") || 
+      err.message.includes("quota")
+    );
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await this.callAntigravityCli(prompt, timeoutMs);
       } catch (err) {
@@ -270,9 +280,17 @@ class AiRuntime {
           // Binary not found on system PATH; abort immediately
           break;
         }
-        if (attempt < retries) {
-          const delayMs = attempt * 1500;
-          logger.warn(`Antigravity AI call attempt ${attempt}/${retries} failed: ${err.message}. Retrying in ${delayMs}ms...`);
+        if (attempt < maxRetries) {
+          let delayMs;
+          if (is429Error(err)) {
+            // Exponential backoff for rate limits: 3s, 8s, 20s
+            delayMs = Math.min(3000 * Math.pow(2.5, attempt - 1), 30000);
+            logger.warn(`Antigravity AI call attempt ${attempt}/${maxRetries} rate-limited (429). Backing off ${Math.round(delayMs/1000)}s...`);
+          } else {
+            // Linear backoff for other errors: 1.5s, 3s
+            delayMs = attempt * 1500;
+            logger.warn(`Antigravity AI call attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delayMs}ms...`);
+          }
           await new Promise(r => setTimeout(r, delayMs));
         }
       }

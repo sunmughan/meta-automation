@@ -13,12 +13,25 @@ const logger = require("../../logging/logger");
 
 class FacebookActions {
   /**
+   * Sanitizes comment text for Facebook by replacing LinkedIn profile URLs
+   * (which trigger Cloudflare reCAPTCHA preview cards) with the company website.
+   */
+  sanitizeForFacebook(text) {
+    if (!text || typeof text !== "string") return text;
+    // LinkedIn profile URLs trigger reCAPTCHA on Facebook's link preview scraper
+    return text.replace(/https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi, "https://www.codeair.tech");
+  }
+
+  /**
    * Posts a comment on a Facebook post.
    */
   async postComment(post, commentText, options = {}) {
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
     const isApprovalMode = options.approvalMode !== undefined ? options.approvalMode : CONFIG.APPROVAL_MODE;
     const isPostingEnabled = options.postingEnabled !== undefined ? options.postingEnabled : CONFIG.POSTING_ENABLED;
+
+    // CRITICAL: Sanitize LinkedIn URLs before posting on Facebook
+    commentText = this.sanitizeForFacebook(commentText);
 
     if (!commentText || !commentText.trim()) {
       logger.warn(`Cannot post empty comment on Facebook post ${post.postId}`);
@@ -142,6 +155,7 @@ class FacebookActions {
 const facebookActions = new FacebookActions();
 module.exports = {
   facebookActions,
+  FacebookActions,
   postComment: (post, text, opts) => facebookActions.postComment(post, text, opts),
   postFacebookComment: (post, text, opts) => facebookActions.postComment(post, text, opts)
 };

@@ -198,7 +198,7 @@ class LinkedInActivityWatcher {
         });
 
         const replyMessage = aiResponse.response_message || 
-          `Hi ${conv.username.split(" ")[0] || ""}, thanks for reaching out! At CodeAir, we specialize in high-performance web applications, custom SaaS, and AI automation. Feel free to connect directly with our founder here: https://linkedin.com/in/sunmughan or review our work at https://www.codeair.tech.`;
+          `Hi ${conv.username.split(" ")[0] || ""}, thanks for reaching out! At CodeAir, we specialize in high-performance web applications, custom SaaS, and AI automation. Feel free to explore our work and capabilities at https://www.codeair.tech.`;
 
         // Type and send reply
         const editorSelector = ".msg-form__contenteditable[contenteditable='true'], div[role='textbox'][aria-label*='message' i], .msg-form__message-texteditor [contenteditable='true']";

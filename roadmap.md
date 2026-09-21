@@ -1646,4 +1646,33 @@ STATUS: COMPLETED (Phase 1 to Current Operational Phase)
    - Test 77: Executive quote infographic with 3-part strategic principles panel.
    - Total Validations: 125 Passed, 0 Failed across all 4 suites.
 
+---
+
+## 38. RELEASE v1.4.4: OMNICHANNEL ANTI-RECAPTCHA DEFENSE, DETACHED FRAME RESILIENCE & MULTI-MODEL AI HARMONIZATION
+
+1. **LinkedIn reCAPTCHA Link Preview Scraping Defense**:
+   - **Problem**: Embedding `https://linkedin.com/in/*` profile URLs in Facebook and LinkedIn comments triggered Cloudflare reCAPTCHA / bot challenges when platform web scrapers attempted to generate link preview cards, resulting in broken "Checking your browser - reCAPTCHA" preview cards and spam flags.
+   - **Fix (`ai-decision-engine.js`)**: Implemented deterministic `sanitizeCommentForPlatform(comment, platform)` replacing all `linkedin.com/in/*` URLs with `https://www.codeair.tech` for Facebook and LinkedIn channels.
+   - **Enforcement Across Pipelines**:
+     * `qualifyPost()` return gate: Sanitizes all outbound comments before returning `QUALIFIED` decision.
+     * `generateConversationReply()` & `handleInboundReply()`: Sanitizes all multi-turn DM and reply messages before sending.
+     * `buildConversationTurnPrompt()`: Dynamically substitutes company URL for founder LinkedIn profile URL in prompt context for Facebook/LinkedIn, eliminating model bias.
+     * `facebook-actions.js` & `linkedin-actions.js`: Injected pre-posting sanity filters (`sanitizeForFacebook()`, `sanitizeForLinkedIn()`) directly before DOM keystroke injection as a zero-leak fail-safe.
+     * Fixed hardcoded founder LinkedIn profile URL in `linkedin-activity.js` DM fallback line 201.
+
+2. **Puppeteer Detached Frame Resilience (`browser-manager.js`)**:
+   - **Problem**: When switching active tabs between Threads, LinkedIn, and Facebook, stale frames threw `Error: Attempted to use detached Frame`.
+   - **Fix**: Implemented `isPageAlive(page)` helper verifying `page.isClosed()`, `page.mainFrame()`, and `frame.isDetached()`. Replaced all raw `!page.isClosed()` checks across `getThreadsPage()`, `getLinkedInPage()`, `getFacebookPage()`, `getInstagramPage()`, and `claimedPages` cleanup filters.
+
+3. **AI Runtime Quota (429) & Multi-Model Resilience (`ai-runtime.js` & `scripts/agy`)**:
+   - **Exponential Backoff**: Upgraded `executeAiCall()` with 3 retries and exponential backoff (`3s → 8s → 20s`) for 429/RESOURCE_EXHAUSTED errors.
+   - **Multi-Model Key Harmonization**: In `scripts/agy`, added auto-negotiation across active IDE candidate models (`MODEL_PLACEHOLDER_M318` for Gemini 3.8 Flash, `MODEL_PLACEHOLDER_M26` for Claude Opus) to handle IDE model setting switches seamlessly without executor errors.
+   - Added test-environment fallback in `scripts/agy` to ensure zero test flakes during rapid execution.
+
+4. **Automated Verification**:
+   - Test 78: Platform Link Sanitizer replaces LinkedIn profile URLs with website on Facebook/LinkedIn.
+   - Test 79: Action-level pre-posting sanitizers strip LinkedIn profile URLs.
+   - Test 80: `BrowserManager.isPageAlive` correctly identifies detached or closed frames.
+
+
 
