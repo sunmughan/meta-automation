@@ -28,6 +28,7 @@ const { scanThreadsFeed, refreshThreadsFeed, checkSidebarBadges, searchThreadsKe
 const { scanInstagramFeed } = require("./src/platforms/instagram/instagram-feed");
 const { scanLinkedInFeed, searchLinkedInKeywords } = require("./src/platforms/linkedin/linkedin-scanner");
 const { scanFacebookProfileFeed } = require("./src/platforms/facebook/facebook-profile");
+const { searchFacebookPosts, searchFacebookGroupPosts } = require("./src/platforms/facebook/facebook-search");
 const aiDecisionEngine = require("./src/ai/ai-decision-engine");
 const threadsActions = require("./src/platforms/threads/threads-actions");
 const threadsPoster = require("./src/platforms/threads/threads-poster");
@@ -90,7 +91,18 @@ async function commandScan(options = {}) {
     } else if (platform === "linkedin") {
       res = await scanLinkedInFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
     } else if (platform === "facebook") {
-      res = await scanFacebookProfileFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+      const searchArg = process.argv.find(a => a.startsWith("--search"));
+      if (searchArg) {
+        const query = searchArg.includes("=") ? searchArg.split("=")[1] : process.argv[process.argv.indexOf(searchArg) + 1];
+        res = await searchFacebookPosts({ query, maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+      } else if (process.argv.includes("--group") || process.argv.includes("--groups")) {
+        res = await searchFacebookGroupPosts({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+      } else if (process.argv.includes("--feed") || process.argv.includes("--profile")) {
+        res = await scanFacebookProfileFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+      } else {
+        // By default, execute high-intent targeted search on Facebook
+        res = await searchFacebookPosts({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+      }
     } else {
       res = await scanThreadsFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
     }
@@ -113,7 +125,7 @@ async function commandScan(options = {}) {
 function getLeadPriorityScore(post) {
   let score = 0;
   if (post.status === "COMMENT_PENDING") score += 5000;
-  if (post.source === "SEARCH") score += 2000;
+  if (post.source === "SEARCH" || post.source === "FACEBOOK_KEYWORD_SEARCH" || post.source === "FACEBOOK_GROUP_SEARCH") score += 2000;
   const text = (post.text || "").toLowerCase();
 
   // Generic intent verbs (seeking, hiring, wanting)
@@ -283,9 +295,11 @@ async function commandAnalyze(options = {}) {
         console.log(`  🚀 Posting live comment on @${post.username}'s ${postPlatform} post...`);
         let postRes = null;
         if (postPlatform === "linkedin") {
-          postRes = await linkedInActions.postComment(post, commentToPost);
+          const fn = linkedInActions.postComment || (linkedInActions.linkedInActions && linkedInActions.linkedInActions.postComment);
+          postRes = await fn.call(linkedInActions.linkedInActions || linkedInActions, post, commentToPost);
         } else if (postPlatform === "facebook") {
-          postRes = await facebookActions.postComment(post, commentToPost);
+          const fn = facebookActions.postComment || facebookActions.postFacebookComment || (facebookActions.facebookActions && facebookActions.facebookActions.postComment);
+          postRes = await fn.call(facebookActions.facebookActions || facebookActions, post, commentToPost);
         } else {
           postRes = await threadsActions.postComment(post, commentToPost);
         }
@@ -638,17 +652,30 @@ async function runLinkedInCycle(cycle) {
 async function runFacebookCycle(cycle) {
   console.log(`\n[FACEBOOK WORKER] Starting active operations on Facebook tab (Cycle #${cycle})...`);
   try {
-    // 1. Timeline feed scan
-    console.log("\n[FACEBOOK FEED] Scanning Facebook public profile timeline...");
-    const fbFeedRes = await scanFacebookProfileFeed({ maxPosts: 10 });
-    console.log(`Facebook feed: ${fbFeedRes.scannedCount} visible, ${fbFeedRes.newCount} new`);
+    // 1. Hybrid Search Discovery: Alternates between Targeted Keyword Search and High-Intent Group Posts
+    if (cycle % 2 === 1) {
+      console.log("\n[FACEBOOK SEARCH] Searching Facebook for targeted commercial buyer queries...");
+      const searchRes = await searchFacebookPosts({ maxPosts: 12 });
+      console.log(`Facebook search query "${searchRes.query}": ${searchRes.scannedCount} visible, ${searchRes.newCount} new`);
+    } else {
+      console.log("\n[FACEBOOK GROUP DISCOVERY] Scanning Facebook public group discussions for project leads...");
+      const groupRes = await searchFacebookGroupPosts({ maxPosts: 10 });
+      console.log(`Facebook group search query "${groupRes.query}": ${groupRes.scannedCount} visible, ${groupRes.newCount} new`);
+    }
 
-    // 2. Lead qualification & comments on discovered Facebook posts
-    console.log("\n[FACEBOOK ENGAGEMENT] Evaluating Facebook interactions & lead inquiries...");
+    // 2. Periodic Profile Timeline Check (every 6 cycles) for visitor comments on own posts
+    if (cycle % 6 === 3) {
+      console.log("\n[FACEBOOK PROFILE] Checking public profile timeline for incoming interactions...");
+      const fbFeedRes = await scanFacebookProfileFeed({ maxPosts: 5 });
+      console.log(`Facebook profile timeline: ${fbFeedRes.scannedCount} visible, ${fbFeedRes.newCount} new`);
+    }
+
+    // 3. Lead qualification & comments on discovered Facebook posts
+    console.log("\n[FACEBOOK ENGAGEMENT] Evaluating Facebook buyer leads & commercial opportunities...");
     await commandAnalyze({ platform: "facebook", maxPosts: 10, maxLiveComments: 2 });
 
-    // 3. Public profile post cadence
-    if (cycle % 6 === 4 && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
+    // 4. Public profile post cadence
+    if (cycle % 6 === 5 && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
       console.log("\n[FACEBOOK POSTER] Publishing scheduled public profile update...");
       await facebookPoster.publishPost();
     }

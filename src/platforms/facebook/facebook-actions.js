@@ -133,5 +133,6 @@ class FacebookActions {
 const facebookActions = new FacebookActions();
 module.exports = {
   facebookActions,
+  postComment: (post, text, opts) => facebookActions.postComment(post, text, opts),
   postFacebookComment: (post, text, opts) => facebookActions.postComment(post, text, opts)
 };
