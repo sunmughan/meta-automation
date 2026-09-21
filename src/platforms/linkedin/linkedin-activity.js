@@ -123,9 +123,9 @@ class LinkedInActivityWatcher {
 
       // Check for unread conversations or top conversation
       const conversationList = await page.evaluate(() => {
-        const items = Array.from(document.querySelectorAll(".msg-conversation-listitem, .msg-conversation-card, [data-view-name*='conversation']"));
-        return items.slice(0, 5).map(item => {
-          const text = (item.innerText || "").trim();
+        const items = Array.from(document.querySelectorAll("li.msg-conversation-listitem, li[class*='msg-conversation']"));
+        return items.slice(0, 8).map(item => {
+          const text = (item.innerText || "").trim().replace(/[\r\n]+/g, " ");
           const unread = Boolean(item.querySelector(".msg-conversation-card__unread-count, [class*='unread'], .notification-badge"));
           const nameEl = item.querySelector(".msg-conversation-listitem__participant-names, h3, [class*='participant']");
           const username = nameEl ? nameEl.innerText.trim().replace(/[\r\n]+/g, " ") : "prospect";
@@ -138,26 +138,30 @@ class LinkedInActivityWatcher {
         telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"DM_SCAN",targetId:"inbox",error:"No conversation rows discovered; DOM adapter likely stale"});
       }
 
+      const maxMessages = options.maxMessages || 2;
       let processedCount = 0;
       for (let idx = 0; idx < conversationList.length; idx++) {
+        if (processedCount >= maxMessages) break;
         const conv = conversationList[idx];
         if (!conv.unread && idx > 0) continue; // Prioritize unread or top conversation
 
-        // Click into the conversation
-        const opened = await page.evaluate((targetIdx) => {
-          const items = Array.from(document.querySelectorAll(".msg-conversation-listitem, .msg-conversation-card, [data-view-name*='conversation']"));
-          if (items[targetIdx]) {
-            items[targetIdx].click();
-            return true;
-          }
-          return false;
+        // Click into the conversation using CDP native mouse click (required for Ember SPA route transition)
+        const coords = await page.evaluate((targetIdx) => {
+          const items = Array.from(document.querySelectorAll("li.msg-conversation-listitem, li[class*='msg-conversation']"));
+          const item = items[targetIdx];
+          if (!item) return null;
+          item.scrollIntoView({ behavior: "instant", block: "center" });
+          const r = item.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
         }, idx);
 
-        if (!opened) {
-          telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"DM_OPEN",targetId:conv.username,error:"Conversation row could not be clicked"});
+        if (!coords) {
+          telemetry.record({type:"ACTION_FAILED",platform:"linkedin",action:"DM_OPEN",targetId:conv.username,error:"Conversation row could not be located"});
           continue;
         }
-        await new Promise(r => setTimeout(r, 2000));
+
+        await page.mouse.click(coords.x, coords.y);
+        await new Promise(r => setTimeout(r, 2500));
 
         // Inspect messages in active conversation
         const messageData = await page.evaluate(() => {
@@ -182,7 +186,7 @@ class LinkedInActivityWatcher {
           continue;
         }
 
-        if (messageData.lastText.length < 3) continue;
+        if (!messageData.lastText || messageData.lastText.trim().length === 0) continue;
 
         const convId = this.hashItem(conv.username, messageData.lastText, "li_dm");
         const dupCheck = duplicateGuard.canExecute({
@@ -215,7 +219,7 @@ class LinkedInActivityWatcher {
             : `Hi ${conv.username.split(" ")[0] || ""}, thanks for reaching out! Great to connect with you.`);
 
         // Type and send reply
-        const editorSelector = ".msg-form__contenteditable[contenteditable='true'], div[role='textbox'][aria-label*='message' i], .msg-form__message-texteditor [contenteditable='true']";
+        const editorSelector = ".msg-form__contenteditable[contenteditable='true'], div[role='textbox'][aria-label*='message' i], div[role='textbox'][contenteditable='true'], .msg-form__message-texteditor [contenteditable='true']";
         const editor = await page.$(editorSelector);
 
         if (editor) {
@@ -229,7 +233,7 @@ class LinkedInActivityWatcher {
           await new Promise(r => setTimeout(r, 1000));
 
           // Click Send button
-          const sendBtnSelector = "button.msg-form__send-button, button[type='submit'].msg-form__send-btn";
+          const sendBtnSelector = "button.msg-form__send-button, button[type='submit'].msg-form__send-btn, button[type='submit']";
           const sendBtn = await page.$(sendBtnSelector);
           if (sendBtn) {
             await sendBtn.click();
@@ -335,7 +339,7 @@ class LinkedInActivityWatcher {
             : `@${notif.username} Appreciate your thoughts and perspective on this!`);
 
         // Locate comment / reply box
-        const editorSelector = ".comments-comment-box__form [contenteditable='true'], div[role='textbox'][aria-label*='comment' i], .ql-editor";
+        const editorSelector = "div.tiptap.ProseMirror[role='textbox'], div[role='textbox'][aria-label*='comment' i], .comments-comment-box__form [contenteditable='true'], div[role='textbox'][contenteditable='true'], .ql-editor";
         const editor = await page.$(editorSelector);
 
         if (editor) {
@@ -348,7 +352,7 @@ class LinkedInActivityWatcher {
           }
           await new Promise(r => setTimeout(r, 1000));
 
-          const submitBtn = await page.$("button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-btn");
+          const submitBtn = await page.$("button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-btn, button[type='submit']");
           if (submitBtn) {
             await submitBtn.click();
             await new Promise(r => setTimeout(r, 3000));

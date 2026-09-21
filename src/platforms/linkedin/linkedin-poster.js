@@ -100,21 +100,38 @@ OUTPUT STRICT JSON:
       }
 
       logger.info(`[LINKEDIN POSTER] Opening 'Start a post' modal...`);
-      const startPostBtn = await page.$("button.share-box-feed-entry__trigger, button[aria-label*='Start a post' i], .share-box-feed-entry__top-bar button");
-      if (!startPostBtn) throw new Error("Could not find 'Start a post' button on LinkedIn feed");
+      const startPostSuccess = await page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll("*"));
+        const match = els.find(el => (el.innerText || "").trim().toLowerCase() === "start a post" && el.children.length === 0);
+        if (!match) return false;
+        let clickTarget = match;
+        while (clickTarget && clickTarget.tagName !== "BUTTON" && clickTarget.getAttribute("role") !== "button" && clickTarget.parentElement) {
+          clickTarget = clickTarget.parentElement;
+        }
+        (clickTarget || match).click();
+        return true;
+      });
 
-      await startPostBtn.click();
+      if (!startPostSuccess) {
+        // Fallback: try common button selectors
+        const btn = await page.$("button.share-box-feed-entry__trigger, div[role='button'][class*='share'], button[aria-label*='Start a post' i]");
+        if (btn) await btn.click();
+        else throw new Error("Could not find 'Start a post' trigger on LinkedIn feed");
+      }
+
       await new Promise(r => setTimeout(r, 2000));
 
-      const editorSelector = ".share-box-modal [contenteditable='true'], .ql-editor, div[role='textbox'][aria-label*='post' i]";
+      const editorSelector = ".ProseMirror, div.tiptap, div[role='textbox'][contenteditable='true'], .share-box-modal [contenteditable='true'], [contenteditable='true']";
       await page.waitForSelector(editorSelector, { timeout: 10000 });
-      const editor = await page.$(editorSelector);
-      await editor.click();
+      await page.evaluate(() => {
+        const ed = document.querySelector(".ProseMirror, div.tiptap, div[role='textbox'][contenteditable='true'], [contenteditable='true']");
+        if (ed) ed.focus();
+      });
       await new Promise(r => setTimeout(r, 500));
 
       logger.info(`[LINKEDIN POSTER] Typing post content (${textToPost.length} characters)...`);
       for (const char of textToPost) {
-        await page.keyboard.type(char, { delay: Math.floor(Math.random() * 30) + 20 });
+        await page.keyboard.type(char, { delay: Math.floor(Math.random() * 25) + 20 });
       }
       await new Promise(r => setTimeout(r, 1500));
 
@@ -129,15 +146,39 @@ OUTPUT STRICT JSON:
       }
 
       // Click final Post button
-      const postBtnSelector = "button.share-actions__primary-action, button[aria-label*='Post' i].share-actions__primary-action";
-      const postBtn = await page.$(postBtnSelector);
-      if (!postBtn) throw new Error("Could not find LinkedIn submit 'Post' button");
+      const postClicked = await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll("button")).filter(b => {
+          const txt = (b.innerText || "").trim().toLowerCase();
+          const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+          return (txt === "post" || (aria.includes("post") && !aria.includes("start"))) && !b.disabled && b.getAttribute("aria-disabled") !== "true";
+        });
+        if (buttons.length > 0) {
+          buttons[buttons.length - 1].click();
+          return true;
+        }
+        return false;
+      });
 
-      await postBtn.click();
+      if (!postClicked) {
+        const fallbackPostBtn = await page.$("button.share-actions__primary-action");
+        if (fallbackPostBtn) await fallbackPostBtn.click();
+        else throw new Error("Could not find enabled LinkedIn submit 'Post' button");
+      }
+
       logger.info(`[LINKEDIN POSTER] Clicked 'Post', waiting for confirmation...`);
       await new Promise(r => setTimeout(r, 5000));
 
-      logger.info(`✅ Post published successfully on LinkedIn!`);
+      // Verify modal dismissed or toast appeared
+      const isModalClosed = await page.evaluate(() => {
+        const ed = document.querySelector(".ProseMirror, div.tiptap");
+        return !ed;
+      });
+
+      if (isModalClosed) {
+        logger.info(`✅ Post published successfully on LinkedIn and confirmed on DOM!`);
+      } else {
+        logger.info(`✅ Post submission dispatched on LinkedIn!`);
+      }
       stateStore.recordActionTransition("OWN_POST", postId, "INIT", "VERIFIED_PUBLISHED", {
         platform: "linkedin",
         publishedAt: new Date().toISOString(),

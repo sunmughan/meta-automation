@@ -380,7 +380,7 @@ class ThreadsActions {
 
       for (let attempt = 0; attempt < 12; attempt++) {
         await new Promise(r => setTimeout(r, 1000));
-        const check = await page.evaluate((snippet) => {
+        const check = await page.evaluate((snippet, authorUsername) => {
           const bodyText = document.body.innerText || "";
           
           // 1. Check for error alerts or rate limit toasts

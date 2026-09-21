@@ -97,7 +97,7 @@ class FacebookSearchEngine {
 
       // 3. Scroll down and parse post feed cards
       for (let scroll = 0; scroll < 4; scroll++) {
-        const postsData = await page.evaluate(() => {
+        const postsData = await page.evaluate((searchQuery) => {
           // Select Facebook search feed item cards across Comet DOM variations
           let articles = Array.from(document.querySelectorAll("div[role='feed'] > div, div[role='article'], div[data-pagelet*='FeedUnit'], div[data-pagelet*='SearchResult'], div[role='main'] div[role='article']"));
           if (!articles.length) {
@@ -162,7 +162,7 @@ class FacebookSearchEngine {
               seen.add(postId);
               results.push({
                 postId,
-                url: url || `https://www.facebook.com/search/posts/?q=${encodeURIComponent(query)}#${postId}`,
+                url: url || `https://www.facebook.com/search/posts/?q=${encodeURIComponent(searchQuery || "buyer")}&#${postId}`,
                 username,
                 authorProfileUrl,
                 groupName,
@@ -174,7 +174,7 @@ class FacebookSearchEngine {
           }
 
           return results;
-        });
+        }, query);
 
         for (const p of postsData) {
           scannedCount++;
