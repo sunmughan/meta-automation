@@ -53,11 +53,23 @@ class LinkedInScanner {
       let scannedCount = 0;
       let newCount = 0;
 
-      // Expand visible "see more" buttons first
+      // Expand visible "see more" text truncation buttons only (never click options/action menus!)
       await page.evaluate(() => {
-        const seeMoreBtns = document.querySelectorAll(".feed-shared-inline-show-more-text button, button.see-more, [aria-label*='see more' i]");
+        const seeMoreBtns = Array.from(document.querySelectorAll(".feed-shared-inline-show-more-text button, button.see-more")).filter(b => {
+          const text = (b.innerText || "").trim().toLowerCase();
+          const label = (b.getAttribute("aria-label") || "").toLowerCase();
+          if (label.includes("option") || label.includes("action") || label.includes("menu") || b.classList.contains("artdeco-dropdown__trigger")) {
+            return false;
+          }
+          return text.includes("see more") || text.includes("more");
+        });
         for (const btn of seeMoreBtns) {
           try { btn.click(); } catch (e) {}
+        }
+        // Dismiss any open dropdown context menus
+        const openMenus = document.querySelectorAll(".artdeco-dropdown__content--is-open");
+        if (openMenus.length) {
+          document.body.click();
         }
       });
 
@@ -175,7 +187,14 @@ class LinkedInScanner {
       // Scroll smoothly and expand see more so user sees live visual operation
       for (let s = 0; s < 3; s++) {
         await page.evaluate(() => {
-          const seeMoreBtns = document.querySelectorAll(".feed-shared-inline-show-more-text button, button.see-more");
+          const seeMoreBtns = Array.from(document.querySelectorAll(".feed-shared-inline-show-more-text button, button.see-more")).filter(b => {
+            const text = (b.innerText || "").trim().toLowerCase();
+            const label = (b.getAttribute("aria-label") || "").toLowerCase();
+            if (label.includes("option") || label.includes("action") || label.includes("menu") || b.classList.contains("artdeco-dropdown__trigger")) {
+              return false;
+            }
+            return text.includes("see more") || text.includes("more");
+          });
           for (const btn of seeMoreBtns) {
             try { btn.click(); } catch (e) {}
           }

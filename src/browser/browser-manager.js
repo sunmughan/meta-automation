@@ -169,7 +169,8 @@ class BrowserManager {
       }
 
       try {
-        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+        const client = await selectedPage.target().createCDPSession();
+        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
       } catch (e) {}
 
       selectedPage.removeAllListeners("dialog");
@@ -234,7 +235,8 @@ class BrowserManager {
       }
 
       try {
-        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+        const client = await selectedPage.target().createCDPSession();
+        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
       } catch (e) {}
 
       selectedPage.removeAllListeners("dialog");
@@ -302,7 +304,8 @@ class BrowserManager {
       }
 
       try {
-        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+        const client = await selectedPage.target().createCDPSession();
+        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
       } catch (e) {}
 
       selectedPage.removeAllListeners("dialog");
@@ -370,7 +373,8 @@ class BrowserManager {
       }
 
       try {
-        await selectedPage.setViewport({ width: CONFIG.VIEWPORT_WIDTH, height: CONFIG.VIEWPORT_HEIGHT, deviceScaleFactor: 1 });
+        const client = await selectedPage.target().createCDPSession();
+        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
       } catch (e) {}
 
       selectedPage.removeAllListeners("dialog");

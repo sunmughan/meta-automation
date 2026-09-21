@@ -60,6 +60,17 @@ class ThreadsMedia {
   }
 
   /**
+   * Generates a high-impact "Developers Connect" executive announcement card matching Image 2.
+   * Features cyber lime green (#00FF66) 3D extruded title boxes, code chip, vector QR code,
+   * right-side vertical spine text, and launch calendar badge.
+   */
+  async generateDeveloperConnectCard(spec = {}, filename = `dev_connect_${Date.now()}.png`) {
+    const outPath = path.join(MEDIA_DIR, filename);
+    const html = renderer.generateDeveloperConnectCardHtml(spec);
+    return await renderer.renderHtmlToImage(html, outPath);
+  }
+
+  /**
    * Generates a full 5-slide carousel deck for a theme.
    * Returns array of absolute image paths.
    */
@@ -237,9 +248,9 @@ class ThreadsMedia {
       default:
         return {
           isQuoteCard: true,
-          badge: `${compTag} • BUILDER NETWORK`,
-          accentColor: "#00F0FF",
-          glowColor: "rgba(0, 240, 255, 0.16)",
+          badge: `${compTag} • DEVELOPER NETWORK`,
+          accentColor: "#00FF66",
+          glowColor: "rgba(0, 255, 102, 0.18)",
           quote: "Looking for passionate software engineers who want to build real systems, collaborate on client work, and share project revenue.",
           author: authorName,
           role: authorRole,

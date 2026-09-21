@@ -40,6 +40,83 @@ function getPixelGoLogoUri() {
   return _pixelgoLogoUri || "";
 }
 
+function generateQrSvg() {
+  return `<svg width="90" height="90" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="8" fill="white"/>
+    <!-- Top-left finder -->
+    <rect x="10" y="10" width="24" height="24" rx="3" fill="black"/>
+    <rect x="14" y="14" width="16" height="16" fill="white"/>
+    <rect x="18" y="18" width="8" height="8" fill="black"/>
+    <!-- Top-right finder -->
+    <rect x="66" y="10" width="24" height="24" rx="3" fill="black"/>
+    <rect x="70" y="14" width="16" height="16" fill="white"/>
+    <rect x="74" y="18" width="8" height="8" fill="black"/>
+    <!-- Bottom-left finder -->
+    <rect x="10" y="66" width="24" height="24" rx="3" fill="black"/>
+    <rect x="14" y="70" width="16" height="16" fill="white"/>
+    <rect x="18" y="74" width="8" height="8" fill="black"/>
+    <!-- Timing tracks & alignment patterns -->
+    <rect x="38" y="12" width="4" height="4" fill="black"/>
+    <rect x="46" y="12" width="4" height="4" fill="black"/>
+    <rect x="54" y="12" width="4" height="4" fill="black"/>
+    <rect x="12" y="38" width="4" height="4" fill="black"/>
+    <rect x="12" y="46" width="4" height="4" fill="black"/>
+    <rect x="12" y="54" width="4" height="4" fill="black"/>
+    <!-- Data modules -->
+    <rect x="40" y="24" width="6" height="6" fill="black"/>
+    <rect x="50" y="24" width="6" height="6" fill="black"/>
+    <rect x="40" y="34" width="6" height="6" fill="black"/>
+    <rect x="48" y="34" width="8" height="6" fill="black"/>
+    <rect x="60" y="34" width="6" height="6" fill="black"/>
+    <rect x="70" y="38" width="6" height="6" fill="black"/>
+    <rect x="80" y="38" width="8" height="6" fill="black"/>
+    <rect x="40" y="44" width="6" height="6" fill="black"/>
+    <rect x="52" y="44" width="6" height="6" fill="black"/>
+    <rect x="64" y="44" width="8" height="6" fill="black"/>
+    <rect x="78" y="48" width="6" height="6" fill="black"/>
+    <rect x="24" y="44" width="6" height="6" fill="black"/>
+    <rect x="30" y="52" width="6" height="6" fill="black"/>
+    <rect x="40" y="54" width="8" height="6" fill="black"/>
+    <rect x="54" y="54" width="6" height="6" fill="black"/>
+    <rect x="64" y="54" width="6" height="6" fill="black"/>
+    <rect x="76" y="58" width="8" height="6" fill="black"/>
+    <rect x="40" y="66" width="6" height="6" fill="black"/>
+    <rect x="50" y="66" width="8" height="6" fill="black"/>
+    <rect x="62" y="66" width="6" height="6" fill="black"/>
+    <rect x="74" y="66" width="8" height="6" fill="black"/>
+    <rect x="40" y="78" width="8" height="6" fill="black"/>
+    <rect x="54" y="78" width="6" height="6" fill="black"/>
+    <rect x="66" y="78" width="6" height="6" fill="black"/>
+    <rect x="78" y="78" width="6" height="6" fill="black"/>
+    <rect x="44" y="86" width="6" height="6" fill="black"/>
+    <rect x="58" y="86" width="8" height="6" fill="black"/>
+    <rect x="72" y="86" width="6" height="6" fill="black"/>
+    <rect x="82" y="86" width="6" height="6" fill="black"/>
+  </svg>`;
+}
+
+function generateCalendarSvg() {
+  return `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#FACC15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="3" ry="3"></rect>
+    <line x1="16" y1="2" x2="16" y2="6"></line>
+    <line x1="8" y1="2" x2="8" y2="6"></line>
+    <line x1="3" y1="10" x2="21" y2="10"></line>
+    <circle cx="8" cy="14" r="1" fill="#FACC15"></circle>
+    <circle cx="12" cy="14" r="1" fill="#FACC15"></circle>
+    <circle cx="16" cy="14" r="1" fill="#FACC15"></circle>
+    <circle cx="8" cy="18" r="1" fill="#FACC15"></circle>
+    <circle cx="12" cy="18" r="1" fill="#FACC15"></circle>
+    <circle cx="16" cy="18" r="1" fill="#FACC15"></circle>
+  </svg>`;
+}
+
+function generateCodeBadgeSvg() {
+  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="16 18 22 12 16 6"></polyline>
+    <polyline points="8 6 2 12 8 18"></polyline>
+  </svg>`;
+}
+
 class ThreadsHtmlRenderer {
   /**
    * Generates HTML markup for a structured slide card.
@@ -1234,6 +1311,487 @@ const orchestrator = new AgenticPipeline({
     </div>
     <div class="footer-author">${author}</div>
     <div class="footer-tag">SYSTEM TOPOLOGY</div>
+  </div>
+</body>
+</html>`;
+  }
+
+  /**
+   * Generates HTML markup for an executive "Developers Connect" style event / announcement card.
+   * Replicates the exact modern visual aesthetic of the high-contrast developer graphic:
+   * - Deep obsidian textured matrix background (#05070D)
+   * - Neon Cyber Lime & Lemon Yellow 3D extruded title banners ("DEVELOPERS" / "CONNECT")
+   * - Top chevron teaser: "▶▶▶ SOMETHING EXCITING IS COMING"
+   * - High-contrast code badge: "< / >" + "HTML" / "TS" / "AI" chip
+   * - Tagline: "Because Every Great Website Has A Developer Behind It"
+   * - Right vertical spine text rotated 90deg with arrow markers
+   * - Authentic vector QR code + "REGISTER YOUR INTEREST HERE" URL
+   * - Calendar badge with launch date ("OCTOBER 29TH, 2026")
+   */
+  generateDeveloperConnectCardHtml(spec = {}) {
+    const founder = knowledge.getFounderInfo();
+    const companyInfo = knowledge.getCompanyInfo();
+    const profiles = knowledge.getOfficialProfiles();
+
+    const banner1 = (spec.banner1 || spec.titleTop || "DEVELOPERS").toUpperCase();
+    const banner2 = (spec.banner2 || spec.titleBottom || "CONNECT").toUpperCase();
+    const teaser = spec.teaser || "SOMETHING EXCITING IS COMING";
+    const techTag = spec.techTag || "HTML";
+    const tagline = spec.tagline || spec.subtitle || "Because Every Great Website Has A Developer Behind It";
+    const defaultSite = (profiles.company?.website || companyInfo.website || "https://www.codeair.tech");
+    const websiteUrl = spec.website || defaultSite;
+    const registerLabel = spec.registerLabel || "REGISTER YOUR INTEREST HERE:";
+    const dateText = spec.date || "OCTOBER 29TH, 2026";
+    const verticalText = (spec.verticalText || "DEVELOPERS CONNECT").toUpperCase();
+    const brandName = (spec.brandName || companyInfo.name || "CodeAir").toUpperCase();
+    const logoDataUri = spec.logoDataUri || getCodeAirLogoUri();
+
+    let cards = spec.cards;
+    if (!Array.isArray(cards) || cards.length === 0) {
+      cards = [
+        { num: "01", title: "Enterprise Stack Standards", desc: "Build using modern TypeScript, Next.js, Node.js, and scalable backends." },
+        { num: "02", title: "Collaborative Velocity", desc: "Work with experienced architects solving real client engineering challenges." },
+        { num: "03", title: "Direct Revenue Share", desc: "Fair, transparent compensation directly tied to delivered project milestones." }
+      ];
+    }
+
+    const cardsHtml = cards.slice(0, 3).map(c => `
+      <div class="dev-card">
+        <div class="dev-card-num">${c.num}</div>
+        <div class="dev-card-info">
+          <div class="dev-card-title">${c.title}</div>
+          <div class="dev-card-desc">${c.desc}</div>
+        </div>
+      </div>
+    `).join("");
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px;
+    height: 1080px;
+    background: #05070D;
+    color: #F8FAFC;
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 60px 70px 54px 64px;
+  }
+  .ambient-glow-top {
+    position: absolute;
+    top: -140px;
+    right: 40px;
+    width: 580px;
+    height: 580px;
+    background: radial-gradient(circle, rgba(0, 255, 102, 0.16) 0%, rgba(16, 185, 129, 0.06) 45%, transparent 70%);
+    pointer-events: none;
+  }
+  .ambient-glow-bottom {
+    position: absolute;
+    bottom: -160px;
+    left: -120px;
+    width: 620px;
+    height: 620px;
+    background: radial-gradient(circle, rgba(0, 255, 102, 0.12) 0%, rgba(250, 204, 21, 0.05) 50%, transparent 70%);
+    pointer-events: none;
+  }
+  .cyber-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(0, 255, 102, 0.12) 1.5px, transparent 1.5px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+  .diagonal-mesh {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 550px;
+    height: 1080px;
+    background: linear-gradient(135deg, rgba(0, 255, 102, 0.06) 0%, rgba(250, 204, 21, 0.02) 40%, transparent 80%);
+    pointer-events: none;
+  }
+  .vertical-spine {
+    position: absolute;
+    right: 32px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    transform-origin: center center;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    white-space: nowrap;
+    z-index: 20;
+    user-select: none;
+  }
+  .spine-text {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.38em;
+    color: #94A3B8;
+    text-transform: uppercase;
+  }
+  .spine-arrows {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    color: #F8FAFC;
+    font-size: 10px;
+    transform: rotate(-90deg);
+  }
+  .header-row {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-logo-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-logo-img {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  .brand-tag-dot {
+    font-size: 32px;
+    font-weight: 900;
+    color: #00FF66;
+    line-height: 1;
+  }
+  .brand-title {
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: #F8FAFC;
+  }
+  .brand-subtitle {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #64748B;
+    text-transform: uppercase;
+    display: block;
+    margin-top: -3px;
+  }
+  .teaser-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .teaser-chevrons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #FACC15;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.05em;
+  }
+  .teaser-text {
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    color: #FFFFFF;
+    text-transform: uppercase;
+  }
+  .hero-block {
+    position: relative;
+    z-index: 10;
+    margin-top: 14px;
+  }
+  .tech-badge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-right: 60px;
+  }
+  .code-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+  }
+  .chip-tag {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    background: #00FF66;
+    color: #05080D;
+    padding: 6px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 255, 102, 0.35);
+  }
+  .banner-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 820px;
+  }
+  .banner-box-green {
+    background: #00FF66;
+    padding: 12px 28px;
+    border-radius: 6px;
+    box-shadow: 12px 12px 0px #02240F, 0 16px 36px rgba(0, 255, 102, 0.25);
+    display: inline-block;
+  }
+  .banner-title-dark {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    color: #05080D;
+    text-transform: uppercase;
+  }
+  .banner-box-yellow {
+    background: #FACC15;
+    padding: 12px 28px;
+    border-radius: 6px;
+    box-shadow: 12px 12px 0px #2E2300, 0 16px 36px rgba(250, 204, 21, 0.25);
+    display: inline-block;
+  }
+  .banner-title-yellow-dark {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    color: #05080D;
+    text-transform: uppercase;
+  }
+  .hero-tagline {
+    font-size: 21px;
+    font-weight: 600;
+    color: #CBD5E1;
+    line-height: 1.4;
+    margin-top: 20px;
+    max-width: 780px;
+  }
+  .cards-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 18px 0;
+    max-width: 840px;
+  }
+  .dev-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 22px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(0, 255, 102, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+  .dev-card-num {
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    color: #00FF66;
+    background: rgba(0, 255, 102, 0.12);
+    border: 1px solid rgba(0, 255, 102, 0.35);
+    padding: 6px 12px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .dev-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .dev-card-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: #F8FAFC;
+    letter-spacing: -0.01em;
+  }
+  .dev-card-desc {
+    font-size: 14px;
+    font-weight: 500;
+    color: #94A3B8;
+    line-height: 1.35;
+  }
+  .footer-row {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    max-width: 880px;
+  }
+  .qr-group {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .qr-frame {
+    padding: 6px;
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    flex-shrink: 0;
+  }
+  .qr-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .qr-heading {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #94A3B8;
+    text-transform: uppercase;
+  }
+  .qr-action {
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    color: #00FF66;
+    text-transform: uppercase;
+  }
+  .qr-url {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #F8FAFC;
+    word-break: break-all;
+    margin-top: 2px;
+  }
+  .date-badge {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    background: rgba(250, 204, 21, 0.08);
+    border: 1px solid rgba(250, 204, 21, 0.25);
+  }
+  .date-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .date-label {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #FACC15;
+    text-transform: uppercase;
+  }
+  .date-value {
+    font-size: 19px;
+    font-weight: 900;
+    color: #FFFFFF;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+  <div class="ambient-glow-top"></div>
+  <div class="ambient-glow-bottom"></div>
+  <div class="cyber-dots"></div>
+  <div class="diagonal-mesh"></div>
+
+  <div class="vertical-spine">
+    <span class="spine-text">${verticalText}</span>
+    <div class="spine-arrows">
+      <span>&#9660;</span>
+      <span>&#9660;</span>
+      <span>&#9660;</span>
+    </div>
+  </div>
+
+  <div class="header-row">
+    <div class="brand-pill">
+      ${logoDataUri ? `<img src="${logoDataUri}" class="brand-logo-img" alt="Logo" />` : `<span class="brand-tag-dot">.</span>`}
+      <div class="brand-logo-box">
+        <div>
+          <span class="brand-title">${brandName}</span>
+          <span class="brand-subtitle">Software Solutions</span>
+        </div>
+      </div>
+    </div>
+    <div class="teaser-banner">
+      <div class="teaser-chevrons">&gt;&gt;&gt;</div>
+      <div class="teaser-text">${teaser}</div>
+    </div>
+  </div>
+
+  <div class="hero-block">
+    <div class="tech-badge-row">
+      <div class="code-pill">
+        ${generateCodeBadgeSvg()}
+      </div>
+      <div class="chip-tag">${techTag}</div>
+    </div>
+    <div class="banner-group">
+      <div>
+        <div class="banner-box-green">
+          <div class="banner-title-dark">${banner1}</div>
+        </div>
+      </div>
+      <div>
+        <div class="banner-box-yellow">
+          <div class="banner-title-yellow-dark">${banner2}</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-tagline">${tagline}</div>
+  </div>
+
+  <div class="cards-container">
+    ${cardsHtml}
+  </div>
+
+  <div class="footer-row">
+    <div class="qr-group">
+      <div class="qr-frame">
+        ${generateQrSvg()}
+      </div>
+      <div class="qr-info">
+        <span class="qr-heading">BE AMONG THE FIRST TO KNOW</span>
+        <span class="qr-action">${registerLabel}</span>
+        <span class="qr-url">${websiteUrl}</span>
+      </div>
+    </div>
+    <div class="date-badge">
+      ${generateCalendarSvg()}
+      <div class="date-text-group">
+        <span class="date-label">LAUNCH &bull; EVENT</span>
+        <span class="date-value">${dateText}</span>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;
