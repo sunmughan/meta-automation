@@ -22,11 +22,19 @@ const knowledge = require("./src/knowledge/knowledge-engine");
 const browserManager = require("./src/browser/browser-manager");
 const { checkThreadsAuth } = require("./src/platforms/threads/threads-auth");
 const { checkInstagramAuth } = require("./src/platforms/instagram/instagram-auth");
+const { checkLinkedInAuth } = require("./src/platforms/linkedin/linkedin-auth");
+const { checkFacebookAuth } = require("./src/platforms/facebook/facebook-auth");
 const { scanThreadsFeed, refreshThreadsFeed, checkSidebarBadges, searchThreadsKeywords } = require("./src/platforms/threads/threads-scanner");
 const { scanInstagramFeed } = require("./src/platforms/instagram/instagram-feed");
+const { scanLinkedInFeed, searchLinkedInKeywords } = require("./src/platforms/linkedin/linkedin-scanner");
+const { scanFacebookProfileFeed } = require("./src/platforms/facebook/facebook-profile");
 const aiDecisionEngine = require("./src/ai/ai-decision-engine");
 const threadsActions = require("./src/platforms/threads/threads-actions");
 const threadsPoster = require("./src/platforms/threads/threads-poster");
+const linkedInActions = require("./src/platforms/linkedin/linkedin-actions");
+const linkedInPoster = require("./src/platforms/linkedin/linkedin-poster");
+const facebookActions = require("./src/platforms/facebook/facebook-actions");
+const facebookPoster = require("./src/platforms/facebook/facebook-poster");
 const threadsActivityWatcher = require("./src/platforms/threads/threads-activity");
 const replyMonitor = require("./src/engagement/reply-monitor");
 const dmMonitor = require("./src/engagement/dm-monitor");
@@ -36,17 +44,37 @@ const commentGenerator = require("./src/engagement/comment-generator");
 const logger = require("./src/logging/logger");
 
 async function commandAuth() {
-  const target = (CONFIG.PLATFORM_TARGET || "threads").toLowerCase();
+  const argTarget = (process.argv[3] || "").toLowerCase();
+  const target = (argTarget || CONFIG.PLATFORM_TARGET || "threads").toLowerCase();
   console.log("\n==============================================");
   console.log(`       SESSION AUTHENTICATION INSPECTION (${target.toUpperCase()})`);
   console.log("==============================================");
-  const threadsAuth = await checkThreadsAuth({ printResult: true });
+
+  let threadsAuth = { isAuthenticated: false };
   let igAuth = { isAuthenticated: false };
+  let linkedInAuth = { isAuthenticated: false };
+  let facebookAuth = { isAuthenticated: false };
+
+  if (target === "threads" || target === "all") {
+    threadsAuth = await checkThreadsAuth({ printResult: true });
+  }
   if (target === "instagram" || target === "all") {
     igAuth = await checkInstagramAuth({ printResult: true });
   }
+  if (target === "linkedin" || target === "all") {
+    linkedInAuth = await checkLinkedInAuth({ printResult: true });
+  }
+  if (target === "facebook" || target === "all") {
+    facebookAuth = await checkFacebookAuth({ printResult: true });
+  }
+
   browserManager.disconnect();
-  return (threadsAuth.isAuthenticated || (target !== "threads" && igAuth.isAuthenticated)) ? 0 : 1;
+
+  if (target === "threads") return threadsAuth.isAuthenticated ? 0 : 1;
+  if (target === "instagram") return igAuth.isAuthenticated ? 0 : 1;
+  if (target === "linkedin") return linkedInAuth.isAuthenticated ? 0 : 1;
+  if (target === "facebook") return facebookAuth.isAuthenticated ? 0 : 1;
+  return (threadsAuth.isAuthenticated || igAuth.isAuthenticated || linkedInAuth.isAuthenticated || facebookAuth.isAuthenticated) ? 0 : 1;
 }
 
 async function commandScan(options = {}) {
@@ -59,6 +87,10 @@ async function commandScan(options = {}) {
     let res = null;
     if (platform === "instagram") {
       res = await scanInstagramFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+    } else if (platform === "linkedin") {
+      res = await scanLinkedInFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
+    } else if (platform === "facebook") {
+      res = await scanFacebookProfileFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
     } else {
       res = await scanThreadsFeed({ maxPosts: CONFIG.MAX_POSTS_PER_SCAN });
     }
@@ -242,18 +274,26 @@ async function commandAnalyze(options = {}) {
       stateStore.saveState();
 
       // Post live if conditions permit (rateLimiter is the canonical governor)
-      const canCommentNow = rateLimiter.canPerformAction("COMMENT", post.platform || "threads");
+      const postPlatform = post.platform || "threads";
+      const canCommentNow = rateLimiter.canPerformAction("COMMENT", postPlatform);
       if (!CONFIG.APPROVAL_MODE && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN && canCommentNow.allowed && liveCommentsPosted < maxLiveComments) {
-        console.log(`  🚀 Posting live comment on @${post.username}'s post...`);
-        const postRes = await threadsActions.postComment(post, commentToPost);
+        console.log(`  🚀 Posting live comment on @${post.username}'s ${postPlatform} post...`);
+        let postRes = null;
+        if (postPlatform === "linkedin") {
+          postRes = await linkedInActions.postComment(post, commentToPost);
+        } else if (postPlatform === "facebook") {
+          postRes = await facebookActions.postComment(post, commentToPost);
+        } else {
+          postRes = await threadsActions.postComment(post, commentToPost);
+        }
         if (postRes && postRes.success) {
           liveCommentsPosted++;
           stateStore.updatePostStatus(post.postId, "COMMENTED", {
             commentText: commentToPost,
             verifiedAt: new Date().toISOString()
-          }, post.platform || "threads");
+          }, postPlatform);
           stateStore.saveState();
-          console.log(`  ✅ Live comment verified & posted successfully on @${post.username}'s post!`);
+          console.log(`  ✅ Live comment verified & posted successfully on @${post.username}'s ${postPlatform} post!`);
         } else {
           const currentRetries = (post.retryCount || 0) + 1;
           stateStore.updatePostStatus(post.postId, "COMMENT_FAILED", {
@@ -261,7 +301,7 @@ async function commandAnalyze(options = {}) {
             lastFailedAt: new Date().toISOString(),
             failureReason: (postRes && postRes.reason) || "Submission verification failed",
             commentText: commentToPost
-          }, post.platform || "threads");
+          }, postPlatform);
           stateStore.saveState();
           console.warn(`  ⚠️ Live comment failed verification for @${post.username} (${(postRes && postRes.reason) || "unknown"}). Marked COMMENT_FAILED (retry ${currentRetries}/3 after cooldown).`);
         }
@@ -325,17 +365,25 @@ async function commandApprove() {
 
     if (ans === "A") {
       console.log("✓ Approved!");
+      const postPlatform = post.platform || "threads";
       if (CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
-        console.log("Posting comment live...");
-        await threadsActions.postComment(post, post.commentText, { dryRun: false, approvalMode: false });
+        console.log(`Posting comment live on ${postPlatform}...`);
+        if (postPlatform === "linkedin") {
+          await linkedInActions.postComment(post, post.commentText, { dryRun: false, approvalMode: false });
+        } else if (postPlatform === "facebook") {
+          await facebookActions.postComment(post, post.commentText, { dryRun: false, approvalMode: false });
+        } else {
+          await threadsActions.postComment(post, post.commentText, { dryRun: false, approvalMode: false });
+        }
       } else {
         console.log(`[DRY RUN] Marked approved in state.`);
         stateStore.recordComment(post.postId, {
           username: post.username,
           url: post.url,
           comment: post.commentText,
-          status: "APPROVED_SIMULATED"
-        }, post.platform || "threads");
+          status: "APPROVED_SIMULATED",
+          platform: postPlatform
+        }, postPlatform);
       }
     } else if (ans === "R") {
       console.log("❌ Rejected. Post marked as IGNORED.");
@@ -506,7 +554,7 @@ async function commandDms() {
 
 async function commandRun() {
   console.log("\n==============================================");
-  console.log("  🚀 STARTING AUTONOMOUS ORCHESTRATOR LOOP");
+  console.log("  🚀 STARTING AUTONOMOUS SEQUENTIAL ORCHESTRATOR");
   console.log("==============================================");
   console.log(`Mode: DRY_RUN=${CONFIG.DRY_RUN}, APPROVAL_MODE=${CONFIG.APPROVAL_MODE}, POSTING_ENABLED=${CONFIG.POSTING_ENABLED}`);
   console.log(`Interval: ${CONFIG.SCAN_INTERVAL_SECONDS}s, Post Cadence: Every ${CONFIG.POST_INTERVAL_HOURS}h\n`);
@@ -515,54 +563,96 @@ async function commandRun() {
   while (true) {
     cycle++;
     try {
+      // Sequential Platform Execution:
+      // Cycle % 3 === 1 -> Threads
+      // Cycle % 3 === 2 -> LinkedIn
+      // Cycle % 3 === 0 -> Facebook
+      // Minimizes memory footprint & browser CPU by running only one active platform per cycle
+      const platformCycle = cycle % 3;
+      const activePlatform = platformCycle === 1 ? "threads" : (platformCycle === 2 ? "linkedin" : "facebook");
+
       console.log(`\n==============================================`);
-      console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING`);
+      console.log(`[${new Date().toISOString()}] CYCLE #${cycle} STARTING [PLATFORM: ${activePlatform.toUpperCase()}]`);
       console.log(`==============================================`);
 
-      // 1. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
-      await checkAndPublishScheduledPost();
+      if (activePlatform === "threads") {
+        // --- THREADS CYCLE ---
+        // 1. Check & publish engaging discussion post (every 6 hours / 4 posts per 24h)
+        await checkAndPublishScheduledPost();
 
-      // 2. High-intent keyword search discovery (run every 6 cycles to discover active buyer queries)
-      if (cycle % 6 === 3) {
-        console.log("\n[SEARCH DISCOVERY] Searching Threads for high-intent client queries (websites, AI dev)...");
-        const searchRes = await searchThreadsKeywords({ queryCount: 1 });
-        console.log(`Search queries visible posts: ${searchRes.scannedCount}, Newly discovered: ${searchRes.newCount}`);
-      }
+        // 2. High-intent keyword search discovery (run every 6 cycles on Threads)
+        if (cycle % 6 === 3) {
+          console.log("\n[SEARCH DISCOVERY] Searching Threads for high-intent client queries (websites, AI dev)...");
+          const searchRes = await searchThreadsKeywords({ queryCount: 1 });
+          console.log(`Threads search visible posts: ${searchRes.scannedCount}, Newly discovered: ${searchRes.newCount}`);
+        }
 
-      // 3. Natural feed browsing & scrolling on Home Feed
-      console.log("\n[FEED DISCOVERY] Scanning and browsing Threads feed naturally...");
-      const scanRes = await scanThreadsFeed({ maxPosts: 10, scrollStep: 450, waitAfterScroll: 1000 });
-      console.log(`Feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
+        // 3. Natural feed browsing on Threads
+        console.log("\n[FEED DISCOVERY] Scanning Threads home feed...");
+        const scanRes = await scanThreadsFeed({ maxPosts: 10, scrollStep: 450, waitAfterScroll: 1000 });
+        console.log(`Threads feed visible posts: ${scanRes.scannedCount}, Newly discovered: ${scanRes.newCount}`);
 
-      // 4. Lead qualification & live commenting on prioritized leads (buyers + target audience)
-      console.log("\n[LEAD ENGAGEMENT] Evaluating posts for brand / Founder pitch & live commenting...");
-      await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
+        // 4. Lead qualification & live commenting
+        console.log("\n[LEAD ENGAGEMENT] Evaluating posts for brand / Founder pitch & live commenting...");
+        await commandAnalyze({ maxPosts: 15, maxLiveComments: 2 });
 
-      // 4b. Viral Quote-Posting Engine (Cycle 2, then every 12 cycles ~ 10-12 min)
-      // Leverages Threads 4-5x non-follower recommendation multiplier on high-substance posts
-      if (cycle === 2 || cycle % 12 === 0) {
-        await checkAndTriggerQuotePost();
-      }
+        // 5. Viral Quote-Posting Engine (Threads non-follower recommendation)
+        if (cycle === 1 || cycle % 12 === 1) {
+          await checkAndTriggerQuotePost();
+        }
 
-      // 5. Check Activity / Replies continuously (Cycle 1 and every 3 cycles)
-      if (cycle === 1 || cycle % 3 === 0) {
-        await commandReplies();
-      }
+        // 6. Check Activity / Replies & DMs
+        if (cycle === 1 || cycle % 3 === 1) {
+          await commandReplies();
+        }
+        if (cycle === 1 || cycle % 5 === 1) {
+          await commandDms();
+        }
 
-      // 6. Check DMs continuously (Cycle 1 and every 5 cycles)
-      if (cycle === 1 || cycle % 5 === 0) {
-        await commandDms();
-      }
+        // 7. Periodic feed refresh
+        if (cycle % 30 === 1) {
+          const page = await browserManager.getThreadsPage();
+          await refreshThreadsFeed(page);
+        }
+      } else if (activePlatform === "linkedin") {
+        // --- LINKEDIN CYCLE ---
+        console.log("\n[LINKEDIN DISCOVERY] Searching high-intent B2B client queries on LinkedIn...");
+        const liSearchRes = await searchLinkedInKeywords();
+        console.log(`LinkedIn search query "${liSearchRes.query}": ${liSearchRes.scannedCount} visible, ${liSearchRes.newCount} new`);
 
-      // 7. Natural feed refresh only after 30 cycles (~25-30 min)
-      if (cycle % 30 === 0) {
-        const page = await browserManager.getThreadsPage();
-        await refreshThreadsFeed(page);
+        console.log("\n[LINKEDIN FEED] Scanning LinkedIn home feed for executive & founder updates...");
+        const liFeedRes = await scanLinkedInFeed({ maxPosts: 10 });
+        console.log(`LinkedIn feed: ${liFeedRes.scannedCount} visible, ${liFeedRes.newCount} new`);
+
+        // Lead qualification & comments on discovered LinkedIn posts
+        console.log("\n[LINKEDIN ENGAGEMENT] Evaluating LinkedIn leads for executive & agency pitches...");
+        await commandAnalyze({ maxPosts: 10, maxLiveComments: 2 });
+
+        // Thought-leadership posting cadence (e.g. cycle 4, 16, 28...)
+        if (cycle % 12 === 4 && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
+          console.log("\n[LINKEDIN THOUGHT LEADERSHIP] Publishing scheduled executive perspective...");
+          await linkedInPoster.publishPost();
+        }
+      } else {
+        // --- FACEBOOK PUBLIC PROFILE CYCLE ---
+        console.log("\n[FACEBOOK FEED] Scanning Facebook public profile timeline...");
+        const fbFeedRes = await scanFacebookProfileFeed({ maxPosts: 10 });
+        console.log(`Facebook feed: ${fbFeedRes.scannedCount} visible, ${fbFeedRes.newCount} new`);
+
+        // Lead qualification & comments on discovered Facebook posts
+        console.log("\n[FACEBOOK ENGAGEMENT] Evaluating Facebook interactions & lead inquiries...");
+        await commandAnalyze({ maxPosts: 10, maxLiveComments: 2 });
+
+        // Public profile post cadence (e.g. cycle 6, 18, 30...)
+        if (cycle % 12 === 6 && CONFIG.POSTING_ENABLED && !CONFIG.DRY_RUN) {
+          console.log("\n[FACEBOOK POSTER] Publishing scheduled public profile update...");
+          await facebookPoster.publishPost();
+        }
       }
 
       console.log(`\n==============================================`);
-      console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED`);
-      console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next deep scroll cycle...`);
+      console.log(`[${new Date().toISOString()}] CYCLE #${cycle} COMPLETED [${activePlatform.toUpperCase()}]`);
+      console.log(`Active pause for ${CONFIG.SCAN_INTERVAL_SECONDS}s before next sequential cycle...`);
       console.log(`==============================================\n`);
       await new Promise(r => setTimeout(r, CONFIG.SCAN_INTERVAL_SECONDS * 1000));
     } catch (err) {
@@ -759,11 +849,21 @@ async function main() {
     case "dms":
       process.exit(await commandDms());
       break;
-    case "post":
-      await checkAndPublishScheduledPost(true);
+    case "post": {
+      const platform = (process.argv[3] || "threads").toLowerCase();
+      if (platform === "linkedin") {
+        console.log("\n[LINKEDIN POSTER] Publishing B2B thought-leadership post...");
+        await linkedInPoster.publishPost();
+      } else if (platform === "facebook") {
+        console.log("\n[FACEBOOK POSTER] Publishing Facebook public profile post...");
+        await facebookPoster.publishPost();
+      } else {
+        await checkAndPublishScheduledPost(true);
+      }
       browserManager.disconnect();
       process.exit(0);
       break;
+    }
     case "status":
       process.exit(await commandStatus());
       break;

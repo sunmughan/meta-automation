@@ -222,6 +222,116 @@ class BrowserManager {
   }
 
   /**
+   * Retrieves or creates a page for LinkedIn.
+   */
+  async getLinkedInPage() {
+    if (!this.browser || !this.browser.connected) {
+      await this.connect();
+    }
+
+    const pages = await this.browser.pages();
+
+    // 1. Look for existing LinkedIn tab
+    let selectedPage = pages.find(p => p.url().includes("linkedin.com"));
+
+    // 2. Look for reusable blank tab
+    if (!selectedPage) {
+      selectedPage = pages.find(p => {
+        const u = p.url();
+        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
+      });
+      if (selectedPage) {
+        await selectedPage.goto(CONFIG.LINKEDIN_HOME, {
+          waitUntil: "domcontentloaded",
+          timeout: 60000
+        });
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    // 3. Fallback: create new page
+    if (!selectedPage) {
+      selectedPage = await this.browser.newPage();
+      await selectedPage.goto(CONFIG.LINKEDIN_HOME, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000
+      });
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    try {
+      await selectedPage.setViewport({
+        width: CONFIG.VIEWPORT_WIDTH,
+        height: CONFIG.VIEWPORT_HEIGHT,
+        deviceScaleFactor: 1
+      });
+    } catch (e) {}
+
+    selectedPage.removeAllListeners("dialog");
+    selectedPage.on("dialog", async dialog => {
+      logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
+      await dialog.accept().catch(() => {});
+    });
+
+    return selectedPage;
+  }
+
+  /**
+   * Retrieves or creates a page for Facebook.
+   */
+  async getFacebookPage() {
+    if (!this.browser || !this.browser.connected) {
+      await this.connect();
+    }
+
+    const pages = await this.browser.pages();
+
+    // 1. Look for existing Facebook tab
+    let selectedPage = pages.find(p => p.url().includes("facebook.com"));
+
+    // 2. Look for reusable blank tab
+    if (!selectedPage) {
+      selectedPage = pages.find(p => {
+        const u = p.url();
+        return u === "about:blank" || u.includes("brave://newtab") || u.includes("chrome://newtab") || u.includes("edge://newtab");
+      });
+      if (selectedPage) {
+        await selectedPage.goto(CONFIG.FACEBOOK_HOME, {
+          waitUntil: "domcontentloaded",
+          timeout: 60000
+        });
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    // 3. Fallback: create new page
+    if (!selectedPage) {
+      selectedPage = await this.browser.newPage();
+      await selectedPage.goto(CONFIG.FACEBOOK_HOME, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000
+      });
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    try {
+      await selectedPage.setViewport({
+        width: CONFIG.VIEWPORT_WIDTH,
+        height: CONFIG.VIEWPORT_HEIGHT,
+        deviceScaleFactor: 1
+      });
+    } catch (e) {}
+
+    selectedPage.removeAllListeners("dialog");
+    selectedPage.on("dialog", async dialog => {
+      logger.warn(`Browser dialog detected: [${dialog.type()}] "${dialog.message()}". Auto-accepting.`, { action: "DIALOG_AUTO_ACCEPT" });
+      await dialog.accept().catch(() => {});
+    });
+
+    return selectedPage;
+  }
+
+  /**
    * Captures diagnostic screenshot and stores in logs/screenshots/.
    */
   async takeScreenshot(page, label = "diagnostic") {
