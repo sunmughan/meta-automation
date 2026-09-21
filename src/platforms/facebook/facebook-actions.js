@@ -25,15 +25,20 @@ class FacebookActions {
       return { success: false, reason: "Empty comment text" };
     }
 
-    // 1. Safety Checks
+    if (!post.url || typeof post.url !== "string" || !post.url.startsWith("http") || post.url.includes("/search/")) {
+      logger.warn(`Cannot post Facebook comment on post ${post.postId}: Missing or invalid individual post URL (${post.url || "empty"})`);
+      return { success: false, reason: "Missing or invalid post URL" };
+    }
+
+    // 1. Safety & Multi-Factor Deduplication Checks
     const rateCheck = rateLimiter.canPerformAction("COMMENT", "facebook");
     if (!rateCheck.allowed) {
       logger.warn(`Facebook comment rate limited for ${post.postId}: ${rateCheck.reason}`);
       return { success: false, reason: `Rate limited: ${rateCheck.reason}` };
     }
 
-    if (stateStore.hasCommented(post.postId, "facebook")) {
-      logger.warn(`Duplicate Facebook comment prevented for ${post.postId}`);
+    if (stateStore.hasCommented(post.postId, "facebook", post.url, post.text)) {
+      logger.warn(`Duplicate Facebook comment prevented for post ${post.postId} (URL: ${post.url})`);
       return { success: false, reason: "Duplicate post prevented" };
     }
 
@@ -59,19 +64,22 @@ class FacebookActions {
       page = await browserManager.getFacebookPage({ bringToFront: true });
       await page.bringToFront().catch(() => {});
 
-      logger.info(`Navigating to Facebook post: ${post.url || post.postId}...`);
-      if (post.url) {
-        await page.goto(post.url, { waitUntil: "domcontentloaded", timeout: 45000 });
-        await new Promise(r => setTimeout(r, 2500));
+      logger.info(`Navigating to dedicated Facebook post: ${post.url}...`);
+      await page.goto(post.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+      await new Promise(r => setTimeout(r, 3500));
+
+      const currentUrl = page.url();
+      if (currentUrl.includes("/search/")) {
+        throw new Error(`Navigation failed: page remained on search results URL instead of individual post`);
       }
 
       // Locate comment input trigger or contenteditable box
-      const commentInputSelector = "div[aria-label*='Write a comment' i][role='textbox'], div[aria-label*='Write a public comment' i], div[contenteditable='true'][role='textbox']";
-      await page.waitForSelector(commentInputSelector, { timeout: 12000 });
+      const commentInputSelector = "div[aria-label*='Write a comment' i][role='textbox'], div[aria-label*='Write a public comment' i], div[contenteditable='true'][role='textbox'], div[aria-label*='Comment as' i][role='textbox']";
+      await page.waitForSelector(commentInputSelector, { timeout: 15000 });
       const commentInput = await page.$(commentInputSelector);
 
       if (!commentInput) {
-        throw new Error("Could not find Facebook comment input box");
+        throw new Error("Could not find Facebook comment input box on target post");
       }
 
       await commentInput.click();

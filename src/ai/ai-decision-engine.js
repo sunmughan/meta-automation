@@ -120,6 +120,19 @@ class AiDecisionEngine {
       };
     }
 
+    // Community Opinion Polls & Audience Surveys (Strict Non-Buyer Disqualification)
+    if (/\b(what\s+tech\s+stack\s+are\s+you|go-to\s+backend\s+framework|most\s+important\s+thing\s+for\s+high\s+converting|what\s+ai\s+tools\s+or\s+automation\s+workflows\s+are\s+saving\s+you|what\s+outreach\s+strategy\s+is\s+working\s+best)\b/i.test(text)) {
+      return {
+        intent: "COMMUNITY_DISCUSSION",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "General community discussion or opinion poll, not an actionable buyer lead."
+      };
+    }
+
     try {
       const prompt = this.buildFullSemanticPrompt(post);
       const aiRes = await aiRuntime.callAi(prompt, { taskType: "POST_ANALYSIS" });
@@ -467,22 +480,28 @@ OUTPUT STRICT JSON:
     const approved = knowledge.getApprovedServices();
     const excluded = knowledge.getExcludedServices();
     const profiles = knowledge.getOfficialProfiles();
-    const founderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "";
     const companyUrl = profiles.company.website || company.website || "";
     const productUrl = profiles.company.productUrl || company.productUrl || profiles.company.pixelgo || "";
+    const rawFounderUrl = profiles.founder.linkedin || profiles.founder.profileUrl || "";
+    
+    const postPlatform = post?.platform || (String(post?.postId || "").startsWith("fb") ? "facebook" : (String(post?.postId || "").startsWith("li") ? "linkedin" : "threads"));
+    const isFacebook = postPlatform === "facebook";
+    // On Facebook, NEVER share LinkedIn URLs because Facebook's preview scraper gets blocked by Cloudflare reCAPTCHA!
+    const founderUrl = isFacebook ? (companyUrl || "https://www.codeair.tech") : rawFounderUrl;
 
     return `
 CRITICAL OPERATIONAL CONSTRAINT:
 You are acting as a pure text classifier and lead specialist. DO NOT invoke ANY tools (no view_file, no search, no run_command). You have all the context you need in this prompt. Output ONLY valid JSON matching the schema below.
 
 You are the autonomous AI Lead Specialist for ${company.name}.
+Target Platform: ${postPlatform.toUpperCase()}
 Knowledge Base: ${company.summary}.
 Founder: ${founder.name} (${founder.role}).
 
 Official URLs:
 - Company Website: ${companyUrl}
 - Product/Specialty: ${productUrl}
-- Founder Profile: ${founderUrl}
+- Founder / Agency URL: ${founderUrl} ${isFacebook ? "(Note: On Facebook, use company website; NEVER use linkedin.com links to prevent reCAPTCHA preview cards)" : ""}
 
 Approved Capabilities:
 ${approved.slice(0, 25).map(s => `- ${s}`).join("\n")}
@@ -513,6 +532,7 @@ CRITICAL INSTRUCTIONS:
      * If asking about founder / who is behind ${company.name}: set intent: "FOUNDER_INQUIRY", representation: "FOUNDER", target_entity: "INDIVIDUAL", generated_comment must introduce ${founder.name} (${founder.role}) and include Founder Profile (${founderUrl}).
      * If asking about company / what ${company.name} does: set intent: "CAPABILITY_INQUIRY", representation: "COMPANY", target_entity: "COMPANY", generated_comment must describe ${company.name} core capabilities and include Company Website (${companyUrl}).
 3. Strict Disqualifications (Zero Non-Tech Engagement, Zero Spam):
+   - COMMUNITY OPINION POLLS / AUDIENCE SURVEYS: Anyone asking general audience questions, opinion polls, or open-ended surveys to developers/designers/founders (e.g. "What tech stack are you SaaS founders using...", "what is your go-to backend framework...", "what tools are saving you time...", "what is the most important thing for landing page design?"). These are general open discussions, NOT buyers looking to hire or build. Classify strictly as IRRELEVANT with is_genuine_buyer: false, service_match: false, and decision: IGNORED.
    - CASUAL NON-TECH / OFF-TOPIC CONTENT: Anyone posting casual personal updates, vacation photos, celebrity gossip, memes, non-tech sports/politics, or general non-tech lifestyle banter. Classify as IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - NON-TECH NETWORKING: Anyone networking strictly outside IT/Software/AI (e.g. real estate agents, accountants, fitness coaches, beauty influencers, MLM). Classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.
    - REAL_ESTATE / PROPERTIES / INVESTMENTS: Anyone advertising, selling, buying, or promoting real estate properties, plots, apartments, or property developer services. Strictly classify as SERVICE_PROVIDER or IRRELEVANT with is_genuine_buyer: false and decision: IGNORED.

@@ -59,42 +59,95 @@ class LinkedInActions {
       page = await browserManager.getLinkedInPage({ bringToFront: true });
       await page.bringToFront().catch(() => {});
 
-      logger.info(`Navigating to LinkedIn post: ${post.url || post.postId}...`);
-      if (post.url && post.url.startsWith("http") && !post.url.includes("/search/results/")) {
+      logger.info(`Processing LinkedIn post engagement: ${post.url || post.postId}...`);
+      
+      // Determine if we have a direct standalone post URL or if we need to navigate to search results
+      const hasDirectPostUrl = Boolean(post.url && post.url.startsWith("http") && !post.url.includes("/search/"));
+      if (hasDirectPostUrl) {
+        logger.info(`Navigating directly to LinkedIn standalone post: ${post.url}...`);
         await page.goto(post.url, { waitUntil: "domcontentloaded", timeout: 45000 });
-        await new Promise(r => setTimeout(r, 2500));
+        await new Promise(r => setTimeout(r, 3000));
+      } else {
+        // Post discovered via search: ensure we are on the search results page
+        const searchUrl = post.url && post.url.includes("/search/")
+          ? post.url
+          : `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(post.query || "looking for a web developer")}&sortBy=%22date_posted%22`;
+        
+        if (!page.url().includes("/search/results/content/")) {
+          logger.info(`Navigating to LinkedIn search page for post context: ${searchUrl}...`);
+          await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+          await new Promise(r => setTimeout(r, 3500));
+        }
       }
 
-      // Find and click comment trigger button if input not already expanded
-      let commentBtn = await page.$("button[aria-label*='Comment' i], button.comment-button, .social-actions-button--comment");
-      if (!commentBtn) {
-        // Fallback: evaluate text content
-        const clicked = await page.evaluate(() => {
-          const btns = Array.from(document.querySelectorAll("button, [role='button']"));
-          const b = btns.find(el => (el.innerText || "").trim().toLowerCase() === "comment" || (el.getAttribute("aria-label") || "").toLowerCase().includes("comment"));
-          if (b) {
-            b.scrollIntoView({ behavior: "smooth", block: "center" });
-            b.click();
-            return true;
-          }
-          return false;
+      // Locate the specific card on the page (matching text snippet or author)
+      const postSnippet = (post.text || "").slice(0, 40).toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cardHandle = await page.evaluateHandle((targetSnippet) => {
+        const cards = Array.from(document.querySelectorAll("div[role='listitem'][componentkey*='update-card'], .feed-shared-update-v2, [data-view-name='feed-full-update']"));
+        if (!cards.length) return document.body;
+        if (!targetSnippet) return cards[0];
+        const match = cards.find(c => {
+          const t = (c.innerText || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          return t.includes(targetSnippet);
         });
-        if (clicked) await new Promise(r => setTimeout(r, 1200));
+        return match || cards[0];
+      }, postSnippet);
+
+      // Scroll the Comment button of this card directly into center view
+      await page.evaluate((card) => {
+        const container = card || document;
+        const btn = Array.from(container.querySelectorAll("button")).find(b => {
+          const t = (b.innerText || "").trim().toLowerCase();
+          return t === "comment" && !b.getAttribute("aria-label")?.includes("reaction");
+        });
+        if (btn) btn.scrollIntoView({ behavior: "instant", block: "center" });
+      }, cardHandle);
+      await new Promise(r => setTimeout(r, 1000));
+
+      // Click comment trigger button if input not already expanded
+      const btnCoords = await page.evaluate((card) => {
+        const container = card || document;
+        const btn = Array.from(container.querySelectorAll("button")).find(b => {
+          const t = (b.innerText || "").trim().toLowerCase();
+          return t === "comment" && !b.getAttribute("aria-label")?.includes("reaction");
+        });
+        if (!btn) return null;
+        const r = btn.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top };
+      }, cardHandle);
+
+      if (btnCoords && btnCoords.y > 0 && btnCoords.y < 800) {
+        await page.mouse.click(btnCoords.x, btnCoords.y);
+        await new Promise(r => setTimeout(r, 1200));
       } else {
-        await commentBtn.click();
+        await page.evaluate((card) => {
+          const container = card || document;
+          const btn = Array.from(container.querySelectorAll("button")).find(b => {
+            const t = (b.innerText || "").trim().toLowerCase();
+            return t === "comment" && !b.getAttribute("aria-label")?.includes("reaction");
+          });
+          if (btn) btn.click();
+        }, cardHandle);
         await new Promise(r => setTimeout(r, 1200));
       }
 
       // Locate contenteditable editor or textbox
-      const editorSelector = ".editor-content [contenteditable='true'], .ql-editor, div[role='textbox'][aria-label*='comment' i], .comments-comment-box__form-container [contenteditable='true'], [contenteditable='true'][role='textbox'], .comments-comment-box__form [contenteditable='true']";
+      const editorSelector = "div[role='textbox'][contenteditable='true'][aria-label*='comment' i], .editor-content [contenteditable='true'], .comments-comment-box__form-container [contenteditable='true'], [contenteditable='true'][role='textbox'], .comments-comment-box__form [contenteditable='true']";
       await page.waitForSelector(editorSelector, { timeout: 10000 });
-      const editor = await page.$(editorSelector);
+      
+      const edCoords = await page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.left + 25, y: r.top + 20 };
+      }, editorSelector);
 
-      if (!editor) {
-        throw new Error("Could not locate LinkedIn comment input editor box");
+      if (edCoords && edCoords.y > 0 && edCoords.y < 800) {
+        await page.mouse.click(edCoords.x, edCoords.y);
+      } else {
+        const editor = await page.$(editorSelector);
+        if (editor) await editor.click();
       }
-
-      await editor.click();
       await new Promise(r => setTimeout(r, 400));
 
       // Realistic typing jitter (40ms - 80ms per character)
@@ -103,34 +156,48 @@ class LinkedInActions {
         await page.keyboard.type(char, { delay: Math.floor(Math.random() * 40) + 40 });
       }
 
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 1200));
 
-      // Find and click post submit button
-      const submitBtnSelector = "button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-button--cr, button[aria-label*='Post' i].comments-comment-box__submit-button, button.comments-comment-box__submit-button--cr";
-      let submitBtn = await page.$(submitBtnSelector);
-      if (!submitBtn) {
-        // Fallback evaluate for Comment/Post button inside comments box
-        submitBtn = await page.evaluateHandle(() => {
-          const btns = Array.from(document.querySelectorAll("button, [role='button']"));
-          return btns.find(b => {
+      // Find and click post submit button inside editor container
+      const submitSuccess = await page.evaluate(() => {
+        const editor = document.querySelector("div[role='textbox'][contenteditable='true'][aria-label*='comment' i], .editor-content [contenteditable='true']");
+        if (!editor) return false;
+        
+        let p = editor;
+        for (let i = 0; i < 15 && p; i++) {
+          p = p.parentElement;
+          if (!p) break;
+          const btn = Array.from(p.querySelectorAll("button")).find(b => {
             const text = (b.innerText || b.value || "").trim().toLowerCase();
-            return (text === "comment" || text === "post") && !b.disabled;
-          }) || null;
-        });
+            return (text === "comment" || text === "post") && !b.disabled && !b.getAttribute("aria-label")?.includes("reaction");
+          });
+          if (btn) {
+            btn.scrollIntoView({ behavior: "instant", block: "center" });
+            btn.click();
+            return true;
+          }
+        }
+        // Fallback selector
+        const submitBtnSelector = "button.comments-comment-box__submit-button, button[type='submit'].comments-comment-box__submit-button--cr, button[aria-label*='Post' i].comments-comment-box__submit-button";
+        const fb = document.querySelector(submitBtnSelector);
+        if (fb && !fb.disabled) {
+          fb.click();
+          return true;
+        }
+        return false;
+      });
+
+      if (!submitSuccess) {
+        throw new Error("Could not locate or click LinkedIn active comment submit button");
       }
 
-      if (!submitBtn) {
-        throw new Error("Could not locate LinkedIn comment submit button");
-      }
-
-      await submitBtn.click();
       logger.info("Clicked LinkedIn comment submit button, verifying...");
-      await new Promise(r => setTimeout(r, 3500));
+      await new Promise(r => setTimeout(r, 4000));
 
       // Multi-signal submission verification
       const snippet = commentText.slice(0, 30).toLowerCase().replace(/[^a-z0-9]/g, "");
       const verified = await page.evaluate((snip) => {
-        const commentItems = Array.from(document.querySelectorAll(".comments-comment-item, .comments-comments-list, .feed-shared-update-v2"));
+        const commentItems = Array.from(document.querySelectorAll(".comments-comment-item, .comments-comments-list, .feed-shared-update-v2, div[role='listitem']"));
         return commentItems.some(el => {
           const t = (el.innerText || "").toLowerCase().replace(/[^a-z0-9]/g, "");
           return t.includes(snip);
@@ -231,6 +298,5 @@ class LinkedInActions {
 const linkedInActions = new LinkedInActions();
 module.exports = linkedInActions;
 module.exports.linkedInActions = linkedInActions;
-module.exports.postComment = (post, text, opts) => linkedInActions.postComment(post, text, opts);
-module.exports.quotePost = (post, text, opts) => linkedInActions.quotePost(post, text, opts);
+module.exports.LinkedInActions = LinkedInActions;
 

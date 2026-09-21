@@ -40,6 +40,13 @@ async function runLinkedInTests() {
   console.log("  LINKEDIN PLATFORM ADAPTER AUDIT SUITE");
   console.log("==================================================\n");
 
+  // Isolate LinkedIn test actions from rate limiter
+  for (const [k, v] of Object.entries(stateStore.state.actions || {})) {
+    if (v.platform === "linkedin") {
+      delete stateStore.state.actions[k];
+    }
+  }
+
   // 1. LinkedIn Auth Signature
   await test("1. checkLinkedInAuth function is properly exported and structured", () => {
     assert.strictEqual(typeof checkLinkedInAuth, "function", "checkLinkedInAuth must be a function");

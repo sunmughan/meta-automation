@@ -184,8 +184,8 @@ class LinkedInScanner {
         await new Promise(r => setTimeout(r, 1000));
       }
 
-      const postsData = await page.evaluate(() => {
-        let updates = Array.from(document.querySelectorAll(".feed-shared-update-v2, [data-urn*='activity'], [role='listitem'][componentkey*='update-card'], [componentkey*='expanded'], [data-view-name='feed-full-update']"));
+      const postsData = await page.evaluate((currentSearchUrl, currentQuery) => {
+        let updates = Array.from(document.querySelectorAll("div[role='listitem'][componentkey*='update-card'], .feed-shared-update-v2, [data-view-name='feed-full-update']"));
         if (!updates.length) {
           const commentButtons = Array.from(document.querySelectorAll("button")).filter(b => (b.innerText || "").trim().toLowerCase() === "comment");
           const cardSet = new Set();
@@ -207,7 +207,7 @@ class LinkedInScanner {
         return updates.map(el => {
           const urn = el.getAttribute("data-urn") || "";
           const permalinkEl = el.querySelector("a[href*='/feed/update/'], a[href*='/posts/'], a[href*='activity']");
-          const url = permalinkEl ? permalinkEl.href : "";
+          const url = permalinkEl ? permalinkEl.href : currentSearchUrl;
           
           const actorLink = el.querySelector("a[href*='/in/'], a[href*='/company/']");
           const actorNameEl = el.querySelector(".update-components-actor__name, .feed-shared-actor__name, [data-view-name='actor-title'] span, .update-components-actor__title");
@@ -221,18 +221,20 @@ class LinkedInScanner {
           let text = textEl ? (textEl.innerText || textEl.textContent || "") : ((el.innerText || el.textContent || "").slice(0, 800));
           text = String(text || "").replace(/Feed post/g, "").replace(/Like\s*Comment\s*Repost\s*Send/gi, "").trim();
 
-          const postId = urn || (url.match(/urn:li:activity:([0-9]+)/) || [])[1] || `li_srch_${Math.abs(text.slice(0, 40).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`;
+          const compKey = el.getAttribute("componentkey") || "";
+          const postId = urn || (url.match(/urn:li:activity:([0-9]+)/) || [])[1] || (compKey ? `li_ck_${Math.abs(compKey.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}` : `li_srch_${Math.abs(text.slice(0, 40).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`);
 
           return {
             postId,
             url,
+            query: currentQuery,
             username,
             headline,
             text,
             platform: "linkedin"
           };
         }).filter(p => p.text && p.text.length > 20);
-      });
+      }, searchUrl, query);
 
       let newCount = 0;
       for (const p of postsData) {
@@ -244,7 +246,7 @@ class LinkedInScanner {
             url: p.url,
             text: p.text,
             source: "SEARCH",
-            query,
+            query: p.query || query,
             platform: "linkedin",
             discoveredAt: new Date().toISOString()
           }, "linkedin");

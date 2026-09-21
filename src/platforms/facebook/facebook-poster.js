@@ -151,7 +151,7 @@ OUTPUT STRICT JSON:
 }
 
 const facebookPoster = new FacebookPoster();
-module.exports = {
-  facebookPoster,
-  publishFacebookPost: (opts) => facebookPoster.publishPost(opts)
-};
+module.exports = facebookPoster;
+module.exports.facebookPoster = facebookPoster;
+module.exports.FacebookPoster = FacebookPoster;
+module.exports.publishFacebookPost = (opts) => facebookPoster.publishPost(opts);
