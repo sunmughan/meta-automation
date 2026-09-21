@@ -41,6 +41,10 @@ class LinkedInScanner {
         });
         await new Promise(r => setTimeout(r, 2500));
       }
+      if (!page.url().includes("/feed")) {
+        throw new Error(`LinkedIn feed navigation verification failed: ${page.url()}`);
+      }
+      telemetry.record({type:"NAVIGATION_VERIFIED",platform:"linkedin",action:"FEED_SCAN",targetId:"home",evidence:{url:page.url()}});
 
       logger.info(`Starting LinkedIn Feed Scan (target: ${maxPosts} posts)...`, { action: "LINKEDIN_SCAN_START" });
 
@@ -179,6 +183,10 @@ class LinkedInScanner {
       logger.info(`[LINKEDIN SEARCH] Searching query: "${query}"...`);
       await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
       await new Promise(r => setTimeout(r, 2500));
+      if (!page.url().includes("/search/results/content/")) {
+        throw new Error(`LinkedIn search navigation verification failed: ${page.url()}`);
+      }
+      telemetry.record({type:"NAVIGATION_VERIFIED",platform:"linkedin",action:"SEARCH",targetId:query,evidence:{url:page.url()}});
 
       // Scroll smoothly and expand see more so user sees live visual operation
       for (let s = 0; s < 3; s++) {
