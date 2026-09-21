@@ -63,7 +63,7 @@ class StateStore {
   saveState() {
     try {
       this.state.lastUpdated = new Date().toISOString();
-      const tempPath = `${this.filePath}.tmp.${Date.now()}`;
+      const tempPath = `${this.filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
       fs.writeFileSync(tempPath, JSON.stringify(this.state, null, 2), "utf8");
       fs.renameSync(tempPath, this.filePath);
     } catch (err) {

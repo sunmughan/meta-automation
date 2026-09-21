@@ -63,44 +63,56 @@ class BrowserManager {
       return this.browser;
     }
 
-    const puppeteer = await getPuppeteer();
-
-    const reachable = await this.isCdpReachable();
-    if (!reachable) {
-      throw new Error(
-        `Browser CDP is not reachable at ${this.cdpUrl}.\n` +
-        `To attach to your logged-in session, launch your browser (Chrome, Edge, Brave, Chromium) with CDP:\n` +
-        `  node scripts/launch-browser-cdp.js\n` +
-        `  (or ./scripts/launch-brave-cdp.sh)\n` +
-        `Your logged-in accounts (Threads, Instagram) and tabs will be fully preserved.`
-      );
+    if (this._connectingPromise) {
+      return this._connectingPromise;
     }
 
-    let lastError = null;
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        this.browser = await puppeteer.connect({
-          browserURL: this.cdpUrl,
-          defaultViewport: null
-        });
+    this._connectingPromise = (async () => {
+      const puppeteer = await getPuppeteer();
 
-        const version = await this.browser.version();
-        logger.info(`Connected to browser: ${version}`, { action: "CDP_CONNECT" });
-        return this.browser;
-      } catch (err) {
-        lastError = err;
-        logger.warn(`CDP connect attempt ${attempt}/${retries} failed: ${err.message}`, { action: "CDP_CONNECT" });
-        if (attempt < retries) {
-          await new Promise(r => setTimeout(r, delayMs));
+      const reachable = await this.isCdpReachable();
+      if (!reachable) {
+        throw new Error(
+          `Browser CDP is not reachable at ${this.cdpUrl}.\n` +
+          `To attach to your logged-in session, launch your browser (Chrome, Edge, Brave, Chromium) with CDP:\n` +
+          `  node scripts/launch-browser-cdp.js\n` +
+          `  (or ./scripts/launch-brave-cdp.sh)\n` +
+          `Your logged-in accounts (Threads, Instagram) and tabs will be fully preserved.`
+        );
+      }
+
+      let lastError = null;
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          this.browser = await puppeteer.connect({
+            browserURL: this.cdpUrl,
+            defaultViewport: null
+          });
+
+          const version = await this.browser.version();
+          logger.info(`Connected to browser: ${version}`, { action: "CDP_CONNECT" });
+          return this.browser;
+        } catch (err) {
+          lastError = err;
+          logger.warn(`CDP connect attempt ${attempt}/${retries} failed: ${err.message}`, { action: "CDP_CONNECT" });
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
         }
       }
-    }
 
-    throw new Error(
-      `Could not connect to Browser CDP at ${this.cdpUrl}.\n` +
-      `Ensure your browser (Chrome, Edge, Brave, Chromium) is running with --remote-debugging-port=9222.\n` +
-      `Original error: ${lastError?.message}`
-    );
+      throw new Error(
+        `Could not connect to Browser CDP at ${this.cdpUrl}.\n` +
+        `Ensure your browser (Chrome, Edge, Brave, Chromium) is running with --remote-debugging-port=9222.\n` +
+        `Original error: ${lastError?.message}`
+      );
+    })();
+
+    try {
+      return await this._connectingPromise;
+    } finally {
+      this._connectingPromise = null;
+    }
   }
 
   /**
@@ -159,8 +171,10 @@ class BrowserManager {
       await dialog.accept().catch(() => {});
     });
 
-    // Bring tab to foreground so automation is visibly active to user
-    await selectedPage.bringToFront().catch(() => {});
+    // Bring tab to foreground if not running in concurrent multi-tab mode
+    if ((CONFIG.EXECUTION_MODE || "concurrent").toLowerCase() !== "concurrent") {
+      await selectedPage.bringToFront().catch(() => {});
+    }
 
     return selectedPage;
   }

@@ -1450,6 +1450,7 @@ async function runAllTests() {
   await (require("./multi-brand-customization.test").runMultiBrandTest());
   await (require("./linkedin.test").runLinkedInTests());
   await (require("./facebook.test").runFacebookTests());
+  require("./execution-mode.test");
 
   if (failed > 0) {
     process.exit(1);
