@@ -15,6 +15,9 @@ const aiDecisionEngine = require("../../ai/ai-decision-engine");
 const knowledge = require("../../knowledge/knowledge-engine");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const logger = require("../../logging/logger");
+const BrowserOperator = require("../../browser/browser-operator");
+const telemetry = require("../../telemetry/action-telemetry");
+const { verifyTextPresence } = require("../../agent/action-verifier");
 
 class FacebookActivityWatcher {
   hashItem(username, text, type = "fb_activity") {
