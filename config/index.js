@@ -58,7 +58,7 @@ const CONFIG = {
   THREADS_CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
   DISPLAY: process.env.DISPLAY || ":1",
   BRAVE_BIN: process.env.BRAVE_BIN || "/usr/bin/brave-browser-stable",
-  BRAVE_USER_DATA_DIR: process.env.BRAVE_USER_DATA_DIR || "/home/sunmughan/.config/BraveSoftware/Brave-Browser",
+  BRAVE_USER_DATA_DIR: process.env.BRAVE_USER_DATA_DIR || path.join(process.env.HOME || process.env.USERPROFILE || "", ".config/BraveSoftware/Brave-Browser"),
   VIEWPORT_WIDTH: 1440,
   VIEWPORT_HEIGHT: 1080,
 
@@ -68,6 +68,10 @@ const CONFIG = {
   THREADS_ACTIVITY: "https://www.threads.com/activity",
   INSTAGRAM_HOME: "https://www.instagram.com/",
   INSTAGRAM_MESSAGES: "https://www.instagram.com/direct/inbox/",
+  LINKEDIN_HOME: "https://www.linkedin.com/feed/",
+  LINKEDIN_MESSAGES: "https://www.linkedin.com/messaging/",
+  FACEBOOK_HOME: "https://www.facebook.com/",
+  FACEBOOK_MESSAGES: "https://www.facebook.com/messages/t/",
 
   // Operational Modes (Default: DRY_RUN=true, APPROVAL_MODE=true for safety)
   PLATFORM_TARGET: (process.env.PLATFORM_TARGET || "threads").toLowerCase(),

@@ -350,23 +350,32 @@ Manage the autonomous agent with 1-click control scripts:
 You can also run specific tasks directly via `threads-agent.js`:
 
 ```bash
-# Run continuous interactive automation loop in foreground
+# Run continuous sequential multi-platform orchestrator (Threads -> LinkedIn -> Facebook)
 node threads-agent.js run
 
-# Validate authentication status for Threads and Instagram
-node threads-agent.js auth
+# Validate authentication status across all platforms (Threads, Instagram, LinkedIn, Facebook)
+node threads-agent.js auth [threads|instagram|linkedin|facebook|all]
 
-# Perform a single scan of feed & search queries
-node threads-agent.js scan
+# Perform a feed scan on a specific platform
+node threads-agent.js scan [threads|instagram|linkedin|facebook]
 
-# Run AI qualification on newly discovered posts
+# Qualify leads and synthesize contextual comments
 node threads-agent.js analyze
 
-# Interactive review CLI to approve pending drafted comments
+# Interactive review and approval for pending comments
 node threads-agent.js approve
 
-# Print telemetry and current state summary
-node threads-agent.js status
+# Process incoming replies & mentions
+node threads-agent.js replies
+
+# Process direct messages & discovery calls
+node threads-agent.js dms
+
+# Publish scheduled discussion or thought-leadership post
+node threads-agent.js post [threads|linkedin|facebook]
+
+# Run automated diagnostic audit suite
+npm test
 ```
 
 ---

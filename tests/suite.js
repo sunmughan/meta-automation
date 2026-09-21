@@ -1448,6 +1448,8 @@ async function runAllTests() {
   await (require("./pillar-and-search-audit").runAudit());
   await (require("./cross-platform-audit").runCrossPlatformAudit());
   await (require("./multi-brand-customization.test").runMultiBrandTest());
+  await (require("./linkedin.test").runLinkedInTests());
+  await (require("./facebook.test").runFacebookTests());
 
   if (failed > 0) {
     process.exit(1);
