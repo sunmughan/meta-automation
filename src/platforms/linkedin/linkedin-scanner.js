@@ -9,6 +9,8 @@ const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const knowledge = require("../../knowledge/knowledge-engine");
 const logger = require("../../logging/logger");
+const BrowserOperator = require("../../browser/browser-operator");
+const telemetry = require("../../telemetry/action-telemetry");
 
 function getLinkedInSearchQueries() {
   const queries = knowledge.getSearchQueries("linkedin");
