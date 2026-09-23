@@ -77,6 +77,7 @@ const CONFIG = {
   JOB_STATE_FILE: process.env.JOB_STATE_FILE || path.resolve(ROOT_DIR, "job-state", "opportunities.json"),
   JOB_GENERATED_DIR: process.env.JOB_GENERATED_DIR || path.resolve(ROOT_DIR, "applications"),
   GOOGLE_ACCOUNT_EMAIL: process.env.GOOGLE_ACCOUNT_EMAIL || "sunmughan@gmail.com",
+  GOOGLE_AUTH_ORIGIN: process.env.GOOGLE_AUTH_ORIGIN || "https://accounts.google.com",
   JOB_DISCOVERY_INTERVAL_SECONDS: Math.max(60, Number(process.env.JOB_DISCOVERY_INTERVAL_SECONDS) || 900),
   JOB_MAX_OPPORTUNITIES_PER_SCAN: Math.max(1, Number(process.env.JOB_MAX_OPPORTUNITIES_PER_SCAN) || 100),
   JOB_MAX_APPLICATIONS_PER_DAY: Math.max(1, Number(process.env.JOB_MAX_APPLICATIONS_PER_DAY) || 20),
@@ -84,6 +85,7 @@ const CONFIG = {
   JOB_MAX_PLAN_ACTIONS: Math.max(1, Number(process.env.JOB_MAX_PLAN_ACTIONS) || 24),
   JOB_MAX_SCROLLS: Math.max(0, Number(process.env.JOB_MAX_SCROLLS) || 8),
   JOB_MAX_PLAN_ITERATIONS: Math.max(1, Number(process.env.JOB_MAX_PLAN_ITERATIONS) || 8),
+  JOB_MAX_DETAIL_INSPECTIONS: Math.max(0, Number(process.env.JOB_MAX_DETAIL_INSPECTIONS) || 20),
   JOB_NAVIGATION_TIMEOUT_MS: Math.max(10000, Number(process.env.JOB_NAVIGATION_TIMEOUT_MS) || 60000),
   JOB_PAGE_SETTLE_MS: Math.max(0, Number(process.env.JOB_PAGE_SETTLE_MS) || 2500),
 
