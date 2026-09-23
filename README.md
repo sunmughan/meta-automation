@@ -6,13 +6,12 @@
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-339933.svg?style=for-the-badge&logo=node.js)](https://nodejs.org)
-[![Antigravity](https://img.shields.io/badge/Cognitive%20Brain-Antigravity%20AI%20(Gemini%203.8%20Flash%20High)-9945FF.svg?style=for-the-badge)](ANTIGRAVITY_GUIDE.md)
 [![CodeAir](https://img.shields.io/badge/Engineered%20By-CodeAir-00F0FF.svg?style=for-the-badge)](https://www.codeair.tech)
 [![PixelGo](https://img.shields.io/badge/Product-PixelGo%20HMS-00E599.svg?style=for-the-badge)](https://pixelgo.live)
 
 **Meta Automation** is an enterprise-grade omnichannel autonomous social discovery, AI lead generation, and conversational engagement engine designed for **Threads**, **LinkedIn**, and **Facebook** (with Instagram DM support).
 
-Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds, executive networks, and search queries across all three platforms simultaneously. It passes every discovered interaction directly to the **Antigravity AI Cognitive Brain** (`gemini-3.8-flash-high`) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages inbound/outbound sales pipelines — all while running stealthily on your authenticated browser session with zero external API key costs.
+Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds, executive networks, and search queries across all three platforms simultaneously. It passes every discovered interaction directly to the **MiniMax M3 AI Cognitive Brain** (`MiniMax-M3`) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages inbound/outbound sales pipelines — all while running stealthily on your authenticated browser session with zero external API key costs.
 
 ---
 
@@ -30,7 +29,7 @@ $$\text{AI Reasoning} \longrightarrow \text{Live Browser State} \longrightarrow 
 - **Strict Round-Robin Multi-Tab Isolation**: Sequential execution mode defaults to dedicated focus cycles in strict order:
   $$\textbf{Threads} \longrightarrow \textbf{Facebook} \longrightarrow \textbf{LinkedIn}$$
   With foreground tab switching (`bringToFront: true`), eliminating concurrent tab focus contention, input focus-stealing, and keyboard collisions.
-- **100% Zero-Heuristic AI Architecture**: Complete elimination of regex pre-filters, static keyword tables, and hardcoded comment templates. All qualification and engagement synthesis are delegated to the live Gemini 3.8 Flash model.
+- **100% Agentic AI Architecture**: Complete elimination of regex pre-filters, static keyword tables, and hardcoded comment templates. All qualification and engagement synthesis are delegated to the live Gemini 3.8 Flash model.
 - **Cross-Platform Parity**: Full native support across **Linux x64**, **macOS (Intel & Apple Silicon)**, **Windows 10/11 (PowerShell & Batch)**, and **Android (Termux + Termux:X11)**.
 
 ---
@@ -62,8 +61,8 @@ flowchart TB
 
     subgraph CoreEngine ["⚡ Meta Automation Omnichannel Engine"]
         Scanner["Multi-Platform Scanner & Search Dispatcher"]
-        AiQueue["Antigravity AI Dynamic CSRF Discovery & Queue"]
-        AIBrain["Antigravity AI Cognitive Brain (gemini-3.8-flash-high)"]
+        AiQueue["MiniMax M3 AI Dynamic CSRF Discovery & Queue"]
+        AIBrain["MiniMax M3 AI Cognitive Brain (MiniMax-M3)"]
         Knowledge["Dynamic Knowledge Engine (SSOT: founder, company, services)"]
         Identity["Representation Resolver (FOUNDER, COMPANY, BOTH, NEUTRAL)"]
         Composer["Conversational Engagement Composer (Single-URL Discipline)"]
@@ -113,8 +112,8 @@ The engine executes synchronized multi-platform discovery across home feeds, pub
   - Messenger direct message monitoring with grounded AI response generation.
   - Inbound comment reply monitoring with tagged replies.
 
-### 2. Pure Antigravity AI Semantic Reasoning
-Every captured post enters the Antigravity AI Cognitive Brain directly:
+### 2. Pure MiniMax M3 AI Semantic Reasoning
+Every captured post enters the MiniMax M3 AI Cognitive Brain directly:
 - **Client Demand Analysis**: Distinguishes genuine buyers with project budgets from service providers selling their own services, job seekers seeking employment, and corporate HR recruitment ads.
 - **Natural Language Requirement Extraction**: Synthesizes the prospect's exact project needs in natural language.
 - **Knowledge Base Matching**: Grounds requirements against CodeAir's approved services catalogue (`knowledge/services.md`).
@@ -290,7 +289,7 @@ meta-automation/
 │   │   ├── browser-agent.js         # Unified browser agent controller
 │   │   ├── action-verifier.js       # Post-condition DOM mutation verification
 │   │   └── feature-health.js        # Live session health check engine
-│   ├── ai/                          # AI decision engines & Antigravity/Gemini adapters
+│   ├── ai/                          # AI decision engines & MiniMax M3/Gemini adapters
 │   ├── browser/                     # Puppeteer CDP connection manager & browser operator
 │   ├── conversations/               # Identity resolver & multi-turn dialog manager
 │   ├── engagement/                  # Contextual comment generator, reply & DM monitors
@@ -397,7 +396,7 @@ Every capability across all 3 platforms has been implemented, tested, and valida
 |:---|:---|:---:|:---:|:---:|:---|
 | **Threads** | Feed scan | ✅ Yes | ✅ Yes | ✅ Yes | `threads:E2E_AUDIT` (93+ DOM interactive elements captured) |
 | **Threads** | Search | ✅ Yes | ✅ Yes | ✅ Yes | `threads:SEARCH` (Captured live posts via Comet DOM search) |
-| **Threads** | AI qualification | ✅ Yes | ✅ Yes | ✅ Yes | `aiDecisionEngine.qualifyPost` (`gemini-3.8-flash-high`) |
+| **Threads** | AI qualification | ✅ Yes | ✅ Yes | ✅ Yes | `aiDecisionEngine.qualifyPost` (`MiniMax-M3`) |
 | **Threads** | Comment | ✅ Yes | ✅ Yes | ✅ Yes | `ActionVerifier.verifyCommentPresence` (Outside composer DOM check) |
 | **Threads** | Activity | ✅ Yes | ✅ Yes | ✅ Yes | `threadsActivityWatcher.checkActivity` (Inbound mentions & notifications) |
 | **Threads** | DM | ✅ Yes | ✅ Yes | ✅ Yes | `ActionVerifier.verifyOutgoingMessage` (Outgoing chat bubble confirmed) |
@@ -451,3 +450,24 @@ Looking to deploy autonomous social intelligence for your agency, SaaS, or clini
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 *Built with passion and engineering discipline by [Sunmughan Swamy](https://github.com/sunmughan) @ [CodeAir Software Solutions](https://www.codeair.tech).*
+
+
+---
+
+## 💰 Agentic Job Revenue Engine
+
+Meta Automation also includes a separate **agentic job-revenue engine** for remote project hunting across the configured marketplaces: Upwork, Freelancer, Contra, PeoplePerHour, Guru, Workana, Malt, Arc, Toptal and Fiverr.
+
+The job engine uses the same MiniMax M3 brain and live semantic browser controller, but isolates job sessions on a dedicated browser profile/CDP endpoint. It discovers platform UI at runtime rather than relying on platform-specific selectors or hardcoded search-query lists, generates project-specific cover letters, uploads the configured base resume when required, applies only to explicitly remote project opportunities, and verifies post-submission state.
+
+See [JOB_REVENUE_ENGINE.md](JOB_REVENUE_ENGINE.md) for architecture, setup and operation.
+
+Basic commands:
+```bash
+npm run jobs:setup
+npm run jobs:google
+npm run jobs:auth
+npm run jobs:profile
+npm run jobs:run
+npm run jobs:status
+```
