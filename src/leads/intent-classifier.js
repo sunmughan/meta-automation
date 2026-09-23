@@ -3,7 +3,7 @@
  * Intent Classification — Pure AI Delegation Layer.
  *
  * ARCHITECTURAL RULE (v1.5.0+):
- * ALL post classification is delegated to the Antigravity AI Decision Engine.
+ * ALL post classification is delegated to the MiniMax M3 AI Decision Engine.
  * Zero regex, zero keyword arrays, zero heuristic pre-filters.
  * The authoritative brain is: src/ai/ai-decision-engine.js
  *
@@ -13,7 +13,7 @@
 class IntentClassifier {
   /**
    * Primary entry point: Delegates asynchronous qualification directly
-   * to the Antigravity AI Decision Engine. Zero regex, zero heuristics.
+   * to the MiniMax M3 AI Decision Engine. Zero regex, zero heuristics.
    *
    * @param {Object} post - { text, username, url, postId, timestamp }
    * @param {Object} [options] - Passed through to AI engine
@@ -27,7 +27,7 @@ class IntentClassifier {
   /**
    * @deprecated LEGACY SYNC CLASSIFIER — TEST BENCHMARK FIXTURE ONLY.
    * Preserved strictly for deterministic legacy test suite benchmarks.
-   * Production runtime exclusively invokes classifyAsync() via Antigravity Gemini 3.8 Flash AI.
+   * Production runtime exclusively invokes classifyAsync() via MiniMax M3 Gemini 3.8 Flash AI.
    */
   classify(post) {
     try {
