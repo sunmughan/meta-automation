@@ -4,8 +4,15 @@ const readline = require("readline");
 const CONFIG = require("../config");
 const { createCandidateProfile, saveCandidateProfile } = require("../src/jobs/profile/profile-engine");
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const ask = question => new Promise(resolve => rl.question(question, resolve));
+function ask(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => {
+    rl.question(question, answer => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
 
 async function setEnvValue(key, value) {
   const envPath = path.join(CONFIG.ROOT_DIR, ".env");
@@ -21,32 +28,36 @@ async function askSecret(question) {
   if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
     return (await ask(question)).trim();
   }
+
   return new Promise(resolve => {
     let value = "";
     process.stdout.write(question);
     process.stdin.setRawMode(true);
     process.stdin.resume();
+
     const onData = chunk => {
-      const char = chunk.toString();
-      if (char === "\u0003") {
-        process.stdin.setRawMode(false);
-        process.exit(130);
+      for (const char of chunk.toString()) {
+        if (char === "\u0003") {
+          process.stdin.setRawMode(false);
+          process.exit(130);
+        }
+        if (char === "\r" || char === "\n") {
+          process.stdin.setRawMode(false);
+          process.stdin.pause();
+          process.stdin.off("data", onData);
+          process.stdout.write("\n");
+          resolve(value);
+          return;
+        }
+        if (char === "\u007f") {
+          value = value.slice(0, -1);
+          continue;
+        }
+        value += char;
+        process.stdout.write("*");
       }
-      if (char === "\r" || char === "\n") {
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-        process.stdin.off("data", onData);
-        process.stdout.write("\n");
-        resolve(value);
-        return;
-      }
-      if (char === "\u007f") {
-        value = value.slice(0, -1);
-        return;
-      }
-      value += char;
-      process.stdout.write("*");
     };
+
     process.stdin.on("data", onData);
   });
 }
@@ -54,12 +65,19 @@ async function askSecret(question) {
 async function main() {
   const envPath = path.join(CONFIG.ROOT_DIR, ".env");
   const examplePath = path.join(CONFIG.ROOT_DIR, ".env.example");
+
   if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
     fs.copyFileSync(examplePath, envPath);
   }
+
   console.log("\n=== Meta Automation • Agentic Job Revenue Engine Setup ===\n");
 
   let minimaxKey = process.env.MINIMAX_API_KEY || "";
+  if (!minimaxKey && fs.existsSync(envPath)) {
+    const envText = fs.readFileSync(envPath, "utf8");
+    const match = envText.match(/^MINIMAX_API_KEY=(.*)$/m);
+    minimaxKey = (match?.[1] || "").trim();
+  }
   if (!minimaxKey) {
     minimaxKey = await askSecret("MiniMax API key (stored only in local .env): ");
     if (!minimaxKey) throw new Error("MiniMax API key is required. Add it to .env or provide it during setup.");
@@ -77,9 +95,9 @@ async function main() {
   await setEnvValue("AI_PROVIDER", "minimax");
   await setEnvValue("AI_RUNTIME", "minimax");
   await setEnvValue("AI_MODEL", "MiniMax-M3");
-  await setEnvValue("MINIMAX_BASE_URL", "https://api.minimax.io/v1");
-  await setEnvValue("MINIMAX_ENDPOINT", "/text/chatcompletion_v2");
-  await setEnvValue("MINIMAX_MODEL", "MiniMax-M3");
+  await setEnvValue("MINIMAX_BASE_URL", CONFIG.MINIMAX_BASE_URL);
+  await setEnvValue("MINIMAX_ENDPOINT", CONFIG.MINIMAX_ENDPOINT);
+  await setEnvValue("MINIMAX_MODEL", CONFIG.MINIMAX_MODEL);
   await setEnvValue("JOB_REMOTE_ONLY", "true");
   await setEnvValue("JOB_PROJECT_ONLY", "true");
   if (resume) await setEnvValue("JOB_BASE_RESUME_PATH", resume);
@@ -91,7 +109,11 @@ async function main() {
   const profile = createCandidateProfile({
     googleAccountEmail: email,
     baseResumePath: resume,
-    preferences: { remoteOnly: true, projectOnly: true, minMatchScore: Number(minScore) }
+    preferences: {
+      remoteOnly: true,
+      projectOnly: true,
+      minMatchScore: Number(minScore)
+    }
   });
   saveCandidateProfile(profile);
 
@@ -100,17 +122,17 @@ async function main() {
   fs.mkdirSync(path.join(CONFIG.ROOT_DIR, "job-state"), { recursive: true });
   fs.mkdirSync(CONFIG.JOB_GENERATED_DIR, { recursive: true });
 
-  try { if (process.platform !== "win32") fs.chmodSync(path.join(CONFIG.ROOT_DIR, ".env"), 0o600); } catch (_) {}
+  try {
+    if (process.platform !== "win32") fs.chmodSync(envPath, 0o600);
+  } catch (_) {}
 
   console.log("\nSetup saved locally.");
   console.log(`Candidate profile: ${CONFIG.JOB_PROFILE_PATH}`);
   console.log(`Base resume: ${resume || "NOT SET"}`);
-  console.log("Next: npm run jobs:auth");
-  rl.close();
+  console.log("Next: npm run jobs:google");
 }
 
 main().catch(err => {
   console.error(err);
-  rl.close();
   process.exit(1);
 });
