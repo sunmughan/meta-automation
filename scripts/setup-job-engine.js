@@ -73,6 +73,13 @@ async function main() {
   const dailyLimit = (await ask(`Maximum verified applications per 24h [${CONFIG.JOB_MAX_APPLICATIONS_PER_DAY}]: `)).trim() || String(CONFIG.JOB_MAX_APPLICATIONS_PER_DAY);
 
   await setEnvValue("GOOGLE_ACCOUNT_EMAIL", email);
+  await setEnvValue("GOOGLE_AUTH_ORIGIN", CONFIG.GOOGLE_AUTH_ORIGIN);
+  await setEnvValue("AI_PROVIDER", "minimax");
+  await setEnvValue("AI_RUNTIME", "minimax");
+  await setEnvValue("AI_MODEL", "MiniMax-M3");
+  await setEnvValue("MINIMAX_BASE_URL", "https://api.minimax.io/v1");
+  await setEnvValue("MINIMAX_ENDPOINT", "/text/chatcompletion_v2");
+  await setEnvValue("MINIMAX_MODEL", "MiniMax-M3");
   await setEnvValue("JOB_REMOTE_ONLY", "true");
   await setEnvValue("JOB_PROJECT_ONLY", "true");
   if (resume) await setEnvValue("JOB_BASE_RESUME_PATH", resume);
