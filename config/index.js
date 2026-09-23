@@ -94,6 +94,7 @@ const CONFIG = {
   CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
   THREADS_CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
   DISPLAY: process.env.DISPLAY || ":1",
+  DESKTOP_SPLIT_PERCENT: Math.max(10, Math.min(90, Number(process.env.DESKTOP_SPLIT_PERCENT) || 50)),
   BRAVE_BIN: process.env.BRAVE_BIN || "/usr/bin/brave-browser-stable",
   BRAVE_USER_DATA_DIR: process.env.BRAVE_USER_DATA_DIR || path.join(process.env.HOME || process.env.USERPROFILE || "", ".config/BraveSoftware/Brave-Browser"),
   VIEWPORT_WIDTH: 1440,
