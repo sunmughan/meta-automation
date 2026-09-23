@@ -48,9 +48,17 @@ const CONFIG = {
   LOGS_DIR: path.resolve(ROOT_DIR, "logs"),
   BACKUPS_DIR: path.resolve(ROOT_DIR, "backups"),
 
-  // AI Settings (Pure Antigravity AI Runtime)
-  AI_RUNTIME: "antigravity",
+  // AI Provider Configuration
+  AI_PROVIDER: (process.env.AI_PROVIDER || process.env.AI_RUNTIME || "antigravity").toLowerCase(),
+  AI_RUNTIME: (process.env.AI_RUNTIME || "antigravity").toLowerCase(),
   MODEL: process.env.AI_MODEL || "gemini-3.8-flash-high",
+
+  // MiniMax M3 API Configuration
+  MINIMAX_API_KEY: process.env.MINIMAX_API_KEY || "",
+  MINIMAX_BASE_URL: process.env.MINIMAX_BASE_URL || "https://api.minimax.io/v1",
+  MINIMAX_MODEL: process.env.MINIMAX_MODEL || "MiniMax-M3",
+  MINIMAX_TIMEOUT_MS: Math.max(1000, Number(process.env.MINIMAX_TIMEOUT_MS) || 90000),
+  MINIMAX_MAX_RETRIES: Math.max(0, Number(process.env.MINIMAX_MAX_RETRIES) || 2),
 
   // Browser CDP & Display Configuration (Chrome, Edge, Brave, Chromium)
   BROWSER_TYPE: (process.env.BROWSER_TYPE || process.env.BROWSER || "auto").toLowerCase(),
