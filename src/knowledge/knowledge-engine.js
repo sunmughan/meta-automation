@@ -415,14 +415,14 @@ class KnowledgeEngine {
     const founderEntry = this.cache.get("founder.md");
     const founderParsed = (founderEntry && founderEntry.parsed) || {};
 
-    const name = founderParsed.name || profiles.founder.name || "Founder & Lead Architect";
-    const role = founderParsed.role || profiles.founder.role || "Technical Architect & Builder";
-    const threadsUsername = founderParsed.threadsUsername || profiles.founder.threadsUsername || CONFIG.THREADS_USERNAME || "user";
+    const name = founderParsed.name || profiles.founder.name || "";
+    const role = founderParsed.role || profiles.founder.role || "";
+    const threadsUsername = founderParsed.threadsUsername || profiles.founder.threadsUsername || CONFIG.THREADS_USERNAME || "";
 
     return {
       name,
       role,
-      location: founderParsed.location || "Global",
+      location: founderParsed.location || "",
       linkedin: profiles.founder.linkedin || "",
       github: profiles.founder.github || "",
       instagram: profiles.founder.instagram || "",
@@ -439,13 +439,13 @@ class KnowledgeEngine {
     const companyEntry = this.cache.get("company.md");
     const companyParsed = (companyEntry && companyEntry.parsed) || {};
 
-    const name = companyParsed.name || profiles.company.name || "Software Solutions";
-    const shortName = name.split(/\s+/)[0] || "Company";
+    const name = companyParsed.name || profiles.company.name || "";
+    const shortName = name.split(/\s+/)[0] || "";
     const badgeName = shortName.toUpperCase();
     const website = profiles.company.website || (companyParsed.website ? (companyParsed.website.startsWith("http") ? companyParsed.website : `https://${companyParsed.website}`) : "");
     const productUrl = profiles.company.pixelgo || "";
     const whatsapp = profiles.company.whatsapp || profiles.founder.whatsapp || "";
-    const description = companyParsed.type || "Custom software development, web platforms, and automated cloud systems.";
+    const description = companyParsed.type || "";
 
     return {
       name,
@@ -457,7 +457,7 @@ class KnowledgeEngine {
       summary: description,
       description,
       flagship: companyParsed.flagship || "",
-      flagshipProduct: companyParsed.flagship ? companyParsed.flagship.split("(")[0].trim() : "PixelGo HMS",
+      flagshipProduct: companyParsed.flagship ? companyParsed.flagship.split("(")[0].trim() : "",
       linkedin: profiles.company.linkedin || "",
       instagram: profiles.company.instagram || "",
       facebook: profiles.company.facebook || ""
