@@ -7,11 +7,12 @@
     "meta-automation": "./threads-agent.js"
   },
   "scripts": {
-    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js",
+    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js && node tests/desktop-runner.test.js",
     "e2e:browser": "node tests/browser-e2e.js",
     "onboard": "node threads-agent.js onboard",
     "configure": "node threads-agent.js onboard",
-    "start": "node threads-agent.js run",
+    "start": "node scripts/desktop-runner.js",
+    "start:social": "node threads-agent.js run",
     "auth": "node threads-agent.js auth",
     "scan": "node threads-agent.js scan",
     "analyze": "node threads-agent.js analyze",
@@ -20,7 +21,7 @@
     "build:release": "./scripts/package-release.sh",
     "jobs:setup": "node scripts/setup-job-engine.js",
     "jobs:auth": "node job-agent.js auth",
-    "jobs:profile": "node job-agent.js auth",
+    "jobs:profile": "node job-agent.js profile",
     "jobs:scan": "node job-agent.js scan",
     "jobs:run": "node job-agent.js run",
     "jobs:status": "node job-agent.js status",
