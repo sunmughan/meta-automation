@@ -7,7 +7,7 @@ class JobAgentRunner {
     this.browserAgent = browserAgent;
   }
 
-  async run({ goal, platform, candidateProfile, opportunity = null, allowedOrigin, context = {}, targetId }) {
+  async run({ goal, platform, candidateProfile, opportunity = null, allowedOrigin, context = {}, targetId, authFlow = false }) {
     let lastReason = "";
     for (let iteration = 1; iteration <= CONFIG.JOB_MAX_PLAN_ITERATIONS; iteration++) {
       const snapshot = await this.browserAgent.captureLiveSnapshot(`agent-loop-${iteration}`);
@@ -34,11 +34,17 @@ class JobAgentRunner {
         return { status: plan.status, iterations: iteration, snapshot, plan, reason: plan.reason || plan.status };
       }
 
-      const result = await this.browserAgent.executeJobPlan(
-        plan,
-        targetId || `job-agent:${platform.id}`,
-        allowedOrigin
-      );
+      const result = authFlow
+        ? await this.browserAgent.executeAuthPlan(
+            plan,
+            targetId || `job-agent:${platform.id}`,
+            allowedOrigin
+          )
+        : await this.browserAgent.executeJobPlan(
+            plan,
+            targetId || `job-agent:${platform.id}`,
+            allowedOrigin
+          );
 
       if (!result.success) {
         lastReason = result.reason || result.state || "Browser action failed";
