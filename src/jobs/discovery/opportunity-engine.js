@@ -1,5 +1,5 @@
 const CONFIG = require("../../../config");
-const { extractOpportunities } = require("../ai/job-ai");
+const { extractOpportunities, inspectOpportunityDetails } = require("../ai/job-ai");
 const JobAgentRunner = require("../browser/job-runner");
 const jobState = require("../storage/job-state-store");
 
@@ -68,14 +68,55 @@ async function discoverOnPlatform({ platform, page, browserAgent, aiRuntime, can
   });
 
   const rawItems = Array.isArray(extracted.opportunities) ? extracted.opportunities : [];
-  const normalized = mergeUnique(rawItems.map(item => normalizeOpportunity(item, platform)).filter(Boolean));
+  let normalized = mergeUnique(rawItems.map(item => normalizeOpportunity(item, platform)).filter(Boolean));
+
+  // Agentically inspect detail pages when list-level evidence is incomplete.
+  let inspected = 0;
+  for (const opportunity of normalized) {
+    if (inspected >= CONFIG.JOB_MAX_DETAIL_INSPECTIONS) break;
+    const needsDetail = opportunity.workMode === "UNKNOWN" ||
+      opportunity.engagementType === "UNKNOWN" ||
+      !opportunity.description ||
+      !opportunity.application;
+
+    if (!needsDetail || !opportunity.url) continue;
+
+    inspected++;
+    const detailRunner = new JobAgentRunner({ aiRuntime, browserAgent });
+    const detailResult = await detailRunner.run({
+      goal: "Open and inspect the exact opportunity detail page from the supplied opportunity URL. Capture the project's explicit work mode, engagement type, requirements, application fields and any visible project facts. Do not apply.",
+      platform,
+      opportunity,
+      candidateProfile,
+      allowedOrigin: new URL(platform.url).origin,
+      targetId: `detail:${opportunity.key}`,
+      context: { workflow: "OPPORTUNITY_DETAIL_VERIFICATION" }
+    });
+
+    if (detailResult.status === "DONE") {
+      const verified = await inspectOpportunityDetails({
+        platform,
+        opportunity,
+        snapshot: detailResult.snapshot,
+        aiRuntime,
+        candidateProfile
+      });
+      const merged = normalizeOpportunity({ ...opportunity, ...verified }, platform);
+      Object.assign(opportunity, merged, {
+        status: opportunity.status,
+        discoveredAt: opportunity.discoveredAt
+      });
+    }
+  }
+
+  normalized = mergeUnique(normalized);
   for (const opportunity of normalized) jobState.upsertOpportunity(opportunity);
   if (normalized.length) jobState.updateMetric("discovered", normalized.length);
 
   const remote = normalized.filter(item => item.workMode === "REMOTE");
   if (remote.length) jobState.updateMetric("remoteVerified", remote.length);
 
-  return { ...result, status: "DONE", opportunities: normalized };
+  return { ...result, status: "DONE", opportunities: normalized, detailInspections: inspected };
 }
 
 module.exports = { normalizeOpportunity, discoverOnPlatform };
