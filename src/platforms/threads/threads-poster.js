@@ -46,23 +46,27 @@ class ThreadsPoster {
    */
   selectNextPillar() {
     const pillars = knowledge.getContentPillars();
-    if (!Array.isArray(pillars) || pillars.length === 0) throw new Error("No content pillars configured in the knowledge base.");
+    if (!Array.isArray(pillars) || pillars.length === 0) {
+      throw new Error("No content pillars configured in the knowledge base.");
+    }
     const pillarIds = pillars.map(p => p.id).filter(Boolean);
     if (!pillarIds.length) throw new Error("Knowledge base contains no usable content pillar ids.");
-    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
-    const twoDaysAgo = Date.now() - (48 * 60 * 60 * 1000);
-    const hasRecentPixelGo = ourPosts.some(p => p.pillar === "pixelgo_hms" && new Date(p.publishedAt).getTime() > twoDaysAgo);
 
-    if (!hasRecentPixelGo && pillarIds.includes("pixelgo_hms")) {
-      return "pixelgo_hms";
+    const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
+    const lastUsedAt = new Map();
+    for (const post of ourPosts) {
+      if (!post?.pillar || !post?.publishedAt) continue;
+      const ts = Date.parse(post.publishedAt);
+      if (Number.isFinite(ts)) lastUsedAt.set(post.pillar, ts);
     }
 
-    // Pick pillar least recently used
-    const recentPillars = ourPosts.slice(-4).map(p => p.pillar);
-    const candidate = pillarIds.find(pil => !recentPillars.includes(pil)) || pillarIds[Math.floor(Math.random() * pillarIds.length)];
-    return candidate;
+    return pillarIds.slice().sort((a, b) => {
+      const at = lastUsedAt.get(a) || 0;
+      const bt = lastUsedAt.get(b) || 0;
+      if (at !== bt) return at - bt;
+      return a.localeCompare(b);
+    })[0];
   }
-
   /**
    * Determines whether this post should be a 5-slide carousel, single card, or text-only.
    */
