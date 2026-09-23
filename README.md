@@ -289,7 +289,7 @@ meta-automation/
 │   │   ├── browser-agent.js         # Unified browser agent controller
 │   │   ├── action-verifier.js       # Post-condition DOM mutation verification
 │   │   └── feature-health.js        # Live session health check engine
-│   ├── ai/                          # AI decision engines & MiniMax M3/Gemini adapters
+│   ├── ai/                          # AI decision engines & MiniMax M3 adapters
 │   ├── browser/                     # Puppeteer CDP connection manager & browser operator
 │   ├── conversations/               # Identity resolver & multi-turn dialog manager
 │   ├── engagement/                  # Contextual comment generator, reply & DM monitors
