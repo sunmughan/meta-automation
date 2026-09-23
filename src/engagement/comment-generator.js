@@ -3,7 +3,7 @@
  * AI-Delegated Comment Synthesis Engine.
  *
  * ARCHITECTURAL RULE (v1.5.0+):
- * All comment generation is delegated to the Antigravity AI Decision Engine.
+ * All comment generation is delegated to the MiniMax M3 AI Decision Engine.
  * Zero hardcoded templates, zero static topic routing, zero pickVariation arrays.
  * The AI model generates bespoke comments grounded in knowledge base context.
  *
@@ -40,7 +40,7 @@ class CommentGenerator {
   }
 
   /**
-   * Synthesizes a bespoke, engaging comment using Antigravity AI reasoning.
+   * Synthesizes a bespoke, engaging comment using MiniMax M3 AI reasoning.
    * Falls back to a minimal dynamic template only if AI is unavailable.
    *
    * @param {Object} params
@@ -120,7 +120,7 @@ class CommentGenerator {
 
   /**
    * AI-powered bespoke comment generation.
-   * Uses Antigravity AI to generate contextually rich, personalized comments.
+   * Uses MiniMax M3 AI to generate contextually rich, personalized comments.
    *
    * @param {Object} params - Same as generateEngagingComment
    * @returns {Promise<string>} AI-generated bespoke comment
