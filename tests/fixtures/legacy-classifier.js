@@ -4,7 +4,7 @@
  *
  * ARCHITECTURAL NOTICE (v1.1.8+):
  * The authoritative, canonical brain for all live post analysis is
- * the pure Antigravity AI Decision Engine: src/ai/ai-decision-engine.js.
+ * the pure MiniMax M3 AI Decision Engine: src/ai/ai-decision-engine.js.
  * This file is retained as an auxiliary test fixture, deterministic benchmark
  * harness, and fallback classifier. For production asynchronous reasoning, use
  * classifyAsync() or invoke aiDecisionEngine.qualifyPost() directly.
@@ -629,7 +629,7 @@ class IntentClassifier {
 
   /**
    * Delegates asynchronous qualification directly to the single authoritative
-   * Antigravity AI Decision Engine.
+   * MiniMax M3 AI Decision Engine.
    *
    * @param {Object} post
    * @param {Object} [options]
