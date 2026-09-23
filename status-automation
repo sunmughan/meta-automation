@@ -1,51 +1,57 @@
 #!/usr/bin/env bash
-# status-automation
-# Checks the real-time status of the CodeAir Threads + Instagram Automation daemon
+# Reports both Meta Automation workers and their isolated browser CDP sessions.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
 
-PID_FILE="$SCRIPT_DIR/threads-agent.pid"
-LOG_FILE="$SCRIPT_DIR/logs/daemon.log"
-
 echo "=================================================="
-echo "  CODEAIR AUTOMATION SYSTEM STATUS"
+echo "  META AUTOMATION — SYSTEM STATUS"
 echo "=================================================="
 
-# 1. Daemon process status
-if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE" 2>/dev/null)
-    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-        echo "🟢 Daemon Status : RUNNING (PID: $PID)"
-        ps -p "$PID" -o pid,vsz,rss,comm,etime 2>/dev/null | tail -n +2 | awk '{print "   Memory/Time  : RSS=" $3 "KB, Elapsed=" $5}'
-    else
-        echo "🔴 Daemon Status : NOT RUNNING (Stale PID file cleaned)"
-        rm -f "$PID_FILE"
+show_worker() {
+  local name="$1"
+  local pid_file="$2"
+
+  if [ -f "$pid_file" ]; then
+    local pid
+    pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      echo "🟢 $name : RUNNING (PID $pid)"
+      return 0
     fi
+    rm -f "$pid_file"
+  fi
+
+  echo "⚪ $name : NOT RUNNING"
+}
+
+show_worker "Social Automation" "$SCRIPT_DIR/threads-agent.pid"
+show_worker "Job Revenue Engine" "$SCRIPT_DIR/job-agent.pid"
+
+if curl -sf http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+  echo "🟢 Social Browser CDP : ACTIVE (:9222)"
 else
-    PIDS=$(pgrep -f "node threads-agent\.js run" | grep -v "$$" || true)
-    if [ -n "$PIDS" ]; then
-        echo "🟢 Daemon Status : RUNNING (PID: $PIDS)"
-    else
-        echo "⚪ Daemon Status : NOT RUNNING"
-    fi
+  echo "🔴 Social Browser CDP : OFFLINE (:9222)"
 fi
 
-# 2. Browser CDP Status
-if ss -tulpn 2>/dev/null | grep -q ":9222 " || curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
-    echo "🟢 Browser CDP   : ACTIVE (http://127.0.0.1:9222)"
+if curl -sf http://127.0.0.1:9223/json/version >/dev/null 2>&1; then
+  echo "🟢 Job Browser CDP    : ACTIVE (:9223)"
 else
-    echo "🔴 Browser CDP   : NOT CONNECTED (Run node scripts/launch-browser-cdp.js)"
+  echo "🔴 Job Browser CDP    : OFFLINE (:9223)"
 fi
 
-# 3. State & metrics report
-node threads-agent.js status
+echo ""
+echo "Social state:"
+node threads-agent.js status || true
 
-# 4. Recent Daemon Log Activity
-if [ -f "$LOG_FILE" ]; then
-    echo "Recent Activity (last 10 lines):"
-    echo "--------------------------------------------------"
-    tail -n 10 "$LOG_FILE"
-    echo "--------------------------------------------------"
-    echo "To follow logs continuously: tail -f $LOG_FILE"
-fi
+echo ""
+echo "Job state:"
+node job-agent.js status || true
+
+echo ""
+echo "Recent social activity:"
+tail -n 10 "$SCRIPT_DIR/logs/daemon.log" 2>/dev/null || true
+
+echo ""
+echo "Recent job activity:"
+tail -n 10 "$SCRIPT_DIR/logs/job-daemon.log" 2>/dev/null || true
