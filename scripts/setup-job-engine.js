@@ -52,6 +52,11 @@ async function askSecret(question) {
 }
 
 async function main() {
+  const envPath = path.join(CONFIG.ROOT_DIR, ".env");
+  const examplePath = path.join(CONFIG.ROOT_DIR, ".env.example");
+  if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
+    fs.copyFileSync(examplePath, envPath);
+  }
   console.log("\n=== Meta Automation • Agentic Job Revenue Engine Setup ===\n");
 
   let minimaxKey = process.env.MINIMAX_API_KEY || "";
