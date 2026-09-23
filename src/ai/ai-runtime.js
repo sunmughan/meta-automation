@@ -271,40 +271,31 @@ class AiRuntime {
    * Uses linear backoff for other transient errors (1.5s → 3s).
    */
   async executeAiCall(prompt, options = {}) {
-    const baseRetries = options.retries !== undefined ? options.retries : 2;
-    const timeoutMs = options.timeoutMs || 90000;
+    const baseRetries = options.retries !== undefined
+      ? options.retries
+      : (CONFIG.MINIMAX_MAX_RETRIES ?? 2);
+    const timeoutMs = options.timeoutMs || CONFIG.MINIMAX_TIMEOUT_MS || 90000;
+    const maxRetries = baseRetries + 1;
+    const isRetryable = (err) => {
+      const status = Number(err?.status || 0);
+      const msg = String(err?.message || "").toLowerCase();
+      return status === 408 || status === 409 || status === 429 || status >= 500 ||
+        msg.includes("timeout") || msg.includes("temporarily") || msg.includes("rate limit");
+    };
+
     let lastError = null;
-
-    // For 429 errors, allow up to 3 retries with exponential backoff
-    const maxRetries = baseRetries + 1; // 3 attempts total
-    const is429Error = (err) => err && err.message && (
-      err.message.includes("RESOURCE_EXHAUSTED") || 
-      err.message.includes("429") || 
-      err.message.includes("quota")
-    );
-
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return await this.callAntigravityCli(prompt, timeoutMs);
+        if (CONFIG.AI_PROVIDER === "minimax") {
+          return await this.callMiniMax(prompt, timeoutMs);
+        }
+        throw new Error(`Unsupported AI_PROVIDER: ${CONFIG.AI_PROVIDER}. This runtime is configured for MiniMax M3.`);
       } catch (err) {
         lastError = err;
-        if (err.code === "ENOENT") {
-          // Binary not found on system PATH; abort immediately
-          break;
-        }
-        if (attempt < maxRetries) {
-          let delayMs;
-          if (is429Error(err)) {
-            // Exponential backoff for rate limits: 3s, 8s, 20s
-            delayMs = Math.min(3000 * Math.pow(2.5, attempt - 1), 30000);
-            logger.warn(`Antigravity AI call attempt ${attempt}/${maxRetries} rate-limited (429). Backing off ${Math.round(delayMs/1000)}s...`);
-          } else {
-            // Linear backoff for other errors: 1.5s, 3s
-            delayMs = attempt * 1500;
-            logger.warn(`Antigravity AI call attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delayMs}ms...`);
-          }
-          await new Promise(r => setTimeout(r, delayMs));
-        }
+        if (!isRetryable(err) || attempt >= maxRetries) break;
+        const delayMs = Math.min(2000 * Math.pow(2, attempt - 1), 15000);
+        logger.warn(`MiniMax AI call attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
     throw lastError;
