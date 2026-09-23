@@ -604,15 +604,17 @@ async function runAllTests() {
     assert.strictEqual((neutralComment.match(/https?:\/\/[^\s]+/g) || []).length, 0, "NEUTRAL comment must contain ZERO links");
   });
 
-  // 39. Pure Antigravity AI Runtime Architecture
-  await test("39. Pure Antigravity AI Runtime Architecture (No REST or API key leaks)", () => {
+  // 39. MiniMax M3 AI Runtime Architecture
+  await test("39. MiniMax M3 AI Runtime Architecture", () => {
     const aiRuntimeModule = require("../src/ai/ai-runtime");
     const configModule = require("../config");
 
-    assert.strictEqual(configModule.AI_RUNTIME, "antigravity", "AI_RUNTIME must be antigravity");
-    assert.strictEqual(configModule.GEMINI_API_KEY, undefined, "GEMINI_API_KEY must not exist in config");
-    assert.strictEqual(typeof aiRuntimeModule.callGeminiRest, "undefined", "callGeminiRest must not exist on ai-runtime");
+    assert.strictEqual(configModule.AI_PROVIDER, "minimax", "AI_PROVIDER must be minimax");
+    assert.strictEqual(configModule.AI_RUNTIME, "minimax", "AI_RUNTIME must be minimax");
+    assert.strictEqual(configModule.MINIMAX_MODEL, "MiniMax-M3", "MINIMAX_MODEL must be MiniMax-M3");
+    assert.strictEqual(configModule.MINIMAX_BASE_URL, "https://api.minimax.io/v1", "MiniMax base URL must be configured");
     assert.strictEqual(typeof aiRuntimeModule.callAi, "function", "callAi must be exposed as primary entry point");
+    assert.strictEqual(typeof aiRuntimeModule.callMiniMax, "function", "callMiniMax must be available");
   });
 
   // 40. Unified State Store Lifecycle Semantics
