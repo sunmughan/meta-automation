@@ -134,6 +134,7 @@ const CONFIG = {
   // Publishing Cadence (6 hours = 4 posts per 24 hours)
   POST_INTERVAL_HOURS: Number(process.env.POST_INTERVAL_HOURS) || 6,
   CAROUSEL_INTERVAL_DAYS: Number(process.env.CAROUSEL_INTERVAL_DAYS) || 2,
+  CAROUSEL_INTERVAL_HOURS: Math.max(1, Number(process.env.CAROUSEL_INTERVAL_HOURS) || 40),
 
   // Dynamic reference to knowledge engine
   get knowledge() {
