@@ -75,7 +75,7 @@ class ThreadsPoster {
     const hoursSinceLastCarousel = (Date.now() - lastCarouselDate) / (1000 * 60 * 60);
 
     // Alternate days rule: If last carousel was >= 40 hours ago, generate a full 5-slide carousel deck!
-    if (hoursSinceLastCarousel >= 40 || lastCarouselDate === 0) {
+    if (hoursSinceLastCarousel >= CONFIG.CAROUSEL_INTERVAL_HOURS || lastCarouselDate === 0) {
       return "CAROUSEL";
     }
 
