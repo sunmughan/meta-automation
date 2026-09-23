@@ -118,35 +118,29 @@ async function runCrossPlatformAudit() {
     });
   }
 
-  // 5. Antigravity Guide & Prompts
-  test("Antigravity: ANTIGRAVITY_GUIDE.md documentation and prompts", () => {
-    const guidePath = path.join(ROOT, "ANTIGRAVITY_GUIDE.md");
-    assert(fs.existsSync(guidePath), "ANTIGRAVITY_GUIDE.md must exist");
-    const content = fs.readFileSync(guidePath, "utf8");
-    assert(content.includes("Full Autonomous Mode"), "Must include Autonomous prompt");
-    assert(content.includes("Lead Discovery"), "Must include Discovery prompt");
-    assert(content.includes("Approval Mode"), "Must include Approval prompt");
-    assert(content.includes("Android (Termux)"), "Must include Termux instructions");
+  // 5. MiniMax M3 runtime configuration
+  test("AI Runtime: MiniMax M3 is the default provider", () => {
+    assert(CONFIG.AI_PROVIDER === "minimax", "AI_PROVIDER must default to minimax");
+    assert(CONFIG.MINIMAX_MODEL === "MiniMax-M3", "MINIMAX_MODEL must be MiniMax-M3");
+    assert(CONFIG.MINIMAX_BASE_URL, "MINIMAX_BASE_URL must be configured");
+    assert(CONFIG.MINIMAX_ENDPOINT, "MINIMAX_ENDPOINT must be configured");
   });
 
-  // 6. Termux Antigravity CLI & Prerequisites
-  test("Termux: installer includes Antigravity CLI and tar/bash requirements", () => {
+  // 6. Runtime must not require the Antigravity CLI
+  test("AI Runtime: no Antigravity CLI dependency", () => {
+    const runtimeCode = fs.readFileSync(path.join(ROOT, "src/ai/ai-runtime.js"), "utf8");
+    assert(!runtimeCode.includes("resolveAgyBinary"), "Runtime must not depend on resolveAgyBinary");
+    assert(!runtimeCode.includes("spawn("), "Runtime must not spawn the Antigravity CLI");
+    assert(runtimeCode.includes("callMiniMax"), "Runtime must include MiniMax execution");
+  });
+
+  // 7. Termux installer must not install Antigravity
+  test("Termux: installer is MiniMax-based", () => {
     const termuxScript = path.join(ROOT, "installers/install-android-termux.sh");
     const content = fs.readFileSync(termuxScript, "utf8");
-    assert(content.includes("wallentx/antigravity-cli-termux"), "Must include wallentx/antigravity-cli-termux installer");
-    assert(content.includes("tar"), "Must include tar package");
-    assert(content.includes("bash"), "Must include bash package");
+    assert(!content.includes("wallentx/antigravity-cli-termux"), "Termux installer must not install Antigravity CLI");
+    assert(content.includes("MINIMAX"), "Termux installer must mention MiniMax configuration");
     assert(content.includes("termux-x11-nightly"), "Must include termux-x11-nightly");
-  });
-
-  // 7. Cross-Platform Antigravity CLI Dynamic Resolution (Zero Hardcoded User Paths)
-  test("AI Runtime: resolveAgyBinary does not hardcode user paths and resolves binary", () => {
-    const aiRuntime = require("../src/ai/ai-runtime");
-    assert(typeof aiRuntime.resolveAgyBinary === "function", "resolveAgyBinary method must exist");
-    const bin = aiRuntime.resolveAgyBinary();
-    assert(bin && bin.length > 0, "Must resolve a non-empty binary string");
-    const runtimeCode = fs.readFileSync(path.join(ROOT, "src/ai/ai-runtime.js"), "utf8");
-    assert(!runtimeCode.includes("/home/sunmughan/.local/bin/agy"), "Must not hardcode /home/sunmughan path");
   });
 
   // 8. Onboarding Wizard WhatsApp Integration
