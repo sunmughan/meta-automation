@@ -12,13 +12,55 @@ async function setEnvValue(key, value) {
   let content = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
   const escaped = String(value ?? "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "");
   const re = new RegExp(`^${key}=.*$`, "m");
-  if (re.test(content)) content = content.replace(re, `${key}=${escaped}`);
+  if (re.test(content)) content = content.replace(re, () => `${key}=${escaped}`);
   else content += `\n${key}=${escaped}\n`;
   fs.writeFileSync(envPath, content.replace(/^\n+/, ""), "utf8");
 }
 
+async function askSecret(question) {
+  if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
+    return (await ask(question)).trim();
+  }
+  return new Promise(resolve => {
+    let value = "";
+    process.stdout.write(question);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    const onData = chunk => {
+      const char = chunk.toString();
+      if (char === "\u0003") {
+        process.stdin.setRawMode(false);
+        process.exit(130);
+      }
+      if (char === "\r" || char === "\n") {
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        process.stdin.off("data", onData);
+        process.stdout.write("\n");
+        resolve(value);
+        return;
+      }
+      if (char === "\u007f") {
+        value = value.slice(0, -1);
+        return;
+      }
+      value += char;
+      process.stdout.write("*");
+    };
+    process.stdin.on("data", onData);
+  });
+}
+
 async function main() {
   console.log("\n=== Meta Automation • Agentic Job Revenue Engine Setup ===\n");
+
+  let minimaxKey = process.env.MINIMAX_API_KEY || "";
+  if (!minimaxKey) {
+    minimaxKey = await askSecret("MiniMax API key (stored only in local .env): ");
+    if (!minimaxKey) throw new Error("MiniMax API key is required. Add it to .env or provide it during setup.");
+    await setEnvValue("MINIMAX_API_KEY", minimaxKey);
+  }
+
   const email = (await ask(`Google account email [${CONFIG.GOOGLE_ACCOUNT_EMAIL}]: `)).trim() || CONFIG.GOOGLE_ACCOUNT_EMAIL;
   const resume = (await ask(`Base resume path [${CONFIG.JOB_BASE_RESUME_PATH || "not set"}]: `)).trim() || CONFIG.JOB_BASE_RESUME_PATH;
   const mode = (await ask(`Application mode (auto/manual) [${CONFIG.JOB_APPLICATION_MODE}]: `)).trim().toLowerCase() || CONFIG.JOB_APPLICATION_MODE;
@@ -26,6 +68,8 @@ async function main() {
   const dailyLimit = (await ask(`Maximum verified applications per 24h [${CONFIG.JOB_MAX_APPLICATIONS_PER_DAY}]: `)).trim() || String(CONFIG.JOB_MAX_APPLICATIONS_PER_DAY);
 
   await setEnvValue("GOOGLE_ACCOUNT_EMAIL", email);
+  await setEnvValue("JOB_REMOTE_ONLY", "true");
+  await setEnvValue("JOB_PROJECT_ONLY", "true");
   if (resume) await setEnvValue("JOB_BASE_RESUME_PATH", resume);
   await setEnvValue("JOB_APPLICATION_MODE", mode);
   await setEnvValue("JOB_MIN_MATCH_SCORE", minScore);
@@ -43,6 +87,8 @@ async function main() {
   fs.mkdirSync(path.join(privateDir, "job-browser-profile"), { recursive: true });
   fs.mkdirSync(path.join(CONFIG.ROOT_DIR, "job-state"), { recursive: true });
   fs.mkdirSync(CONFIG.JOB_GENERATED_DIR, { recursive: true });
+
+  try { if (process.platform !== "win32") fs.chmodSync(path.join(CONFIG.ROOT_DIR, ".env"), 0o600); } catch (_) {}
 
   console.log("\nSetup saved locally.");
   console.log(`Candidate profile: ${CONFIG.JOB_PROFILE_PATH}`);
