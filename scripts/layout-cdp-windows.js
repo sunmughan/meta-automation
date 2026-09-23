@@ -40,6 +40,8 @@ async function pickPage(browser, role) {
 
 async function getWorkArea(page) {
   return page.evaluate(() => ({
+    left: Number.isFinite(window.screen.availLeft) ? window.screen.availLeft : 0,
+    top: Number.isFinite(window.screen.availTop) ? window.screen.availTop : 0,
     width: Math.max(1, Number(window.screen.availWidth || window.innerWidth || 1)),
     height: Math.max(1, Number(window.screen.availHeight || window.innerHeight || 1))
   }));
@@ -121,8 +123,18 @@ async function layoutBoth(options = {}) {
   }
 
   const half = Math.floor(screen.width / 2);
-  const socialBounds = { left: 0, top: 0, width: half, height: screen.height };
-  const jobBounds = { left: half, top: 0, width: screen.width - half, height: screen.height };
+  const socialBounds = {
+    left: screen.left,
+    top: screen.top,
+    width: half,
+    height: screen.height
+  };
+  const jobBounds = {
+    left: screen.left + half,
+    top: screen.top,
+    width: screen.width - half,
+    height: screen.height
+  };
 
   const [social, job] = await Promise.all([
     layoutCdpBrowser(socialCdpUrl, "social", socialBounds),
