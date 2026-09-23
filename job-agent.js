@@ -10,12 +10,70 @@ const { discoverOnPlatform } = require("./src/jobs/discovery/opportunity-engine"
 const { applyToOpportunity } = require("./src/jobs/application/application-engine");
 const jobState = require("./src/jobs/storage/job-state-store");
 const logger = require("./src/logging/logger");
+const { spawnSync } = require("child_process");
+
+async function ensureJobBrowser() {
+  const result = spawnSync(process.execPath, ["scripts/launch-job-browser.js"], {
+    cwd: CONFIG.ROOT_DIR,
+    stdio: "inherit"
+  });
+  if (result.status !== 0) throw new Error("Dedicated job browser could not be started.");
+}
 
 async function getPlatformPage(platform) {
   return jobBrowserManager.open(platform.url);
 }
 
+async function authenticateAllPlatforms() {
+  const profile = loadCandidateProfile();
+  if (!profile) throw new Error("Candidate profile missing. Run npm run jobs:setup first.");
+  await ensureJobBrowser();
+  const results = {};
+  for (const platform of getEnabledPlatforms()) {
+    const page = await getPlatformPage(platform);
+    const agent = new JobBrowserAgent(page, platform.id);
+    results[platform.id] = await bootstrapPlatformSession({
+      platform,
+      page,
+      browserAgent: agent,
+      aiRuntime,
+      candidateProfile: profile
+    });
+  }
+  jobBrowserManager.disconnect();
+  return results;
+}
+
+async function completeAllProfiles() {
+  const profile = loadCandidateProfile();
+  if (!profile) throw new Error("Candidate profile missing. Run npm run jobs:setup first.");
+  await ensureJobBrowser();
+  const results = {};
+  for (const platform of getEnabledPlatforms()) {
+    const state = jobState.state.platforms[platform.id];
+    if (state?.status !== "AUTHENTICATED") {
+      results[platform.id] = { status: "SKIPPED", reason: "Platform is not authenticated" };
+      continue;
+    }
+    const page = await getPlatformPage(platform);
+    const agent = new JobBrowserAgent(page, platform.id);
+    results[platform.id] = await completeProfile({
+      platform,
+      page,
+      browserAgent: agent,
+      aiRuntime,
+      candidateProfile: profile
+    });
+  }
+  jobBrowserManager.disconnect();
+  return results;
+}
+
 async function setupAuthAndProfiles() {
+  const auth = await authenticateAllPlatforms();
+  const profiles = await completeAllProfiles();
+  return { auth, profiles };
+}
   const profile = loadCandidateProfile();
   if (!profile) throw new Error("Candidate profile missing. Run npm run jobs:setup first.");
   const results = {};
@@ -99,7 +157,11 @@ async function main() {
     return;
   }
   if (command === "auth") {
-    console.log(JSON.stringify(await setupAuthAndProfiles(), null, 2));
+    console.log(JSON.stringify(await authenticateAllPlatforms(), null, 2));
+    return;
+  }
+  if (command === "profile") {
+    console.log(JSON.stringify(await completeAllProfiles(), null, 2));
     return;
   }
   if (command === "scan") {
