@@ -47,6 +47,9 @@ fi
 echo "[3/6] Installing Node.js dependencies..."
 npm install
 
+# Job Revenue Engine setup: creates private profile directories and securely prompts for MiniMax API key.
+node scripts/setup-job-engine.js
+
 # 4. Configure Environment
 echo "[4/6] Setting up environment configuration..."
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
@@ -58,7 +61,7 @@ fi
 
 # 5. Make execution scripts executable
 echo "[5/6] Setting executable permissions..."
-chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js
+chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js "$SCRIPT_DIR"/job-agent.js
 
 # 6. Run Test Suite
 echo "[6/6] Verifying engine with test suite..."
