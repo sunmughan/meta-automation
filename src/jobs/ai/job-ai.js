@@ -122,7 +122,7 @@ OUTPUT: {"coverLetter":""}
   return aiRuntime.callAi(prompt, { taskType: "JOB_COVER_LETTER", priority: 2 });
 }
 
-async function buildActionPlan({ goal, platform, opportunity, candidateProfile, browserSnapshot, allowedOrigin, actionBudget }, aiRuntime) {
+async function buildActionPlan({ goal, platform, opportunity, candidateProfile, browserSnapshot, allowedOrigin, actionBudget, context = {} }, aiRuntime) {
   const prompt = `
 Return JSON only.
 
@@ -182,7 +182,7 @@ Rules:
   "reason":"",
   "goal":"",
   "actions":[
-    {"type":"CLICK|TYPE|PRESS|SCROLL|WAIT|NAVIGATE|EXTRACT|BACK|CLOSE|STOP","target":{},"value":"","clear":false}
+    {"type":"CLICK|TYPE|PRESS|SCROLL|WAIT|NAVIGATE|EXTRACT|UPLOAD|BACK|CLOSE|STOP","target":{},"value":"","clear":false}
   ],
   "verification":{"type":"TEXT|URL|FORM|APPLICATION|NONE","expected":"","text":""}
 }
