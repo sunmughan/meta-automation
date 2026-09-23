@@ -7,7 +7,7 @@
     "meta-automation": "./threads-agent.js"
   },
   "scripts": {
-    "test": "node tests/suite.js && node tests/cross-platform-audit.js",
+    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js",
     "e2e:browser": "node tests/browser-e2e.js",
     "onboard": "node threads-agent.js onboard",
     "configure": "node threads-agent.js onboard",
