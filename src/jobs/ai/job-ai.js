@@ -237,6 +237,7 @@ Rules:
 module.exports = {
   qualifyOpportunity,
   extractOpportunities,
+  inspectOpportunityDetails,
   generateCoverLetter,
   buildActionPlan
 };
