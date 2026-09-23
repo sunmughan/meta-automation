@@ -23,7 +23,10 @@ function getAllPlatforms() {
 }
 
 function getEnabledPlatforms() {
-  return loadRegistry().filter(platform => platform.enabled);
+  return loadRegistry().filter(platform => {
+    const envKey = `JOB_${platform.id.toUpperCase()}_ENABLED`;
+    return platform.enabled && process.env[envKey] !== "false";
+  });
 }
 
 function getPlatform(id) {
