@@ -215,8 +215,10 @@ Rules:
 - Never return selector/selectors fields.
 - Never use coordinates.
 - NAVIGATE must stay inside the allowed platform origin except an OAuth handoff requested by the platform. For OAuth, the runner may allow the observed Google authorization origin only for the authentication step.
-- For Google OAuth, use the platform's live Google/Continue-with-Google control when present. Never type a Google password or ask for 2FA.
-- If the desired Google account is already visible in the chooser, select the configured account. Otherwise return USER_ACTION_REQUIRED.
+- For Google OAuth, use the platform's live Google/Continue-with-Google control when present. Never type a Google password, recovery code or 2FA code.
+- If the configured Google account is already visible in the chooser, select it.
+- If the chooser offers "Use another account", select it and type only the configured Google account email. Stop with USER_ACTION_REQUIRED when Google asks for a password, 2FA, recovery or another user-only security step.
+- If Google OAuth is not available on this platform, do not invent an OAuth path; use the platform's visible normal login/register flow only when it does not require credentials stored by this project, otherwise return USER_ACTION_REQUIRED.
 - CAPTCHA, bot challenge, identity verification, payment/credit purchase, phone verification or legal attestation requiring user confirmation => MANUAL_ACTION_REQUIRED.
 - Never submit an application when a required field is unknown.
 - Never mark unknown work mode as REMOTE.
