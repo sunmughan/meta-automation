@@ -49,16 +49,20 @@ const CONFIG = {
   BACKUPS_DIR: path.resolve(ROOT_DIR, "backups"),
 
   // AI Provider Configuration
-  AI_PROVIDER: (process.env.AI_PROVIDER || process.env.AI_RUNTIME || "antigravity").toLowerCase(),
-  AI_RUNTIME: (process.env.AI_RUNTIME || "antigravity").toLowerCase(),
-  MODEL: process.env.AI_MODEL || "gemini-3.8-flash-high",
+  AI_PROVIDER: (process.env.AI_PROVIDER || "minimax").toLowerCase(),
+  AI_RUNTIME: (process.env.AI_RUNTIME || "minimax").toLowerCase(),
+  MODEL: process.env.AI_MODEL || process.env.MINIMAX_MODEL || "MiniMax-M3",
 
   // MiniMax M3 API Configuration
   MINIMAX_API_KEY: process.env.MINIMAX_API_KEY || "",
   MINIMAX_BASE_URL: process.env.MINIMAX_BASE_URL || "https://api.minimax.io/v1",
+  MINIMAX_ENDPOINT: process.env.MINIMAX_ENDPOINT || "/text/chatcompletion_v2",
   MINIMAX_MODEL: process.env.MINIMAX_MODEL || "MiniMax-M3",
   MINIMAX_TIMEOUT_MS: Math.max(1000, Number(process.env.MINIMAX_TIMEOUT_MS) || 90000),
   MINIMAX_MAX_RETRIES: Math.max(0, Number(process.env.MINIMAX_MAX_RETRIES) || 2),
+  MINIMAX_TEMPERATURE: Number.isFinite(Number(process.env.MINIMAX_TEMPERATURE)) ? Number(process.env.MINIMAX_TEMPERATURE) : 0.2,
+  MINIMAX_MAX_TOKENS: Math.max(256, Number(process.env.MINIMAX_MAX_TOKENS) || 4096),
+  MINIMAX_THINKING: String(process.env.MINIMAX_THINKING || "true").toLowerCase(),
 
   // Browser CDP & Display Configuration (Chrome, Edge, Brave, Chromium)
   BROWSER_TYPE: (process.env.BROWSER_TYPE || process.env.BROWSER || "auto").toLowerCase(),
