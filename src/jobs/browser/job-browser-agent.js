@@ -20,7 +20,7 @@ class JobBrowserAgent extends BrowserAgent {
         if (!value.startsWith("http")) throw new Error("Job navigation requires an absolute HTTP URL");
         const targetOrigin = new URL(value).origin;
         const origin = new URL(allowedOrigin).origin;
-        const oauthOrigin = "https://accounts.google.com";
+        const oauthOrigin = CONFIG.GOOGLE_AUTH_ORIGIN;
         if (targetOrigin !== origin && !(allowGoogleOAuth && targetOrigin === oauthOrigin)) {
           throw new Error(`Blocked navigation outside allowed origin: ${targetOrigin}`);
         }
