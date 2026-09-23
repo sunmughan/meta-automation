@@ -26,7 +26,7 @@ async function getPlatformPage(platform) {
 
 async function openGoogleAccount() {
   await ensureJobBrowser();
-  const page = await jobBrowserManager.open("https://accounts.google.com/");
+  const page = await jobBrowserManager.open(CONFIG.GOOGLE_AUTH_ORIGIN + "/");
   await page.bringToFront().catch(() => {});
   console.log("\nDedicated job browser is open on Google.");
   console.log(`Sign in as ${CONFIG.GOOGLE_ACCOUNT_EMAIL} once if needed. This project never stores Google passwords or 2FA codes.\n`);
