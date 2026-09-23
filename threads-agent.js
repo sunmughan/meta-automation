@@ -882,7 +882,7 @@ async function commandRun() {
 
 async function commandOnboard(options = {}) {
   console.log("\n==============================================");
-  console.log("   🎓 ANTIGRAVITY BRAND ONBOARDING WIZARD");
+  console.log("   🎓 MiniMax M3 BRAND ONBOARDING WIZARD");
   console.log("   Train the AI System on Your Business in Seconds");
   console.log("==============================================\n");
 
@@ -1043,7 +1043,7 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   console.log(`  Approved   : ${approvedServices.length} capabilities`);
   console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
   console.log(`  Exec Mode  : ${executionMode.toUpperCase()} (${executionMode === "concurrent" ? "Parallel Multi-Tab Continuous" : "Sequential Single-Tab Rotation"})`);
-  console.log(`  AI Engine  : Live Antigravity IDE Gemini 3.8 Flash High`);
+  console.log(`  AI Engine  : Live MiniMax M3 IDE Gemini 3.8 Flash High`);
   console.log("==============================================\n");
   console.log("Your brand knowledge base is saved in ./knowledge/");
   console.log("All qualification engines, response generators, and visual posters");
