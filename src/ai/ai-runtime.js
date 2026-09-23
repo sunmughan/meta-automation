@@ -182,57 +182,69 @@ class AiRuntime {
   }
 
   /**
-   * Invokes Antigravity AI runtime.
-   * Runs agy command line with clean prompt and structured JSON formatting.
+   * Invokes MiniMax M3 through the official HTTP API.
+   * Uses native fetch (Node >=18), so no additional SDK dependency is required.
    */
-  async callAntigravityCli(prompt, timeoutMs = 90000) {
-    return new Promise((resolve, reject) => {
-      const bin = this.resolveAgyBinary();
+  async callMiniMax(prompt, timeoutMs = CONFIG.MINIMAX_TIMEOUT_MS) {
+    if (!CONFIG.MINIMAX_API_KEY) {
+      throw new Error("MINIMAX_API_KEY is not configured. Add it to .env before running with AI_PROVIDER=minimax.");
+    }
 
-      const proc = spawn(bin, [
-        "-p", prompt,
-        "--model", this.model,
-        "--output-format", "json"
-      ], {
-        env: { ...process.env, DISPLAY: CONFIG.DISPLAY }
+    const baseUrl = String(CONFIG.MINIMAX_BASE_URL || "https://api.minimax.io/v1").replace(/\/+$/, "");
+    const endpoint = CONFIG.MINIMAX_ENDPOINT || "/text/chatcompletion_v2";
+    const url = endpoint.startsWith("http") ? endpoint : baseUrl + (endpoint.startsWith("/") ? "" : "/") + endpoint;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${CONFIG.MINIMAX_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: CONFIG.MINIMAX_MODEL || "MiniMax-M3",
+          messages: [{ role: "user", content: prompt }],
+          temperature: CONFIG.MINIMAX_TEMPERATURE,
+          max_tokens: CONFIG.MINIMAX_MAX_TOKENS,
+          ...(CONFIG.MINIMAX_THINKING === "true" ? { thinking: { type: "enabled" } } : {})
+        }),
+        signal: controller.signal
       });
 
-      let stdout = "";
-      let stderr = "";
+      const raw = await response.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (err) {
+        throw new Error(`MiniMax returned non-JSON response (HTTP ${response.status}): ${raw.slice(0, 500)}`);
+      }
 
-      proc.stdout.on("data", chunk => { stdout += chunk; });
-      proc.stderr.on("data", chunk => { stderr += chunk; });
+      if (!response.ok) {
+        const message = data?.base_resp?.status_msg || data?.error?.message || data?.message || raw.slice(0, 500);
+        const error = new Error(`MiniMax API HTTP ${response.status}: ${message}`);
+        error.status = response.status;
+        throw error;
+      }
 
-      const timer = setTimeout(() => {
-        proc.kill("SIGTERM");
-        reject(new Error(`Antigravity AI runtime timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+      const content = data?.choices?.[0]?.message?.content
+        ?? data?.choices?.[0]?.message?.reasoning_content
+        ?? data?.reply
+        ?? data?.response;
 
-      proc.on("close", code => {
-        clearTimeout(timer);
-        if (code !== 0) {
-          return reject(new Error(`Antigravity AI runtime exited with code ${code}: ${stderr || stdout}`));
-        }
-        try {
-          const parsed = JSON.parse(stdout);
-          const innerText = parsed.response || stdout;
-          const result = this.cleanAndParseJson(innerText);
-          resolve(result);
-        } catch (e) {
-          try {
-            // Attempt direct parse if stdout was plain JSON
-            resolve(this.cleanAndParseJson(stdout));
-          } catch (err2) {
-            reject(new Error(`Failed to parse Antigravity AI output: ${e.message}`));
-          }
-        }
-      });
-
-      proc.on("error", err => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
+      if (typeof content === "string" && content.trim()) {
+        return this.cleanAndParseJson(content);
+      }
+      if (content && typeof content === "object") return content;
+      throw new Error("MiniMax API returned no usable message content");
+    } catch (err) {
+      if (err.name === "AbortError") throw new Error(`MiniMax API timed out after ${timeoutMs}ms`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /**
