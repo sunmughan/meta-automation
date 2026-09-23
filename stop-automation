@@ -1,44 +1,64 @@
 #!/usr/bin/env bash
-# stop-automation
-# Safely stops the CodeAir Threads + Instagram background automation daemon
+# Stops both Meta Automation execution planes. Browser windows remain open.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
 
-PID_FILE="$SCRIPT_DIR/threads-agent.pid"
-
 echo "=================================================="
-echo "  STOPPING CODEAIR AUTOMATION"
+echo "  STOPPING META AUTOMATION"
 echo "=================================================="
 
 STOPPED=false
 
-if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE" 2>/dev/null)
-    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-        echo "Stopping daemon process (PID: $PID)..."
-        kill -TERM "$PID" 2>/dev/null
-        sleep 2
-        if kill -0 "$PID" 2>/dev/null; then
-            kill -9 "$PID" 2>/dev/null
-        fi
-        STOPPED=true
+stop_pid_file() {
+  local name="$1"
+  local file="$2"
+
+  if [ ! -f "$file" ]; then
+    return 0
+  fi
+
+  local pid
+  pid="$(cat "$file" 2>/dev/null || true)"
+
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    echo "Stopping $name (PID $pid)..."
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 2
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -9 "$pid" 2>/dev/null || true
     fi
-    rm -f "$PID_FILE"
+    STOPPED=true
+  fi
+
+  rm -f "$file"
+}
+
+stop_pid_file "Social Automation" "$SCRIPT_DIR/threads-agent.pid"
+stop_pid_file "Job Revenue Engine" "$SCRIPT_DIR/job-agent.pid"
+
+PIDS="$(pgrep -f "node threads-agent\.js run" || true)"
+if [ -n "$PIDS" ]; then
+  echo "Stopping orphaned social worker(s): $PIDS"
+  kill -TERM $PIDS 2>/dev/null || true
+  sleep 1
+  kill -9 $PIDS 2>/dev/null || true
+  STOPPED=true
 fi
 
-# Fallback check for any dangling run process
-PIDS=$(pgrep -f "node threads-agent\.js run" | grep -v "$$" || true)
+PIDS="$(pgrep -f "node job-agent\.js run" || true)"
 if [ -n "$PIDS" ]; then
-    echo "Stopping remaining instances: $PIDS..."
-    kill -TERM $PIDS 2>/dev/null || true
-    sleep 1
-    kill -9 $PIDS 2>/dev/null || true
-    STOPPED=true
+  echo "Stopping orphaned job worker(s): $PIDS"
+  kill -TERM $PIDS 2>/dev/null || true
+  sleep 1
+  kill -9 $PIDS 2>/dev/null || true
+  STOPPED=true
 fi
 
 if [ "$STOPPED" = true ]; then
-    echo "✅ Automation daemon stopped successfully."
+  echo "✅ Social + Job workers stopped."
 else
-    echo "⚪ Automation daemon was not running."
+  echo "⚪ No active automation workers found."
 fi
+
+echo "Browser windows were left open intentionally."
