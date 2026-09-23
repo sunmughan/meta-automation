@@ -76,7 +76,7 @@ const CONFIG = {
   JOB_PROFILE_PATH: process.env.JOB_PROFILE_PATH || path.resolve(ROOT_DIR, "private", "candidate-profile.json"),
   JOB_STATE_FILE: process.env.JOB_STATE_FILE || path.resolve(ROOT_DIR, "job-state", "opportunities.json"),
   JOB_GENERATED_DIR: process.env.JOB_GENERATED_DIR || path.resolve(ROOT_DIR, "applications"),
-  GOOGLE_ACCOUNT_EMAIL: process.env.GOOGLE_ACCOUNT_EMAIL || "sunmughan@gmail.com",
+  GOOGLE_ACCOUNT_EMAIL: process.env.GOOGLE_ACCOUNT_EMAIL || "",
   GOOGLE_AUTH_ORIGIN: process.env.GOOGLE_AUTH_ORIGIN || "https://accounts.google.com",
   JOB_DISCOVERY_INTERVAL_SECONDS: Math.max(60, Number(process.env.JOB_DISCOVERY_INTERVAL_SECONDS) || 900),
   JOB_MAX_OPPORTUNITIES_PER_SCAN: Math.max(1, Number(process.env.JOB_MAX_OPPORTUNITIES_PER_SCAN) || 100),
