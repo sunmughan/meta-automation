@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 const CONFIG = require("../../../config");
-const { buildActionPlan, generateCoverLetter, qualifyOpportunity } = require("../ai/job-ai");
+const { generateCoverLetter, qualifyOpportunity } = require("../ai/job-ai");
+const JobAgentRunner = require("../browser/job-runner");
 const { generateApplicationDocuments } = require("../documents/document-engine");
 const { getPlatform } = require("../platform-registry");
 const jobState = require("../storage/job-state-store");
@@ -97,31 +98,31 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   });
   await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
 
-  const snapshot = await browserAgent.captureLiveSnapshot("application-start");
-  const plan = await buildActionPlan({
-    goal: "Complete and submit the application for this exact project using only verified candidate data. Fill every required field, use the generated cover letter if requested, attach the base resume if requested, and submit only after the form is complete and the page visibly indicates the final submission action.",
+  const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+  const result = await runner.run({
+    goal: "Complete and submit the application for this exact remote project using only verified candidate data. Discover the live form, map every required field to a known value, use the generated cover letter when requested, upload the base resume when requested, and do not submit until all required fields are valid. After submission, continue inspecting the live page until a trustworthy visible submission confirmation or equivalent post-condition is established.",
     platform,
     opportunity: { ...opportunity, application: decision.applicationRequirements || opportunity.application },
     candidateProfile,
-    browserSnapshot: snapshot,
     allowedOrigin: new URL(platform.url).origin,
-    actionBudget: {
-      maxActions: CONFIG.JOB_MAX_PLAN_ACTIONS,
-      maxScrolls: CONFIG.JOB_MAX_SCROLLS
+    targetId: `apply:${opportunity.key}`,
+    context: {
+      documents,
+      remoteOnly: CONFIG.JOB_REMOTE_ONLY,
+      projectOnly: CONFIG.JOB_PROJECT_ONLY,
+      googleAccountEmail: CONFIG.GOOGLE_ACCOUNT_EMAIL
     }
-  }, aiRuntime);
+  });
 
-  if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(plan.status)) {
-    jobState.upsertApplication({ ...application, status: plan.status, reason: plan.reason });
+  if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(result.status)) {
+    jobState.upsertApplication({ ...application, status: result.status, reason: result.reason });
     jobState.updateMetric("manualAction");
-    return { status: plan.status, reason: plan.reason, application, plan };
+    return { status: result.status, reason: result.reason, application, plan: result.plan };
   }
-
-  const result = await browserAgent.executeJobPlan(plan, `apply:${opportunity.key}`, new URL(platform.url).origin);
-  if (!result.success) {
-    jobState.upsertApplication({ ...application, status: result.state || "FAILED", reason: result.reason });
-    jobState.updateMetric(result.state === "UNVERIFIED" ? "manualAction" : "failed");
-    return { status: result.state || "FAILED", application, result };
+  if (result.status !== "DONE") {
+    jobState.upsertApplication({ ...application, status: result.status || "FAILED", reason: result.reason });
+    jobState.updateMetric(result.status === "MAX_ITERATIONS" ? "manualAction" : "failed");
+    return { status: result.status || "FAILED", application, result };
   }
 
   const submittedAt = new Date().toISOString();
