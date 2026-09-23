@@ -150,8 +150,9 @@ async function main() {
   console.log("==================================================");
   console.log("  META AUTOMATION — STANDALONE DESKTOP RUNTIME");
   console.log("==================================================");
-  console.log("  LEFT  50% : SOCIAL AUTOMATION  :9222");
-  console.log("  RIGHT 50% : JOB HUNTING ENGINE :9223");
+  const split = CONFIG.DESKTOP_SPLIT_PERCENT;
+  console.log(`  LEFT  ${split}% : SOCIAL AUTOMATION  :9222`);
+  console.log(`  RIGHT ${100 - split}% : JOB HUNTING ENGINE :9223`);
   console.log("  IDE        : NOT REQUIRED");
   console.log("==================================================");
 
