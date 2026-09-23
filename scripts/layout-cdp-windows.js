@@ -89,11 +89,13 @@ async function layoutCdpBrowser(cdpUrl, role, bounds = null) {
     }
 
     const workArea = await getWorkArea(page);
-    const half = Math.floor(workArea.width / 2);
+    const split = CONFIG.DESKTOP_SPLIT_PERCENT / 100;
+    const socialWidth = Math.max(320, Math.floor(workArea.width * split));
+    const jobWidth = Math.max(320, workArea.width - socialWidth);
     const targetBounds = bounds || (
       role === "social"
-        ? { left: 0, top: 0, width: half, height: workArea.height }
-        : { left: half, top: 0, width: workArea.width - half, height: workArea.height }
+        ? { left: workArea.left, top: workArea.top, width: socialWidth, height: workArea.height }
+        : { left: workArea.left + socialWidth, top: workArea.top, width: jobWidth, height: workArea.height }
     );
 
     const result = await setWindowBounds(page, targetBounds);
@@ -122,17 +124,19 @@ async function layoutBoth(options = {}) {
     socialBrowser.disconnect();
   }
 
-  const half = Math.floor(screen.width / 2);
+  const split = CONFIG.DESKTOP_SPLIT_PERCENT / 100;
+  const socialWidth = Math.max(320, Math.floor(screen.width * split));
+  const jobWidth = Math.max(320, screen.width - socialWidth);
   const socialBounds = {
     left: screen.left,
     top: screen.top,
-    width: half,
+    width: socialWidth,
     height: screen.height
   };
   const jobBounds = {
-    left: screen.left + half,
+    left: screen.left + socialWidth,
     top: screen.top,
-    width: screen.width - half,
+    width: jobWidth,
     height: screen.height
   };
 
