@@ -107,7 +107,7 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     allowedOrigin: new URL(platform.url).origin,
     targetId: `apply:${opportunity.key}`,
     context: {
-      documents,
+      documents: generated,
       remoteOnly: CONFIG.JOB_REMOTE_ONLY,
       projectOnly: CONFIG.JOB_PROJECT_ONLY,
       googleAccountEmail: CONFIG.GOOGLE_ACCOUNT_EMAIL
