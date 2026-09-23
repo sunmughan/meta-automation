@@ -125,7 +125,7 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     return { status: result.status || "FAILED", application, result };
   }
 
-  const verificationSnapshot = result.snapshot || await browserAgent.captureLiveSnapshot("application-post-submit-verification");
+  const verificationSnapshot = await browserAgent.captureLiveSnapshot("application-post-submit-verification");
   const verification = await verifyApplicationSubmission({
     platform,
     opportunity,
