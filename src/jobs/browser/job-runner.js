@@ -7,32 +7,50 @@ class JobAgentRunner {
     this.browserAgent = browserAgent;
   }
 
-  async syncOpenedPage(authOrigin = null) {
+  async syncOpenedPage(authOrigin = null, preferredOrigin = null) {
     try {
       const browser = this.browserAgent.page?.browser();
       if (!browser) return;
-      const pages = await browser.pages();
+      const pages = (await browser.pages()).filter(page => !page.isClosed());
       if (!pages.length) return;
 
-      const currentUrl = this.browserAgent.page?.url?.() || "";
-      const candidates = pages.filter(page => !page.isClosed());
-      const authPage = authOrigin
-        ? candidates.find(page => {
-            try { return new URL(page.url()).origin === new URL(authOrigin).origin; } catch (_) { return false; }
-          })
-        : null;
+      const current = this.browserAgent.page;
+      const currentUrl = current?.url?.() || "";
+      const originOf = page => {
+        try { return new URL(page.url()).origin; } catch (_) { return ""; }
+      };
 
-      const newest = candidates[candidates.length - 1];
-      if (authPage && new URL(currentUrl || "about:blank").origin !== new URL(authOrigin).origin) {
-        this.browserAgent.page = authPage;
-        return;
+      if (authOrigin) {
+        const authPage = pages.find(page => originOf(page) === new URL(authOrigin).origin);
+        if (authPage && originOf(current) !== new URL(authOrigin).origin) {
+          this.browserAgent.page = authPage;
+          return;
+        }
       }
-      if (newest && newest !== this.browserAgent.page && newest.url() !== currentUrl && newest.url() !== "about:blank") {
+
+      const preferred = preferredOrigin ? new URL(preferredOrigin).origin : "";
+      if (current?.isClosed?.() && preferred) {
+        const preferredPage = pages.find(page => originOf(page) === preferred);
+        if (preferredPage) {
+          this.browserAgent.page = preferredPage;
+          return;
+        }
+      }
+
+      if (preferred && !authOrigin && originOf(current) !== preferred) {
+        const preferredPage = pages.find(page => originOf(page) === preferred);
+        if (preferredPage) {
+          this.browserAgent.page = preferredPage;
+          return;
+        }
+      }
+
+      const newest = pages[pages.length - 1];
+      if (newest && newest !== current && newest.url() !== "about:blank" && newest.url() !== currentUrl) {
         this.browserAgent.page = newest;
       }
     } catch (_) {}
   }
-
   async run({ goal, platform, candidateProfile, opportunity = null, allowedOrigin, context = {}, targetId, authFlow = false }) {
     let lastReason = "";
     for (let iteration = 1; iteration <= CONFIG.JOB_MAX_PLAN_ITERATIONS; iteration++) {
@@ -72,7 +90,7 @@ class JobAgentRunner {
             allowedOrigin
           );
 
-      await this.syncOpenedPage(authFlow ? CONFIG.GOOGLE_AUTH_ORIGIN : null);
+      await this.syncOpenedPage(authFlow ? CONFIG.GOOGLE_AUTH_ORIGIN : null, allowedOrigin);
 
       if (!result.success) {
         lastReason = result.reason || result.state || "Browser action failed";
