@@ -22,6 +22,7 @@ test("Standalone desktop runtime files exist", () => {
 
 test("npm start uses the standalone runtime", () => {
   assert.strictEqual(pkg.scripts.start, "node scripts/desktop-runner.js");
+  assert.strictEqual(pkg.scripts["desktop:layout"], "node scripts/layout-cdp-windows.js");
 });
 
 test("Two isolated CDP planes are wired", () => {
@@ -32,11 +33,18 @@ test("Two isolated CDP planes are wired", () => {
   assert(code.includes("job-agent.js"));
 });
 
+test("Desktop split defaults to 50 percent and remains configurable", () => {
+  const config = fs.readFileSync(path.join(root, "config", "index.js"), "utf8");
+  const env = fs.readFileSync(path.join(root, ".env.example"), "utf8");
+  assert(config.includes("DESKTOP_SPLIT_PERCENT"));
+  assert(env.includes("DESKTOP_SPLIT_PERCENT=50"));
+});
+
 test("Native CDP window management is used for 50/50 layout", () => {
   const code = fs.readFileSync(path.join(root, "scripts", "layout-cdp-windows.js"), "utf8");
   assert(code.includes("Browser.getWindowForTarget"));
   assert(code.includes("Browser.setWindowBounds"));
-  assert(code.includes("width: half"));
+  assert(code.includes("const split = CONFIG.DESKTOP_SPLIT_PERCENT / 100"));
   assert(code.includes("--social-only"));
 });
 
