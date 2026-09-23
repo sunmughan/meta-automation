@@ -237,7 +237,7 @@ class ThreadsMedia {
           role: authorRole,
           footerTag: `GITHUB: ${metaHandle.toUpperCase()}`,
           takeaways: [
-            { num: "01", title: "Open Source + MiniMax M3", desc: "Zero API token costs using local MiniMax M3 runtime reasoning." },
+            { num: "01", title: "Open Source + MiniMax M3", desc: "AI reasoning powered by the configured MiniMax M3 API runtime." },
             { num: "02", title: "Cross-Platform Everywhere", desc: "Runs 24/7 on Android (Termux:X11), Linux, Windows & macOS." },
             { num: "03", title: "Community Star & Fork", desc: `Full code and setup guide at ${metaHandle}.` }
           ]
@@ -790,7 +790,7 @@ class ThreadsMedia {
               {
                 num: "01",
                 title: "MiniMax M3 AI Reasoning",
-                desc: "Uses local MiniMax M3 Language Server reasoning via Gemini 3.8 Flash High without recurring API bills."
+                desc: "Uses the configured MiniMax M3 API runtime for semantic reasoning."
               },
               {
                 num: "02",
