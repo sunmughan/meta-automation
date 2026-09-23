@@ -75,7 +75,7 @@ const SERVICE_CATEGORIES = [
       /\bai\s+(development|developer|engineer|team|agency|automation|agent|agents|chatbot|bot|calling|system|integration|solution)\b/i,
       /\b(build|develop|integrate|need)\s+(an?\s+)?(ai|ai\s+chatbot|ai\s+agent|rag\s+system|llm\s+integration|voice\s+ai|calling\s+agent|ai\s+workflow)\b/i,
       /\b(looking\s+for|need)\s+(an?\s+)?(ai\s+developer|ai\s+engineer|ai\s+specialist|ai\s+team)\b/i,
-      /\b(integrate|integrating)\s+(llms?|gpt|claude|gemini|openai|ai)\b/i,
+      /\b(integrate|integrating)\s+(llms?|gpt|claude|openai|ai)\b/i,
       /\b(ai\s+chatbot|ai\s+agent|autonomous\s+agent|voice\s+ai|calling\s+agent)\b/i,
       /\bautomate\s+(customer\s+support|workflow|business\s+processes|data\s+entry|operations)\b/i,
       /\bworkflow\s+automation\b/i,
