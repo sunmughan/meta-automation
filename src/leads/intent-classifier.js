@@ -27,7 +27,7 @@ class IntentClassifier {
   /**
    * @deprecated LEGACY SYNC CLASSIFIER — TEST BENCHMARK FIXTURE ONLY.
    * Preserved strictly for deterministic legacy test suite benchmarks.
-   * Production runtime exclusively invokes classifyAsync() via MiniMax M3 Gemini 3.8 Flash AI.
+   * Production runtime exclusively invokes classifyAsync() via MiniMax M3 AI.
    */
   classify(post) {
     try {
