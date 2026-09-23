@@ -201,6 +201,9 @@ ${JSON.stringify(candidateProfile || {})}
 ACTION BUDGET:
 ${JSON.stringify(actionBudget || {})}
 
+WORKFLOW CONTEXT:
+${JSON.stringify(context || {})}
+
 LIVE SNAPSHOT:
 ${JSON.stringify(browserSnapshot || {})}
 
