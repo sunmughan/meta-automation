@@ -2,7 +2,7 @@
  * tests/multi-brand-customization.test.js
  * Comprehensive automated verification for Multi-Brand Customization & Zero-Bleed Isolation.
  *
- * Verifies that any business or founder can onboard into the Antigravity AI system,
+ * Verifies that any business or founder can onboard into the MiniMax M3 AI system,
  * and all prompt builders, identity resolvers, and knowledge queries dynamically
  * adapt with 100% brand isolation and zero hardcoded brand bleed.
  */
