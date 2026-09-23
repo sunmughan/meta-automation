@@ -39,15 +39,6 @@ async function captureDiagnosticScreenshot(page, prefix) {
   }
 }
 
-const PILLARS = [
-  "pixelgo_hms",
-  "builder_network",
-  "founders_revolution",
-  "tech_mentorship",
-  "agentic_ai",
-  "meta_automation"
-];
-
 class ThreadsPoster {
   /**
    * Selects the next pillar in rotation.
@@ -55,7 +46,9 @@ class ThreadsPoster {
    */
   selectNextPillar() {
     const pillars = knowledge.getContentPillars();
-    const pillarIds = pillars && pillars.length > 0 ? pillars.map(p => p.id) : PILLARS;
+    if (!Array.isArray(pillars) || pillars.length === 0) throw new Error("No content pillars configured in the knowledge base.");
+    const pillarIds = pillars.map(p => p.id).filter(Boolean);
+    if (!pillarIds.length) throw new Error("Knowledge base contains no usable content pillar ids.");
     const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
     const twoDaysAgo = Date.now() - (48 * 60 * 60 * 1000);
     const hasRecentPixelGo = ourPosts.some(p => p.pillar === "pixelgo_hms" && new Date(p.publishedAt).getTime() > twoDaysAgo);
@@ -85,12 +78,6 @@ class ThreadsPoster {
     // High-substance technical pillars favor rich code snippets & architecture diagram cards
     const ourPosts = stateStore.state.ourPosts ? Object.values(stateStore.state.ourPosts) : [];
     const lastFormat = ourPosts[ourPosts.length - 1]?.format;
-
-    if (pillar === "agentic_ai" || pillar === "tech_mentorship" || pillar === "meta_automation") {
-      const techFormats = ["CODE_SNIPPET", "ARCHITECTURE_DIAGRAM", "SINGLE_CARD"];
-      const nextFormat = techFormats.find(f => f !== lastFormat) || "CODE_SNIPPET";
-      return nextFormat;
-    }
 
     if (lastFormat === "SINGLE_CARD") {
       return "TEXT_ONLY";
@@ -185,25 +172,8 @@ OUTPUT STRICT JSON:
       }
       throw new Error("Empty post content returned from AI");
     } catch (e) {
-      logger.warn(`[THREADS POSTER] AI post generation failed (${e.message}), generating emergency dynamic fallback`);
-      const compBadge = (company.name || "FOUNDER").toUpperCase().slice(0, 10);
-      const pillarTag = (pillar || "BUILDER").toUpperCase().replace(/_/g, " ");
-      return {
-        caption: `Building real software comes down to clean architecture, fast iterations, and talking to users every day. What are you building this week?`,
-        quote: "Clean architecture and fast shipping create real market value.",
-        badge: `${compBadge} • ${pillarTag}`,
-        carousel_slides: [
-          {
-            title: "Architecture Over Hype",
-            subtitle: "Why lean systems win in production",
-            cards: [
-              { num: "01", title: "Clean Domain Boundaries", desc: "Eliminates cascading failures and spaghetti dependencies." },
-              { num: "02", title: "Deterministic Pipelines", desc: "Strict verification gates ensure 100% predictable outcomes." },
-              { num: "03", title: "Relentless Shipping", desc: "Turn customer feedback into deployed production code in hours." }
-            ]
-          }
-        ]
-      };
+      logger.error(`[THREADS POSTER] MiniMax M3 content generation failed: ${e.message}`);
+      throw e;
     }
   }
 
