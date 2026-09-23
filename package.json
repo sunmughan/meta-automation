@@ -65,7 +65,8 @@
   "homepage": "https://github.com/sunmughan/meta-automation#readme",
   "type": "commonjs",
   "dependencies": {
-    "puppeteer-core": "^25.11.0"
+    "puppeteer-core": "^25.11.0",
+    "pdf-parse": "^1.1.1"
   },
   "engines": {
     "node": ">=18.0.0"
