@@ -1,7 +1,8 @@
 const CONFIG = require("../../config");
 const { getEnabledPlatforms } = require("./platform-registry");
 const jobState = require("./storage/job-state-store");
-const { buildActionPlan, extractOpportunities } = require("./ai/job-ai");
+const { buildActionPlan } = require("./ai/job-ai");
+const JobAgentRunner = require("./browser/job-runner");
 
 async function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -15,35 +16,33 @@ async function bootstrapPlatformSession({ platform, page, browserAgent, aiRuntim
   });
   await wait(CONFIG.JOB_PAGE_SETTLE_MS);
 
-  let snapshot = await browserAgent.captureLiveSnapshot("auth-bootstrap");
-  const plan = await buildActionPlan({
-    goal: `Authenticate on this platform using the browser UI. If already authenticated, verify it. Otherwise discover the platform's visible sign-in/register flow and use Google/Continue-with-Google with the configured account ${CONFIG.GOOGLE_ACCOUNT_EMAIL}. Never type a Google password. If the account is not already available in the Google chooser, stop with USER_ACTION_REQUIRED. After authentication, stop.`,
+  const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+  const result = await runner.run({
+    goal: `Authenticate on this platform through its live UI. If already authenticated, verify it. Otherwise discover the visible sign-in/register flow and choose Google/Continue-with-Google using the configured account ${CONFIG.GOOGLE_ACCOUNT_EMAIL}. Never type a Google password. If the account is not already available in the browser chooser, stop with USER_ACTION_REQUIRED. Do not bypass CAPTCHA, identity checks, phone verification or security challenges.`,
     platform,
     candidateProfile,
-    browserSnapshot: snapshot,
     allowedOrigin,
-    actionBudget: { maxActions: CONFIG.JOB_MAX_PLAN_ACTIONS }
-  }, aiRuntime);
+    targetId: `auth:${platform.id}`,
+    context: { workflow: "AUTH_BOOTSTRAP", googleAccountEmail: CONFIG.GOOGLE_ACCOUNT_EMAIL }
+  });
 
-  if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(plan.status)) {
-    jobState.setPlatformState(platform.id, { status: plan.status, reason: plan.reason });
-    return { status: plan.status, reason: plan.reason };
+  if (result.status !== "DONE") {
+    jobState.setPlatformState(platform.id, { status: result.status, reason: result.reason });
+    return result;
   }
 
-  const result = await browserAgent.executeAuthPlan(plan, `auth:${platform.id}`, allowedOrigin);
-  snapshot = await browserAgent.captureLiveSnapshot("auth-result");
+  const snapshot = result.snapshot || await browserAgent.captureLiveSnapshot("auth-result");
   const authCheck = await confirmAuthenticated(snapshot, aiRuntime, platform, candidateProfile);
-
   const authenticated = Boolean(authCheck.authenticated);
   const status = authenticated ? "AUTHENTICATED" : "USER_ACTION_REQUIRED";
   jobState.setPlatformState(platform.id, {
     status,
     authenticated,
     lastUrl: snapshot.url,
-    evidence: authCheck.evidence || result.reason || plan.reason || ""
+    evidence: authCheck.evidence || result.reason || ""
   });
 
-  return { status, authenticated, snapshot, result };
+  return { ...result, status, authenticated, snapshot };
 }
 
 async function confirmAuthenticated(snapshot, aiRuntime, platform, candidateProfile) {
@@ -68,20 +67,15 @@ OUTPUT:
 }
 
 async function completeProfile({ platform, page, browserAgent, aiRuntime, candidateProfile }) {
-  const snapshot = await browserAgent.captureLiveSnapshot("profile-bootstrap");
-  const plan = await buildActionPlan({
-    goal: "Find the platform profile/account editing area through live UI and complete all profile fields that can be populated from verified candidate data. Never guess. Stop for user input when required data is missing.",
+  const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+  return runner.run({
+    goal: "Find the profile/account editing area and complete every profile field that can be populated from verified candidate data or approved knowledge. Re-inspect after actions. Never guess; stop with USER_ACTION_REQUIRED when a required value is missing.",
     platform,
     candidateProfile,
-    browserSnapshot: snapshot,
     allowedOrigin: new URL(platform.url).origin,
-    actionBudget: { maxActions: CONFIG.JOB_MAX_PLAN_ACTIONS }
-  }, aiRuntime);
-  if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(plan.status)) {
-    return { status: plan.status, reason: plan.reason };
-  }
-  const result = await browserAgent.executeJobPlan(plan, `profile:${platform.id}`, new URL(platform.url).origin);
-  return { status: result.success ? "PROFILE_PLAN_COMPLETE" : result.state, result, plan };
+    targetId: `profile:${platform.id}`,
+    context: { workflow: "PROFILE_COMPLETION" }
+  });
 }
 
 async function bootstrapAllPlatforms({ browserManager, browserAgentFactory, aiRuntime, candidateProfile }) {
