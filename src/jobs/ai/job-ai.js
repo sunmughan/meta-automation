@@ -144,6 +144,34 @@ OUTPUT:
   return aiRuntime.callAi(prompt, { taskType: "JOB_DETAIL_VERIFICATION", priority: 2 });
 }
 
+async function verifyApplicationSubmission({ platform, opportunity, snapshot }, aiRuntime) {
+  const prompt = `
+Return JSON only.
+
+TASK: Verify whether the exact job application is visibly confirmed as submitted on the live page.
+
+PLATFORM:
+${JSON.stringify(platform)}
+
+OPPORTUNITY:
+${JSON.stringify(opportunity)}
+
+LIVE POST-SUBMISSION SNAPSHOT:
+${JSON.stringify(snapshot)}
+
+RULES:
+- Use only visible page evidence.
+- Do not infer success from a clicked button, a completed form, URL stability, or absence of an error.
+- Accept only explicit confirmation such as a success/confirmation message, submitted status, application receipt, or another clear platform-owned post-submit state.
+- If confirmation is ambiguous, return verified=false.
+- Do not expose credentials or hidden session data.
+
+OUTPUT:
+{"verified":true|false,"evidence":""}
+`;
+  return aiRuntime.callAi(prompt, { taskType: "JOB_APPLICATION_VERIFICATION", priority: 1 });
+}
+
 async function generateCoverLetter(opportunity, candidateProfile, aiRuntime) {
   const prompt = `
 Return JSON only.
@@ -243,6 +271,7 @@ module.exports = {
   qualifyOpportunity,
   extractOpportunities,
   inspectOpportunityDetails,
+  verifyApplicationSubmission,
   generateCoverLetter,
   buildActionPlan
 };
