@@ -133,7 +133,7 @@ class AiDecisionEngine {
     }
 
     // All classification — including community polls, opinion surveys, and tech discussions —
-    // is handled by the Antigravity AI reasoning engine. Zero regex pre-filters.
+    // is handled by the MiniMax M3 AI reasoning engine. Zero regex pre-filters.
 
     try {
       const prompt = this.buildFullSemanticPrompt(post);
@@ -143,7 +143,7 @@ class AiDecisionEngine {
       }
       throw new Error("AI returned empty classification response");
     } catch (err) {
-      logger.warn(`[AI Engine] Antigravity AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
+      logger.warn(`[AI Engine] MiniMax M3 AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
       return {
         intent: "AI_ERROR",
         decision: "IGNORED",
@@ -153,7 +153,7 @@ class AiDecisionEngine {
         representation: "IGNORE",
         is_genuine_buyer: false,
         should_reply: false,
-        reason: `Antigravity AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
+        reason: `MiniMax M3 AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
       };
     }
   }
@@ -316,7 +316,7 @@ class AiDecisionEngine {
   }
 
   /**
-   * Generates conversational reply for comment replies or incoming DMs using Antigravity AI.
+   * Generates conversational reply for comment replies or incoming DMs using MiniMax M3 AI.
    * Dynamic context-aware reasoning replaces all static string fallbacks.
    */
   async generateConversationReply(context) {
@@ -367,7 +367,7 @@ class AiDecisionEngine {
       }
       throw new Error("AI returned empty conversation turn output");
     } catch (err) {
-      logger.warn(`[AI Engine] Antigravity AI conversation turn reasoning failed: ${err.message}`);
+      logger.warn(`[AI Engine] MiniMax M3 AI conversation turn reasoning failed: ${err.message}`);
       const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company?.whatsapp || profiles.founder?.whatsapp || "";
       const isCallRequest = conversationStage === "DISCOVERY_CALL" || /\b(call|schedule|phone|meeting|consultation|whatsapp)\b/i.test(incomingMessage);
       let fallbackMsg = isCallRequest
