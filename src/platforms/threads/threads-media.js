@@ -237,7 +237,7 @@ class ThreadsMedia {
           role: authorRole,
           footerTag: `GITHUB: ${metaHandle.toUpperCase()}`,
           takeaways: [
-            { num: "01", title: "100% Free & Open-Source", desc: "Zero API token costs using local MiniMax M3 runtime reasoning." },
+            { num: "01", title: "Open Source + MiniMax M3", desc: "Zero API token costs using local MiniMax M3 runtime reasoning." },
             { num: "02", title: "Cross-Platform Everywhere", desc: "Runs 24/7 on Android (Termux:X11), Linux, Windows & macOS." },
             { num: "03", title: "Community Star & Fork", desc: `Full code and setup guide at ${metaHandle}.` }
           ]
@@ -784,12 +784,12 @@ class ThreadsMedia {
             badge: "META AUTOMATION • OPEN SOURCE",
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.14)",
-            title: "24/7 AI Growth Engine: 100% Free & Open-Source",
+            title: "24/7 AI Growth Engine: Open Source + MiniMax M3",
             subtitle: `How we engineered an autonomous Meta & Threads agent running on Linux, macOS, Windows & Android Termux.`,
             cards: [
               {
                 num: "01",
-                title: "Zero API Token Cost",
+                title: "MiniMax M3 AI Reasoning",
                 desc: "Uses local MiniMax M3 Language Server reasoning via Gemini 3.8 Flash High without recurring API bills."
               },
               {
