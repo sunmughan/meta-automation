@@ -64,6 +64,28 @@ const CONFIG = {
   MINIMAX_MAX_TOKENS: Math.max(256, Number(process.env.MINIMAX_MAX_TOKENS) || 4096),
   MINIMAX_THINKING: String(process.env.MINIMAX_THINKING || "true").toLowerCase(),
 
+  // Job Revenue Engine
+  JOB_AUTOMATION_ENABLED: process.env.JOB_AUTOMATION_ENABLED === "true",
+  JOB_APPLICATION_MODE: (process.env.JOB_APPLICATION_MODE || "auto").toLowerCase(),
+  JOB_REMOTE_ONLY: process.env.JOB_REMOTE_ONLY !== "false",
+  JOB_PROJECT_ONLY: process.env.JOB_PROJECT_ONLY !== "false",
+  JOB_BROWSER_CDP_URL: process.env.JOB_BROWSER_CDP_URL || "http://127.0.0.1:9223",
+  JOB_BROWSER_TYPE: (process.env.JOB_BROWSER_TYPE || process.env.BROWSER_TYPE || "auto").toLowerCase(),
+  JOB_BROWSER_USER_DATA_DIR: process.env.JOB_BROWSER_USER_DATA_DIR || path.resolve(ROOT_DIR, "private", "job-browser-profile"),
+  JOB_BASE_RESUME_PATH: process.env.JOB_BASE_RESUME_PATH || "",
+  JOB_PROFILE_PATH: process.env.JOB_PROFILE_PATH || path.resolve(ROOT_DIR, "private", "candidate-profile.json"),
+  JOB_STATE_FILE: process.env.JOB_STATE_FILE || path.resolve(ROOT_DIR, "job-state", "opportunities.json"),
+  JOB_GENERATED_DIR: process.env.JOB_GENERATED_DIR || path.resolve(ROOT_DIR, "applications"),
+  GOOGLE_ACCOUNT_EMAIL: process.env.GOOGLE_ACCOUNT_EMAIL || "sunmughan@gmail.com",
+  JOB_DISCOVERY_INTERVAL_SECONDS: Math.max(60, Number(process.env.JOB_DISCOVERY_INTERVAL_SECONDS) || 900),
+  JOB_MAX_OPPORTUNITIES_PER_SCAN: Math.max(1, Number(process.env.JOB_MAX_OPPORTUNITIES_PER_SCAN) || 100),
+  JOB_MAX_APPLICATIONS_PER_DAY: Math.max(1, Number(process.env.JOB_MAX_APPLICATIONS_PER_DAY) || 20),
+  JOB_MIN_MATCH_SCORE: Math.max(0, Math.min(100, Number(process.env.JOB_MIN_MATCH_SCORE) || 75)),
+  JOB_MAX_PLAN_ACTIONS: Math.max(1, Number(process.env.JOB_MAX_PLAN_ACTIONS) || 24),
+  JOB_MAX_SCROLLS: Math.max(0, Number(process.env.JOB_MAX_SCROLLS) || 8),
+  JOB_NAVIGATION_TIMEOUT_MS: Math.max(10000, Number(process.env.JOB_NAVIGATION_TIMEOUT_MS) || 60000),
+  JOB_PAGE_SETTLE_MS: Math.max(0, Number(process.env.JOB_PAGE_SETTLE_MS) || 2500),
+
   // Browser CDP & Display Configuration (Chrome, Edge, Brave, Chromium)
   BROWSER_TYPE: (process.env.BROWSER_TYPE || process.env.BROWSER || "auto").toLowerCase(),
   CDP_URL: process.env.THREADS_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
