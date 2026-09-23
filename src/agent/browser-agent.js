@@ -11,6 +11,8 @@
  *  - Live Observability & Failure Evidence Capture
  */
 
+const fs = require("fs");
+const path = require("path");
 const logger = require("../logging/logger");
 const telemetry = require("../telemetry/action-telemetry");
 const { ActionVerifier } = require("./action-verifier");
@@ -27,6 +29,7 @@ const ALLOWED_ACTIONS = new Set([
   "BACK",
   "CLOSE",
   "EXTRACT",
+  "UPLOAD",
   "STOP"
 ]);
 
@@ -283,10 +286,10 @@ class BrowserAgent {
       if (!act.type || !ALLOWED_ACTIONS.has(act.type.toUpperCase())) {
         throw new Error(`Action #${i + 1} uses unsupported action type: ${act.type}. Allowed: ${[...ALLOWED_ACTIONS].join(", ")}`);
       }
-      if ((act.type === "CLICK" || act.type === "TYPE") && !act.target) {
+      if ((act.type === "CLICK" || act.type === "TYPE" || act.type === "UPLOAD") && !act.target) {
         throw new Error(`Action #${i + 1} (${act.type}) requires a target locator`);
       }
-      if (act.type === "TYPE" && typeof act.value !== "string") {
+      if ((act.type === "TYPE" || act.type === "UPLOAD") && typeof act.value !== "string") {
         throw new Error(`Action #${i + 1} (TYPE) requires a string 'value'`);
       }
     }
@@ -389,6 +392,17 @@ class BrowserAgent {
       case "EXTRACT": {
         const snapshot = await this.captureLiveSnapshot(action.label || "extract");
         return { success: true, snapshot };
+      }
+
+      case "UPLOAD": {
+        const filePath = String(action.value || "").trim();
+        if (!filePath) throw new Error("UPLOAD requires a local file path in action.value");
+        if (!fs.existsSync(filePath)) throw new Error(`Upload file does not exist: ${filePath}`);
+        const input = await this.resolveSemanticElement(target, target.timeout || 10000);
+        if (!input) throw new Error(`Could not resolve upload input: ${JSON.stringify(target)}`);
+        await input.uploadFile(path.resolve(filePath));
+        await new Promise(r => setTimeout(r, 700));
+        return { success: true, uploadedPath: path.resolve(filePath) };
       }
 
       case "STOP":
