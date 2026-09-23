@@ -725,7 +725,7 @@ class ThreadsHtmlRenderer {
     const title = spec.title || spec.code_title || "agent_orchestrator.ts";
     const rawCode = spec.code || spec.code_snippet || `// ${companyInfo.name || "Agent"} Autonomous Orchestration
 const orchestrator = new AgenticPipeline({
-  runtime: "gemini-3.8-flash-high",
+  runtime: "MiniMax-M3",
   guardrails: { maxRetries: 3, deterministicFSM: true },
   async onEvent(event: StreamEvent): Promise<ActionVerdict> {
     const sanitized = sanitizeDomPayload(event.payload);
@@ -1031,7 +1031,7 @@ const orchestrator = new AgenticPipeline({
     const components = (spec.components || spec.arch_components || [
       { name: "01. Ingestion Stream", role: "Multi-signal event capture & aggressive DOM token pruning", icon: "⚡" },
       { name: "02. Autonomous Router", role: "Strict finite-state machine (Scan → Qualify → Propose → Execute)", icon: "🛡️" },
-      { name: "03. Gemini 3.8 Flash High", role: "Sub-second structured reasoning & schema-validated output", icon: "🧠" },
+      { name: "03. MiniMax M3", role: "Sub-second structured reasoning & schema-validated output", icon: "🧠" },
       { name: "04. Verified Action Core", role: "Atomic Puppeteer/CDP mutation with strict multi-signal verification", icon: "🚀" }
     ]);
 
