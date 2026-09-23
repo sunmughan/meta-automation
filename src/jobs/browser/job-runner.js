@@ -7,6 +7,32 @@ class JobAgentRunner {
     this.browserAgent = browserAgent;
   }
 
+  async syncOpenedPage(authOrigin = null) {
+    try {
+      const browser = this.browserAgent.page?.browser();
+      if (!browser) return;
+      const pages = await browser.pages();
+      if (!pages.length) return;
+
+      const currentUrl = this.browserAgent.page?.url?.() || "";
+      const candidates = pages.filter(page => !page.isClosed());
+      const authPage = authOrigin
+        ? candidates.find(page => {
+            try { return new URL(page.url()).origin === new URL(authOrigin).origin; } catch (_) { return false; }
+          })
+        : null;
+
+      const newest = candidates[candidates.length - 1];
+      if (authPage && new URL(currentUrl || "about:blank").origin !== new URL(authOrigin).origin) {
+        this.browserAgent.page = authPage;
+        return;
+      }
+      if (newest && newest !== this.browserAgent.page && newest.url() !== currentUrl && newest.url() !== "about:blank") {
+        this.browserAgent.page = newest;
+      }
+    } catch (_) {}
+  }
+
   async run({ goal, platform, candidateProfile, opportunity = null, allowedOrigin, context = {}, targetId, authFlow = false }) {
     let lastReason = "";
     for (let iteration = 1; iteration <= CONFIG.JOB_MAX_PLAN_ITERATIONS; iteration++) {
@@ -45,6 +71,8 @@ class JobAgentRunner {
             targetId || `job-agent:${platform.id}`,
             allowedOrigin
           );
+
+      await this.syncOpenedPage(authFlow ? CONFIG.GOOGLE_AUTH_ORIGIN : null);
 
       if (!result.success) {
         lastReason = result.reason || result.state || "Browser action failed";
