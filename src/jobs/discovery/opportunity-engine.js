@@ -1,5 +1,6 @@
 const CONFIG = require("../../../config");
-const { buildActionPlan, extractOpportunities } = require("../ai/job-ai");
+const { extractOpportunities } = require("../ai/job-ai");
+const JobAgentRunner = require("../browser/job-runner");
 const jobState = require("../storage/job-state-store");
 
 function normalizeOpportunity(raw, platform) {
@@ -44,29 +45,23 @@ function mergeUnique(items) {
 }
 
 async function discoverOnPlatform({ platform, page, browserAgent, aiRuntime, candidateProfile }) {
-  let snapshot = await browserAgent.captureLiveSnapshot("job-discovery-start");
-  const firstPlan = await buildActionPlan({
-    goal: "Use this platform's own live UI to find the current set of remote project opportunities. Start from the current page, discover the appropriate project/work area using the visible navigation, and use the platform's search/filter controls without hardcoded queries or selectors. Continue until the page visibly contains current project opportunities. Do not apply.",
+  const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+  const result = await runner.run({
+    goal: "Discover current remote PROJECT opportunities using only this platform's live UI. Navigate to its project/work discovery area, use its visible search/filter controls, inspect result cards and continue iterating until the current page visibly contains useful project opportunities. Do not apply.",
     platform,
     candidateProfile,
-    browserSnapshot: snapshot,
     allowedOrigin: new URL(platform.url).origin,
-    actionBudget: { maxActions: CONFIG.JOB_MAX_PLAN_ACTIONS, maxScrolls: CONFIG.JOB_MAX_SCROLLS }
-  }, aiRuntime);
+    targetId: `discover:${platform.id}`,
+    context: { remoteOnly: CONFIG.JOB_REMOTE_ONLY, projectOnly: CONFIG.JOB_PROJECT_ONLY }
+  });
 
-  if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(firstPlan.status)) {
-    return { status: firstPlan.status, reason: firstPlan.reason, opportunities: [] };
+  if (result.status !== "DONE") {
+    return { ...result, opportunities: [] };
   }
 
-  const initialResult = await browserAgent.executeJobPlan(firstPlan, `discover:${platform.id}`);
-  if (!initialResult.success) {
-    return { status: "FAILED", reason: initialResult.reason || "Discovery plan failed", opportunities: [] };
-  }
-
-  snapshot = await browserAgent.captureLiveSnapshot("job-discovery-results");
   const extracted = await extractOpportunities({
     platform,
-    snapshot,
+    snapshot: result.snapshot,
     aiRuntime,
     candidateProfile,
     maxItems: CONFIG.JOB_MAX_OPPORTUNITIES_PER_SCAN
@@ -74,20 +69,13 @@ async function discoverOnPlatform({ platform, page, browserAgent, aiRuntime, can
 
   const rawItems = Array.isArray(extracted.opportunities) ? extracted.opportunities : [];
   const normalized = mergeUnique(rawItems.map(item => normalizeOpportunity(item, platform)).filter(Boolean));
-
-  for (const opportunity of normalized) {
-    jobState.upsertOpportunity(opportunity);
-  }
+  for (const opportunity of normalized) jobState.upsertOpportunity(opportunity);
   if (normalized.length) jobState.updateMetric("discovered", normalized.length);
 
   const remote = normalized.filter(item => item.workMode === "REMOTE");
   if (remote.length) jobState.updateMetric("remoteVerified", remote.length);
 
-  return {
-    status: "DONE",
-    opportunities: normalized,
-    snapshot
-  };
+  return { ...result, status: "DONE", opportunities: normalized };
 }
 
 module.exports = { normalizeOpportunity, discoverOnPlatform };
