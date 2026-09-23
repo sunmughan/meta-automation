@@ -42,7 +42,7 @@ Any user, agency, or business can customize these 5 pillars to match their speci
 ## Pillar 6: meta_automation
 - **Title**: Open-Source Meta Automation & Autonomous Growth
 - **Badge**: OPEN SOURCE AI
-- **Focus**: Open-source cross-platform social automation, Termux:X11 mobile execution, zero API token cost via MiniMax M3 reasoning, and multi-agent system architecture.
+- **Focus**: Open-source cross-platform social automation, Termux:X11 mobile execution, MiniMax M3 API-powered reasoning, and multi-agent system architecture.
 - **Audience**: AI engineers, open-source contributors, growth hackers, software builders, Termux developers.
 - **Reference URL**: https://github.com/sunmughan/meta-automation
 
