@@ -237,7 +237,7 @@ class ThreadsMedia {
           role: authorRole,
           footerTag: `GITHUB: ${metaHandle.toUpperCase()}`,
           takeaways: [
-            { num: "01", title: "100% Free & Open-Source", desc: "Zero API token costs using local Antigravity runtime reasoning." },
+            { num: "01", title: "100% Free & Open-Source", desc: "Zero API token costs using local MiniMax M3 runtime reasoning." },
             { num: "02", title: "Cross-Platform Everywhere", desc: "Runs 24/7 on Android (Termux:X11), Linux, Windows & macOS." },
             { num: "03", title: "Community Star & Fork", desc: `Full code and setup guide at ${metaHandle}.` }
           ]
@@ -790,7 +790,7 @@ class ThreadsMedia {
               {
                 num: "01",
                 title: "Zero API Token Cost",
-                desc: "Uses local Antigravity Language Server reasoning via Gemini 3.8 Flash High without recurring API bills."
+                desc: "Uses local MiniMax M3 Language Server reasoning via Gemini 3.8 Flash High without recurring API bills."
               },
               {
                 num: "02",
@@ -847,7 +847,7 @@ class ThreadsMedia {
               },
               {
                 num: "03",
-                title: "Native Antigravity CLI",
+                title: "Native MiniMax M3 CLI",
                 desc: "Run real-time reasoning and agentic pipelines right from your Termux terminal."
               }
             ]
