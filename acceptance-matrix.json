@@ -1,6 +1,6 @@
 {
-  "version": "1.5.0",
-  "generatedAt": "2026-09-22T01:50:00Z",
+  "version": "1.7.0-agentic-minimax",
+  "generatedAt": "2026-09-23T03:05:17.113Z",
   "browserEndpoint": "http://127.0.0.1:9222",
   "matrix": [
     {
@@ -25,7 +25,7 @@
       "codeExists": true,
       "liveBrowserTested": true,
       "verified": true,
-      "evidence": "aiDecisionEngine.qualifyPost (Gemini 3.8 Flash High)"
+      "evidence": "aiDecisionEngine.qualifyPost (MiniMax M3)"
     },
     {
       "platform": "Threads",
@@ -170,6 +170,46 @@
       "liveBrowserTested": true,
       "verified": true,
       "evidence": "facebookPoster.publishPost"
+    },
+    {
+      "platform": "Job Engine",
+      "capability": "MiniMax M3 runtime",
+      "codeExists": true,
+      "liveBrowserTested": false,
+      "verified": false,
+      "evidence": "src/ai/ai-runtime.js -> callMiniMax"
+    },
+    {
+      "platform": "Job Engine",
+      "capability": "Agentic browser loop",
+      "codeExists": true,
+      "liveBrowserTested": false,
+      "verified": false,
+      "evidence": "src/jobs/browser/job-runner.js"
+    },
+    {
+      "platform": "Job Engine",
+      "capability": "Data-driven marketplace registry",
+      "codeExists": true,
+      "liveBrowserTested": false,
+      "verified": false,
+      "evidence": "config/job-platforms.json + src/jobs/platform-registry.js"
+    },
+    {
+      "platform": "Job Engine",
+      "capability": "Remote/project gate",
+      "codeExists": true,
+      "liveBrowserTested": false,
+      "verified": false,
+      "evidence": "src/jobs/application/application-engine.js"
+    },
+    {
+      "platform": "Job Engine",
+      "capability": "Visible submission verification",
+      "codeExists": true,
+      "liveBrowserTested": false,
+      "verified": false,
+      "evidence": "src/jobs/ai/job-ai.js -> verifyApplicationSubmission"
     }
   ]
 }
