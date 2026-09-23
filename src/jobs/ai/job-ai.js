@@ -100,6 +100,50 @@ OUTPUT:
   return aiRuntime.callAi(prompt, { taskType: "JOB_OPPORTUNITY_EXTRACTION", priority: 2 });
 }
 
+async function inspectOpportunityDetails({ platform, opportunity, snapshot, aiRuntime, candidateProfile }) {
+  const prompt = `
+Return JSON only.
+
+TASK: Reconcile this opportunity using only the live detail-page snapshot.
+This is a verification pass, not a discovery pass.
+
+PLATFORM:
+${JSON.stringify(platform)}
+
+OPPORTUNITY CANDIDATE:
+${JSON.stringify(opportunity)}
+
+LIVE DETAIL SNAPSHOT:
+${JSON.stringify(snapshot)}
+
+RULES:
+- The snapshot is the only source for detail verification.
+- Confirm explicit remote/project evidence from the opportunity detail page.
+- If work mode is not explicit, return UNKNOWN.
+- If the detail page shows employment/recruitment rather than a project, return the corresponding engagement type.
+- Never infer missing facts.
+- Preserve stable visible URL and identifier when available.
+
+OUTPUT:
+{
+  "externalId":"",
+  "url":"",
+  "title":"",
+  "description":"",
+  "workMode":"REMOTE|HYBRID|ONSITE|UNKNOWN",
+  "remoteEvidence":"",
+  "engagementType":"PROJECT|EMPLOYMENT|RECRUITMENT|UNKNOWN",
+  "skills":[],
+  "budget":null,
+  "experience":"",
+  "locationRequirement":"",
+  "application":{"requiresCoverLetter":false,"requiresResume":false,"questions":[],"attachments":[]},
+  "client":{}
+}
+`;
+  return aiRuntime.callAi(prompt, { taskType: "JOB_DETAIL_VERIFICATION", priority: 2 });
+}
+
 async function generateCoverLetter(opportunity, candidateProfile, aiRuntime) {
   const prompt = `
 Return JSON only.
