@@ -210,6 +210,9 @@ class BrowserAgent {
         const targetAria = loc.aria ? norm(loc.aria) : "";
         const targetTitle = loc.title ? norm(loc.title) : "";
         const targetPlaceholder = loc.placeholder ? norm(loc.placeholder) : "";
+        const targetType = loc.type ? norm(loc.type) : "";
+        const targetName = loc.name ? norm(loc.name) : "";
+        const targetAutocomplete = loc.autocomplete ? norm(loc.autocomplete) : "";
         const targetSelector = loc.selector || "";
         const candidateSelectors = Array.isArray(loc.selectors) ? loc.selectors : [];
 
@@ -265,7 +268,20 @@ class BrowserAgent {
           if (editable) return editable;
         }
 
-        // LEVEL 7: Multiple Known Selectors
+        // LEVEL 7: Semantic form attributes (type/name/autocomplete)
+        if (targetType || targetName || targetAutocomplete) {
+          const attrMatch = candidates.find(el => {
+            const type = norm(el.getAttribute("type"));
+            const name = norm(el.getAttribute("name"));
+            const autocomplete = norm(el.getAttribute("autocomplete"));
+            return (!targetType || type === targetType) &&
+              (!targetName || name === targetName) &&
+              (!targetAutocomplete || autocomplete === targetAutocomplete);
+          });
+          if (attrMatch) return attrMatch;
+        }
+
+        // LEVEL 8: Multiple Known Selectors
         const allSelectors = [targetSelector, ...candidateSelectors].filter(Boolean);
         for (const sel of allSelectors) {
           try {
@@ -274,7 +290,7 @@ class BrowserAgent {
           } catch (e) { }
         }
 
-        // LEVEL 8: Contextual Container Scoping
+        // LEVEL 9: Contextual Container Scoping
         if (loc.containerText || loc.inDialog) {
           const container = loc.inDialog
             ? document.querySelector("[role='dialog'], [aria-modal='true']")
@@ -416,7 +432,22 @@ class BrowserAgent {
 
       case "SCROLL": {
         const distance = Number(action.value) || 500;
-        await this.page.evaluate(y => window.scrollBy({ top: y, behavior: "smooth" }), distance);
+        await this.page.evaluate(y => {
+          const isVisible = el => {
+            if (!el) return false;
+            const r = el.getBoundingClientRect();
+            const s = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none";
+          };
+          const candidates = Array.from(document.querySelectorAll("*"))
+            .filter(isVisible)
+            .map(el => ({ el, area: el.clientWidth * el.clientHeight, scrollable: el.scrollHeight > el.clientHeight + 40 }))
+            .filter(x => x.scrollable)
+            .sort((a, b) => b.area - a.area);
+          const container = candidates[0]?.el;
+          if (container) container.scrollTop += y;
+          else window.scrollBy({ top: y, behavior: "smooth" });
+        }, distance);
         await new Promise(r => setTimeout(r, 1200));
         return { success: true, distance };
       }
