@@ -51,14 +51,12 @@ else
     node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
 fi
 
-# 3. Check Antigravity CLI Readiness
-echo "[3/5] Checking Google Antigravity CLI readiness..."
-if command -v agy >/dev/null 2>&1; then
-    echo "✅ Antigravity CLI ready: $(command -v agy)"
-elif [ -f "$HOME/.local/bin/agy" ]; then
-    echo "✅ Antigravity CLI ready: $HOME/.local/bin/agy"
+# 3. Check MiniMax AI configuration
+ echo "[3/5] Checking MiniMax M3 configuration..."
+if [ -n "${MINIMAX_API_KEY:-}" ]; then
+    echo "✅ MiniMax API key is available in the environment."
 else
-    echo "ℹ️  Antigravity CLI runner will use repository session bridge ($SCRIPT_DIR/scripts/agy)."
+    echo "ℹ️  MiniMax API key will be loaded from the project .env file at startup."
 fi
 
 # 4. Check Authentication
