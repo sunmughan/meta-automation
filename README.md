@@ -142,6 +142,61 @@ Every **6 hours** (exactly 4 posts / 24 hours), the scheduler selects the next c
 
 ---
 
+## 🖥️ Standalone Dual-Window Desktop Runtime
+
+Meta Automation no longer depends on Antigravity or any other IDE to stay running. The repository itself is the runtime: **Node.js + Chromium-based browser + MiniMax M3 API**.
+
+Starting the desktop runtime creates two isolated browser execution planes and places them side-by-side using native Chrome DevTools Protocol window management:
+
+```text
+┌─────────────────────────────────┬─────────────────────────────────┐
+│                                 │                                 │
+│       SOCIAL AUTOMATION         │        JOB HUNTING ENGINE       │
+│          CDP :9222              │             CDP :9223            │
+│          50% width              │             50% width             │
+│                                 │                                 │
+└─────────────────────────────────┴─────────────────────────────────┘
+```
+
+The social browser uses the normal authenticated browser profile, while the job engine uses its dedicated isolated profile at `./private/job-browser-profile`. The Node workers are detached from the launching terminal by default, so closing an IDE or terminal does not stop the automation workers.
+
+### Start everything
+
+```bash
+# Linux / macOS
+./start-automation
+
+# Or directly through npm
+npm start
+```
+
+On Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-automation.ps1
+```
+
+The launcher starts:
+
+1. **Social worker** → `threads-agent.js run` → CDP `:9222`
+2. **Job worker** → `job-agent.js run` → CDP `:9223`
+3. **Native 50/50 window layout** via `scripts/layout-cdp-windows.js`
+
+No Antigravity CLI, editor plugin, or IDE process is required.
+
+### Runtime controls
+
+```bash
+./status-automation
+./stop-automation
+
+# Run only the social plane manually
+npm run start:social
+
+# Run only the job plane manually
+npm run jobs:run
+```
+
 ## ⚡ 1-Click Native Installers & Cross-Platform Runners
 
 Install and configure all dependencies in under 60 seconds on your target platform:
