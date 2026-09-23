@@ -65,6 +65,11 @@ class JobBrowserManager {
     return page;
   }
 
+  async openPlatform(platform) {
+    if (!platform?.url) throw new Error("Platform configuration must provide a URL");
+    return this.open(platform.url);
+  }
+
   disconnect() {
     try { this.browser?.disconnect(); } catch (_) {}
     this.browser = null;
