@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const CONFIG = require("../../../config");
-const { buildActionPlan } = require("../ai/job-ai");
+const JobAgentRunner = require("../browser/job-runner");
 
 function loadCandidateProfile() {
   if (!fs.existsSync(CONFIG.JOB_PROFILE_PATH)) return null;
@@ -14,23 +14,15 @@ function saveCandidateProfile(profile) {
 }
 
 async function inspectAndCompleteProfile({ platform, page, browserAgent, aiRuntime, candidateProfile }) {
-  const snapshot = await browserAgent.captureLiveSnapshot("profile");
-  const plan = await buildActionPlan({
-    goal: `Open or inspect the platform's profile/account area and complete all profile fields that can be filled from the candidate profile or approved knowledge. Do not invent unknown values. If a field requires user input, return USER_ACTION_REQUIRED with the exact field needed.`,
+  const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+  return runner.run({
+    goal: "Open the platform profile/account settings and complete every field that can be populated from verified candidate data or approved knowledge. Re-inspect the page after each action batch. Never guess. Stop with USER_ACTION_REQUIRED for required data not present in the candidate source.",
     platform,
-    opportunity: null,
     candidateProfile,
-    browserSnapshot: snapshot,
     allowedOrigin: new URL(platform.url).origin,
-    actionBudget: { maxActions: CONFIG.JOB_MAX_PLAN_ACTIONS }
-  }, aiRuntime);
-
-  if (plan.status === "USER_ACTION_REQUIRED" || plan.status === "MANUAL_ACTION_REQUIRED") {
-    return { status: plan.status, reason: plan.reason, snapshot, plan };
-  }
-
-  const result = await browserAgent.executePlan(plan, `profile:${platform.id}`);
-  return { ...result, plan };
+    targetId: `profile:${platform.id}`,
+    context: { workflow: "PROFILE_COMPLETION" }
+  });
 }
 
 module.exports = { loadCandidateProfile, saveCandidateProfile, inspectAndCompleteProfile };
