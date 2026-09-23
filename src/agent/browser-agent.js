@@ -135,12 +135,50 @@ class BrowserAgent {
           return { cardIndex: idx + 1, author, contentSnippet: content };
         });
 
+      // 5. Forms and visible page text for agentic workflows.
+      const forms = Array.from(document.querySelectorAll("form"))
+        .filter(isVisible)
+        .slice(0, 30)
+        .map((form, formIndex) => ({
+          id: formIndex + 1,
+          text: cleanText(form.innerText || "").slice(0, 1200),
+          fields: Array.from(form.querySelectorAll("input, textarea, select, [contenteditable='true'], [role='textbox']"))
+            .filter(isVisible)
+            .slice(0, 100)
+            .map((field, fieldIndex) => ({
+              id: fieldIndex + 1,
+              tag: field.tagName.toLowerCase(),
+              role: field.getAttribute("role") || "",
+              type: field.getAttribute("type") || "",
+              name: field.getAttribute("name") || "",
+              autocomplete: field.getAttribute("autocomplete") || "",
+              aria: cleanText(field.getAttribute("aria-label") || field.getAttribute("aria-description") || "").slice(0, 120),
+              placeholder: cleanText(field.getAttribute("placeholder") || "").slice(0, 120),
+              value: field.tagName.toLowerCase() === "input" && field.getAttribute("type") === "file" ? "" : cleanText(field.value || field.textContent || "").slice(0, 180),
+              required: Boolean(field.required || field.getAttribute("aria-required") === "true"),
+              disabled: Boolean(field.disabled || field.getAttribute("aria-disabled") === "true")
+            }))
+        }));
+
+      const bodyText = cleanText(document.body?.innerText || "").slice(0, 12000);
+      const visibleLinks = Array.from(document.querySelectorAll("a[href]"))
+        .filter(isVisible)
+        .slice(0, 200)
+        .map(a => ({
+          text: cleanText(a.innerText || a.textContent || "").slice(0, 120),
+          href: a.href
+        }))
+        .filter(x => x.text || x.href);
+
       return {
         url,
         title,
+        bodyText,
         interactiveElements: elements,
         activeDialogs: dialogs,
-        visibleCards: articles
+        visibleCards: articles,
+        forms,
+        visibleLinks
       };
     });
 
