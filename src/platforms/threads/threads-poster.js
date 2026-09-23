@@ -100,7 +100,7 @@ class ThreadsPoster {
 
   /**
    * Generates dynamic post content, discussion captions, and visual specs
-   * using the live MiniMax M3 IDE Gemini 3.8 Flash High agent session.
+   * using the configured MiniMax M3 AI runtime.
    * Eliminates all hardcoded static caption dictionaries.
    */
   async generateDynamicPostContent(pillar, format = "TEXT_ONLY") {
