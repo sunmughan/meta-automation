@@ -23,7 +23,8 @@
     "jobs:profile": "node job-agent.js auth",
     "jobs:scan": "node job-agent.js scan",
     "jobs:run": "node job-agent.js run",
-    "jobs:status": "node job-agent.js status"
+    "jobs:status": "node job-agent.js status",
+    "jobs:google": "node job-agent.js google"
   },
   "repository": {
     "type": "git",
