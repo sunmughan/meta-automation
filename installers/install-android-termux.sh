@@ -50,7 +50,7 @@ echo "✅ Chromium: $(chromium --version 2>/dev/null || echo 'Installed')"
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
-\# The setup wizard securely prompts for MINIMAX_API_KEY when it is missing; no key is committed.
+# The setup wizard securely prompts for MINIMAX_API_KEY when it is missing; no key is committed.
 
 # 6. Configure Termux:X11 Display & Preferences
 echo "[5/8] Configuring Termux:X11 display (:1) and preferences..."
