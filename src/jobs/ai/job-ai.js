@@ -1,11 +1,11 @@
 const knowledge = require("../../knowledge/knowledge-engine");
-const { getFounderInfo, getCompanyInfo } = knowledge;
 
 function buildCandidateContext(candidateProfile) {
   return {
     candidateProfile,
-    founder: getFounderInfo?.() || {},
-    company: getCompanyInfo?.() || {}
+    founder: knowledge.getFounderInfo?.() || {},
+    company: knowledge.getCompanyInfo?.() || {},
+    approvedProfiles: knowledge.getOfficialProfiles?.() || {}
   };
 }
 
@@ -13,33 +13,35 @@ async function qualifyOpportunity(opportunity, aiRuntime, candidateProfile) {
   const prompt = `
 Return JSON only.
 
-TASK: Determine whether this opportunity should be considered for application.
+TASK: Evaluate one discovered work opportunity for the configured candidate.
 
-SOURCE OF TRUTH:
+CANDIDATE SOURCE OF TRUTH:
 ${JSON.stringify(buildCandidateContext(candidateProfile))}
 
-OPPORTUNITY:
+OPPORTUNITY EVIDENCE:
 ${JSON.stringify(opportunity)}
 
-NON-NEGOTIABLE RULES:
-- Only remote opportunities pass.
-- If remote status is unknown, do not pass.
-- Reject hybrid and on-site.
-- Do not invent facts.
-- Do not infer eligibility the source does not support.
-- Evaluate skills, project type, seniority, budget, location requirements, application requirements.
-- A high-fit result requires enough evidence from the opportunity itself.
-- Never use hidden assumptions.
+NON-NEGOTIABLE CONSTRAINTS:
+- Target is remote PROJECT work only.
+- REMOTE must be explicitly supported by the captured opportunity evidence.
+- HYBRID, ON-SITE, EMPLOYMENT, RECRUITMENT or UNKNOWN work modes do not qualify.
+- Never infer missing facts.
+- Never invent skills, eligibility, location/work authorization, budget fit or client facts.
+- Compare the actual requirements with verified candidate facts.
+- MatchScore is a decision aid, not a probability.
+- Do not apply unless apply=true and every required input is known or derivable from verified source data.
 
 OUTPUT:
 {
   "remoteStatus":"REMOTE|HYBRID|ONSITE|UNKNOWN",
+  "engagementType":"PROJECT|EMPLOYMENT|RECRUITMENT|UNKNOWN",
   "fit":true|false,
-  "matchScore":0-100,
+  "matchScore":0,
   "matchedSkills":[],
   "missingSkills":[],
   "projectType":"",
   "budgetFit":"GOOD|LOW|UNKNOWN",
+  "applicationRequirements":{"coverLetter":false,"resume":false,"questions":[],"attachments":[]},
   "reason":"",
   "apply":true|false
 }
@@ -47,10 +49,61 @@ OUTPUT:
   return aiRuntime.callAi(prompt, { taskType: "JOB_QUALIFICATION", priority: 1 });
 }
 
+async function extractOpportunities({ platform, snapshot, aiRuntime, candidateProfile, maxItems }) {
+  const prompt = `
+Return JSON only.
+
+TASK: Extract current opportunities visible in this live browser snapshot.
+The snapshot is the ONLY evidence source. Do not fabricate or complete missing fields.
+
+PLATFORM:
+${JSON.stringify(platform)}
+
+CANDIDATE:
+${JSON.stringify(buildCandidateContext(candidateProfile))}
+
+MAX ITEMS:
+${maxItems}
+
+LIVE SNAPSHOT:
+${JSON.stringify(snapshot)}
+
+RULES:
+- Extract only opportunities actually evidenced by the snapshot.
+- Capture explicit remote wording/evidence.
+- workMode MUST be UNKNOWN when the snapshot does not establish it.
+- Do not treat an author's generic profile or site-level claim as job-specific remote evidence.
+- Prefer stable visible URLs and visible identifiers.
+- Do not invent budgets, skills, client facts, application fields or dates.
+
+OUTPUT:
+{
+  "opportunities":[
+    {
+      "externalId":"",
+      "url":"",
+      "title":"",
+      "description":"",
+      "workMode":"REMOTE|HYBRID|ONSITE|UNKNOWN",
+      "remoteEvidence":"",
+      "engagementType":"PROJECT|EMPLOYMENT|RECRUITMENT|UNKNOWN",
+      "skills":[],
+      "budget":null,
+      "experience":"",
+      "locationRequirement":"",
+      "application":{"requiresCoverLetter":false,"requiresResume":false,"questions":[],"attachments":[]},
+      "client":{}
+    }
+  ]
+}
+`;
+  return aiRuntime.callAi(prompt, { taskType: "JOB_OPPORTUNITY_EXTRACTION", priority: 2 });
+}
+
 async function generateCoverLetter(opportunity, candidateProfile, aiRuntime) {
   const prompt = `
 Return JSON only.
-Generate one tailored cover letter for this exact opportunity.
+Generate a tailored cover letter for the exact opportunity.
 
 CANDIDATE:
 ${JSON.stringify(buildCandidateContext(candidateProfile))}
@@ -59,10 +112,11 @@ OPPORTUNITY:
 ${JSON.stringify(opportunity)}
 
 RULES:
-- Use only verifiable facts from the candidate and knowledge base.
-- No fabricated experience, clients, metrics, certifications or timelines.
-- Address the actual project and requested deliverables.
-- Keep it concise, human and professional.
+- Use only verified candidate/knowledge facts.
+- Do not fabricate employers, clients, metrics, dates, credentials, tools or outcomes.
+- Address the actual project requirements.
+- Concise, natural, professional and project-specific.
+- Do not mention that AI was used.
 OUTPUT: {"coverLetter":""}
 `;
   return aiRuntime.callAi(prompt, { taskType: "JOB_COVER_LETTER", priority: 2 });
@@ -72,9 +126,18 @@ async function buildActionPlan({ goal, platform, opportunity, candidateProfile, 
   const prompt = `
 Return JSON only.
 
-You are the browser planning agent. You act ONLY through the live browser UI represented by the snapshot.
-Do not invent selectors, DOM nodes, element ids, URLs, API calls, hidden endpoints, JavaScript execution or network requests.
-Use only the interactive elements and page evidence present in the supplied live snapshot.
+You are the browser planning agent.
+You operate ONLY from the live browser snapshot.
+The browser is the only execution surface.
+
+DO NOT:
+- invent CSS/XPath selectors;
+- invent DOM node ids;
+- use page.evaluate or JavaScript execution;
+- call APIs;
+- call hidden endpoints;
+- inspect cookies/session tokens;
+- invent URLs not present in evidence or platform configuration.
 
 GOAL:
 ${goal}
@@ -101,14 +164,18 @@ Allowed actions:
 NAVIGATE, CLICK, TYPE, PRESS, SCROLL, WAIT, EXTRACT, BACK, CLOSE, STOP
 
 Rules:
-- Never navigate outside the allowed platform origin.
-- Never reveal or request passwords, 2FA codes, security answers or session cookies.
-- For Google OAuth, click the platform's Google/Continue-with-Google control when present. After Google opens, select the configured Google account only when the account is already available in the browser chooser. Otherwise stop with USER_ACTION_REQUIRED.
-- Never bypass CAPTCHA, bot challenges, identity checks or payment/verification gates. Stop with MANUAL_ACTION_REQUIRED.
-- For application submissions, do not submit until every required field is mapped and validated from known data.
-- Never fabricate an application answer. If a required answer is unknown, stop with USER_ACTION_REQUIRED.
-- For remote-only discovery, do not mark unknown work mode as remote.
-- Prefer semantic locators from live accessibility/text evidence; do not create CSS/XPath selectors.
+- Use semantic locator evidence only: visible text, aria, role, placeholder, title, or dialog context from the snapshot.
+- Never return selector/selectors fields.
+- Never use coordinates.
+- NAVIGATE must stay inside the allowed platform origin except an OAuth handoff requested by the platform. For OAuth, the runner may allow the observed Google authorization origin only for the authentication step.
+- For Google OAuth, use the platform's live Google/Continue-with-Google control when present. Never type a Google password or ask for 2FA.
+- If the desired Google account is already visible in the chooser, select the configured account. Otherwise return USER_ACTION_REQUIRED.
+- CAPTCHA, bot challenge, identity verification, payment/credit purchase, phone verification or legal attestation requiring user confirmation => MANUAL_ACTION_REQUIRED.
+- Never submit an application when a required field is unknown.
+- Never mark unknown work mode as REMOTE.
+- For profile editing, only fill known candidate facts.
+- For job application, use the supplied cover letter/resume paths only when the form requests them.
+- Keep the plan within the action budget.
 - Return:
 {
   "status":"READY|USER_ACTION_REQUIRED|MANUAL_ACTION_REQUIRED|BLOCKED|DONE",
@@ -123,4 +190,9 @@ Rules:
   return aiRuntime.callAi(prompt, { taskType: "JOB_BROWSER_PLAN", priority: 3 });
 }
 
-module.exports = { qualifyOpportunity, generateCoverLetter, buildActionPlan };
+module.exports = {
+  qualifyOpportunity,
+  extractOpportunities,
+  generateCoverLetter,
+  buildActionPlan
+};
