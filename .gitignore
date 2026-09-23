@@ -3,6 +3,9 @@ node_modules/
 package-lock.json.bak
 
 # Environment & Secrets
+private/
+job-state/
+applications/
 .env
 .env.local
 .env.*.local
