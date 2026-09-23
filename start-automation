@@ -2,7 +2,7 @@
 # start-automation
 # Master command to launch CodeAir Threads + Instagram Automation.
 # Runs non-stop in the background (or foreground with --foreground)
-# Survives closing Antigravity IDE and closing terminal.
+# Runs independently of any IDE and closing terminal.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
@@ -61,7 +61,7 @@ if [ "$1" == "--foreground" ] || [ "$1" == "-f" ]; then
     node threads-agent.js run
 else
     echo "[3/3] Starting automation loop in BACKGROUND..."
-    # setsid ensures complete detachment from current session and Antigravity IDE
+    # setsid ensures complete detachment from current session and MiniMax M3 IDE
     setsid nohup node threads-agent.js run >> "$LOG_FILE" 2>&1 &
     AGENT_PID=$!
     disown $AGENT_PID 2>/dev/null
@@ -76,7 +76,7 @@ else
         echo "=================================================="
         echo "  Process ID    : $AGENT_PID"
         echo "  Status        : ACTIVE IN BACKGROUND"
-        echo "  Detached      : YES (Survives closing Antigravity IDE)"
+        echo "  Detached      : YES (Survives closing MiniMax M3 IDE)"
         echo "  Mode          : LIVE (Visual Feed Scrolling, Own Posts, Auto Comments & Replies)"
         echo "  Live Logs     : tail -f $LOG_FILE"
         echo "  Status Command: ./status-automation"
