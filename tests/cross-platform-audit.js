@@ -126,11 +126,11 @@ async function runCrossPlatformAudit() {
     assert(CONFIG.MINIMAX_ENDPOINT, "MINIMAX_ENDPOINT must be configured");
   });
 
-  // 6. Runtime must not require the Antigravity CLI
-  test("AI Runtime: no Antigravity CLI dependency", () => {
+  // 6. Runtime must not require a legacy external AI CLI
+  test("AI Runtime: no legacy external AI CLI dependency", () => {
     const runtimeCode = fs.readFileSync(path.join(ROOT, "src/ai/ai-runtime.js"), "utf8");
-    assert(!runtimeCode.includes("resolveAgyBinary"), "Runtime must not depend on resolveAgyBinary");
-    assert(!runtimeCode.includes("spawn("), "Runtime must not spawn the Antigravity CLI");
+    assert(!runtimeCode.includes("resolveAgyBinary"), "Runtime must not depend on obsolete CLI resolution");
+    assert(!runtimeCode.includes("spawn("), "Runtime must not spawn an external AI CLI");
     assert(runtimeCode.includes("callMiniMax"), "Runtime must include MiniMax execution");
   });
 
