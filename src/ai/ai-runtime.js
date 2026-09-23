@@ -9,7 +9,7 @@ const CONFIG = require("../../config");
 const logger = require("../logging/logger");
 
 /**
- * In-memory Asynchronous Queue & Concurrency Worker for Antigravity AI calls.
+ * In-memory asynchronous queue and concurrency worker for MiniMax reasoning calls.
  * Prevents process thrashing, enforces priority scheduling, and caches results.
  */
 class AiQueue {
@@ -108,7 +108,7 @@ class AiQueue {
 
 class AiRuntime {
   constructor() {
-    this.model = CONFIG.MODEL || "gemini-3.8-flash-high";
+    this.model = CONFIG.MODEL || "MiniMax-M3";
     const maxConcurrency = Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || 3);
     this.queue = new AiQueue(maxConcurrency);
   }
