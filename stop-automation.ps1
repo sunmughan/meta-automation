@@ -1,46 +1,36 @@
-# stop-automation.ps1
-# Gracefully stops the Meta Automation background daemon on Windows
+# Stops both Meta Automation execution planes. Browser windows remain open.
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $scriptDir
 
-$pidFile = "$scriptDir\threads-agent.pid"
-
 Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "  🛑 STOPPING META AUTOMATION DAEMON (WINDOWS)" -ForegroundColor Cyan
+Write-Host "  STOPPING META AUTOMATION (WINDOWS)" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 
-if (-not (Test-Path $pidFile)) {
-    Write-Host "ℹ️  No PID file found. Checking for running node threads-agent processes..." -ForegroundColor Yellow
-    $procs = Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like "*threads-agent.js run*" }
-    if ($procs) {
-        foreach ($p in $procs) {
-            Stop-Process -Id $p.ProcessId -Force
-            Write-Host "✅ Stopped orphaned process (PID: $($p.ProcessId))" -ForegroundColor Green
+$files = @(
+    @{ Name = "Social Automation"; Path = "$scriptDir\threads-agent.pid"; Pattern = "*threads-agent.js run*" },
+    @{ Name = "Job Revenue Engine"; Path = "$scriptDir\job-agent.pid"; Pattern = "*job-agent.js run*" }
+)
+
+foreach ($item in $files) {
+    if (Test-Path $item.Path) {
+        $pid = Get-Content $item.Path -ErrorAction SilentlyContinue
+        if ($pid) {
+            $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+            if ($proc) {
+                Write-Host "Stopping $($item.Name) (PID $pid)..." -ForegroundColor Yellow
+                Stop-Process -Id $pid -ErrorAction SilentlyContinue
+            }
         }
-    } else {
-        Write-Host "✅ No active Meta Automation daemon found running." -ForegroundColor Green
+        Remove-Item $item.Path -Force -ErrorAction SilentlyContinue
     }
-    exit 0
-}
 
-$agentPid = Get-Content $pidFile -ErrorAction SilentlyContinue
-if ($agentPid) {
-    $proc = Get-Process -Id $agentPid -ErrorAction SilentlyContinue
-    if ($proc) {
-        Write-Host "🔄 Gracefully stopping daemon (PID: $agentPid)..." -ForegroundColor Yellow
-        Stop-Process -Id $agentPid -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-        if (Get-Process -Id $agentPid -ErrorAction SilentlyContinue) {
-            Stop-Process -Id $agentPid -Force -ErrorAction SilentlyContinue
-        }
-        Write-Host "✅ Daemon process stopped successfully." -ForegroundColor Green
-    } else {
-        Write-Host "ℹ️  Process $agentPid was not running." -ForegroundColor Yellow
+    $procs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like $item.Pattern }
+    foreach ($proc in $procs) {
+        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+        Write-Host "Stopped orphaned $($item.Name) process (PID $($proc.ProcessId))." -ForegroundColor Green
     }
 }
 
-Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
-Write-Host "==================================================" -ForegroundColor Green
-Write-Host "  ✅ AUTOMATION STOPPED" -ForegroundColor Green
-Write-Host "==================================================" -ForegroundColor Green
+Write-Host "✅ Social + Job workers stopped." -ForegroundColor Green
+Write-Host "Browser windows were left open intentionally." -ForegroundColor Gray
