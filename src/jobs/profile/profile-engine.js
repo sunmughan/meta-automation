@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const CONFIG = require("../../../config");
 const JobAgentRunner = require("../browser/job-runner");
+const { readBaseResume } = require("../documents/document-engine");
 
 function loadCandidateProfile() {
   if (!fs.existsSync(CONFIG.JOB_PROFILE_PATH)) return null;
@@ -15,13 +16,18 @@ function saveCandidateProfile(profile) {
 
 async function inspectAndCompleteProfile({ platform, page, browserAgent, aiRuntime, candidateProfile }) {
   const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+  const resume = await readBaseResume().catch(() => ({ text: "" }));
+  const enrichedProfile = {
+    ...candidateProfile,
+    baseResumeText: resume.text || ""
+  };
   return runner.run({
-    goal: "Open the platform profile/account settings and complete every field that can be populated from verified candidate data or approved knowledge. Re-inspect the page after each action batch. Never guess. Stop with USER_ACTION_REQUIRED for required data not present in the candidate source.",
+    goal: "Open the platform profile/account settings and complete every field that can be populated from verified candidate data, approved knowledge, or explicit facts in the base resume. Re-inspect the page after each action batch. Never guess. Stop with USER_ACTION_REQUIRED for required data not present in the candidate source.",
     platform,
-    candidateProfile,
+    candidateProfile: enrichedProfile,
     allowedOrigin: new URL(platform.url).origin,
     targetId: `profile:${platform.id}`,
-    context: { workflow: "PROFILE_COMPLETION" }
+    context: { workflow: "PROFILE_COMPLETION", resumeAttached: Boolean(resume.present) }
   });
 }
 
