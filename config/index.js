@@ -83,6 +83,7 @@ const CONFIG = {
   JOB_MIN_MATCH_SCORE: Math.max(0, Math.min(100, Number(process.env.JOB_MIN_MATCH_SCORE) || 75)),
   JOB_MAX_PLAN_ACTIONS: Math.max(1, Number(process.env.JOB_MAX_PLAN_ACTIONS) || 24),
   JOB_MAX_SCROLLS: Math.max(0, Number(process.env.JOB_MAX_SCROLLS) || 8),
+  JOB_MAX_PLAN_ITERATIONS: Math.max(1, Number(process.env.JOB_MAX_PLAN_ITERATIONS) || 8),
   JOB_NAVIGATION_TIMEOUT_MS: Math.max(10000, Number(process.env.JOB_NAVIGATION_TIMEOUT_MS) || 60000),
   JOB_PAGE_SETTLE_MS: Math.max(0, Number(process.env.JOB_PAGE_SETTLE_MS) || 2500),
 
