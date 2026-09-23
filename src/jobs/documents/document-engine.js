@@ -1,27 +1,49 @@
+
 const fs = require("fs");
 const path = require("path");
 const knowledge = require("../../knowledge/knowledge-engine");
 const CONFIG = require("../../../config");
 
-function readBaseResume() {
+let pdfParse = null;
+try {
+  pdfParse = require("pdf-parse");
+} catch (_) {}
+
+async function readBaseResume() {
   const resumePath = CONFIG.JOB_BASE_RESUME_PATH;
   if (!resumePath || !fs.existsSync(resumePath)) {
-    return { path: resumePath, content: null, present: false };
+    return { path: resumePath, content: null, text: "", present: false };
   }
+
+  const buffer = fs.readFileSync(resumePath);
+  const ext = path.extname(resumePath).toLowerCase();
+  let text = "";
+
+  if ([".txt", ".md", ".markdown", ".json"].includes(ext)) {
+    text = buffer.toString("utf8");
+  } else if (ext === ".pdf") {
+    if (typeof pdfParse !== "function") {
+      throw new Error("PDF resume support requires the installed pdf-parse dependency.");
+    }
+    const parsed = await pdfParse(buffer);
+    text = String(parsed.text || "");
+  }
+
   return {
     path: resumePath,
-    content: fs.readFileSync(resumePath, "base64"),
+    content: buffer.toString("base64"),
+    text,
     present: true
   };
 }
 
-function buildCandidateContext() {
-  const founder = knowledge.getFounderInfo?.() || {};
-  const company = knowledge.getCompanyInfo?.() || {};
+function buildCandidateContext(candidateProfile, resumeText = "") {
   return {
-    founder,
-    company,
-    approvedProfileUrls: knowledge.getOfficialProfiles?.() || {}
+    candidateProfile,
+    founder: knowledge.getFounderInfo?.() || {},
+    company: knowledge.getCompanyInfo?.() || {},
+    approvedProfileUrls: knowledge.getOfficialProfiles?.() || {},
+    baseResumeText: resumeText
   };
 }
 
@@ -30,35 +52,39 @@ function ensureDir(dir) {
 }
 
 async function generateApplicationDocuments({ opportunity, candidateProfile, aiRuntime }) {
-  const resume = readBaseResume();
+  const resume = await readBaseResume();
   if (!resume.present) {
-    throw new Error(`Base resume not found at ${resume.path || "(not configured)"}`);
+    throw new Error(`Base resume not found at ${resume.path || "(not configured)"}. Run npm run jobs:setup and provide a base resume.`);
   }
 
-  const context = buildCandidateContext();
+  const context = buildCandidateContext(candidateProfile, resume.text);
   const prompt = `
-You are the document preparation agent for a job application.
 Return JSON only.
 
-SOURCE OF TRUTH:
-- Candidate profile: ${JSON.stringify(candidateProfile)}
-- Approved founder/company data: ${JSON.stringify(context)}
-- Base resume exists as a local attachment and must remain factually authoritative.
+TASK: Prepare application documents for the exact opportunity.
+
+CANDIDATE SOURCE OF TRUTH:
+${JSON.stringify(context)}
 
 OPPORTUNITY:
 ${JSON.stringify(opportunity)}
 
 RULES:
-- Never invent employment, client names, certifications, dates, revenue, results, or skills.
-- Tailor emphasis, ordering and wording only using verified source facts.
-- Never change a factual claim merely to match the job.
-- The cover letter must be specific to this opportunity, concise and professional.
-- If a cover letter is not needed, still return one for internal preview only.
-- Return:
+- The base resume is the factual source of truth.
+- Use only facts explicitly present in the candidate profile, knowledge base or extracted base resume text.
+- Do not invent employment, client names, dates, certifications, technologies, metrics, salary history or outcomes.
+- Tailor emphasis and wording without changing factual claims.
+- Generate a concise project-specific cover letter.
+- Generate application answers only when their answers are explicitly supported by source facts.
+- For each generated answer provide its source basis.
+- Unknown mandatory fields must remain unanswered so the browser agent can stop for USER_ACTION_REQUIRED.
+
+OUTPUT:
 {
-  "resume_strategy": {"use_base": true, "emphasis": [], "changes": []},
-  "cover_letter": "...",
-  "application_answers": {}
+  "resumeStrategy":{"useBase":true,"emphasis":[]},
+  "coverLetter":"",
+  "applicationAnswers":{},
+  "answerSources":{}
 }
 `;
 
@@ -67,28 +93,38 @@ RULES:
     priority: 2
   });
 
-  const outputDir = path.join(CONFIG.JOB_GENERATED_DIR, opportunity.platform, opportunity.externalId);
+  const outputDir = path.join(
+    CONFIG.JOB_GENERATED_DIR,
+    opportunity.platform,
+    String(opportunity.externalId)
+  );
   ensureDir(outputDir);
 
+  const coverLetter = generated.coverLetter || generated.cover_letter || "";
   const coverPath = path.join(outputDir, "cover-letter.txt");
-  fs.writeFileSync(coverPath, generated.cover_letter || "", "utf8");
+  fs.writeFileSync(coverPath, coverLetter, "utf8");
+
+  const metadata = {
+    opportunityKey: opportunity.key,
+    baseResumePath: resume.path,
+    resumeStrategy: generated.resumeStrategy || generated.resume_strategy || {},
+    applicationAnswers: generated.applicationAnswers || generated.application_answers || {},
+    answerSources: generated.answerSources || generated.answer_sources || {},
+    generatedAt: new Date().toISOString()
+  };
 
   const metadataPath = path.join(outputDir, "document-plan.json");
-  fs.writeFileSync(metadataPath, JSON.stringify({
-    opportunityKey: opportunity.key,
-    resume: resume.path,
-    resumeStrategy: generated.resume_strategy || {},
-    applicationAnswers: generated.application_answers || {},
-    generatedAt: new Date().toISOString()
-  }, null, 2), "utf8");
+  fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), "utf8");
 
   return {
     baseResumePath: resume.path,
     baseResumeContentBase64: resume.content,
+    baseResumeText: resume.text,
     coverLetterPath: coverPath,
-    coverLetter: generated.cover_letter || "",
-    resumeStrategy: generated.resume_strategy || {},
-    applicationAnswers: generated.application_answers || {}
+    coverLetter,
+    resumeStrategy: metadata.resumeStrategy,
+    applicationAnswers: metadata.applicationAnswers,
+    answerSources: metadata.answerSources
   };
 }
 
