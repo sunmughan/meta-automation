@@ -43,7 +43,7 @@ async function launch() {
   const cdpUrl = new URL(CONFIG.JOB_BROWSER_CDP_URL);
   const port = Number(cdpUrl.port || 9223);
   if (await isActive(port)) {
-    console.log(\`Job browser CDP already active on \${CONFIG.JOB_BROWSER_CDP_URL}\`);
+    console.log(`Job browser CDP already active on \${CONFIG.JOB_BROWSER_CDP_URL}`);
     return true;
   }
 
@@ -56,8 +56,8 @@ async function launch() {
   const out = fs.openSync(logFile, "a");
 
   const args = [
-    \`--remote-debugging-port=\${port}\`,
-    \`--user-data-dir=\${userDataDir}\`,
+    `--remote-debugging-port=\${port}`,
+    `--user-data-dir=\${userDataDir}`,
     "--no-first-run",
     "--no-default-browser-check",
     "--restore-last-session",
@@ -77,11 +77,11 @@ async function launch() {
   for (let i = 0; i < 20; i++) {
     await new Promise(resolve => setTimeout(resolve, 1000));
     if (await isActive(port)) {
-      console.log(\`Job browser ready: \${CONFIG.JOB_BROWSER_CDP_URL}\`);
+      console.log(`Job browser ready: \${CONFIG.JOB_BROWSER_CDP_URL}`);
       return true;
     }
   }
-  throw new Error(\`Job browser did not become ready. Check \${logFile}\`);
+  throw new Error(`Job browser did not become ready. Check \${logFile}`);
 }
 
 launch().then(ok => process.exit(ok ? 0 : 1)).catch(err => {
