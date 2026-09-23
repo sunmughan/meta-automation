@@ -23,7 +23,8 @@ async function bootstrapPlatformSession({ platform, page, browserAgent, aiRuntim
     candidateProfile,
     allowedOrigin,
     targetId: `auth:${platform.id}`,
-    context: { workflow: "AUTH_BOOTSTRAP", googleAccountEmail: CONFIG.GOOGLE_ACCOUNT_EMAIL }
+    context: { workflow: "AUTH_BOOTSTRAP", googleAccountEmail: CONFIG.GOOGLE_ACCOUNT_EMAIL },
+    authFlow: true
   });
 
   if (result.status !== "DONE") {
