@@ -478,13 +478,9 @@ class KnowledgeEngine {
   getMetaAutomationUrl() {
     this.loadAll();
     const pillars = this.getContentPillars();
-    const metaPillar = pillars.find(p => p.id === "meta_automation" || p.id === "meta-automation");
-    if (metaPillar && metaPillar.referenceUrl) return metaPillar.referenceUrl;
+    const githubReference = pillars.find(p => /^https?:\/\/github\.com\//i.test(p.referenceUrl || ""));
+    if (githubReference?.referenceUrl) return githubReference.referenceUrl;
     const profiles = this.getOfficialProfiles();
-    // Try to find the meta-automation specific URL from profiles
-    const raw = this.getRaw("profiles.md");
-    const repoMatch = raw.match(/https?:\/\/github\.com\/[^\s]+\/meta-automation/i);
-    if (repoMatch) return repoMatch[0];
     return profiles.founder?.github || "";
   }
 
@@ -494,13 +490,7 @@ class KnowledgeEngine {
     if (entry && entry.parsed && Array.isArray(entry.parsed) && entry.parsed.length > 0) {
       return entry.parsed;
     }
-    return [
-      { id: "pixelgo_hms", title: "Hospitality Tech & PMS Operations", badge: "HOSPITALITY TECH", focus: "Hotel & PMS tech operations, guest experience" },
-      { id: "builder_network", title: "Engineering Collaboration", badge: "BUILDER NETWORK", focus: "Full-stack software engineering, real client deliverables" },
-      { id: "founders_revolution", title: "Startup Lessons & SaaS Architecture", badge: "FOUNDER MINDSET", focus: "Hard lessons for SaaS founders, building simple before scaling" },
-      { id: "tech_mentorship", title: "Systems Architecture", badge: "ARCHITECTURE", focus: "Clean database design, resilient state management" },
-      { id: "agentic_ai", title: "Practical Agentic AI", badge: "AGENTIC AI", focus: "Practical AI workflows and enterprise automation" }
-    ];
+    return [];
   }
 
   /**
