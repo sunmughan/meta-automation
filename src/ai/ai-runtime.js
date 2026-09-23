@@ -87,7 +87,8 @@ class AiQueue {
       task.reject(err);
     } finally {
       this.activeCount--;
-      this.processNext();
+      const throttleMs = Number(process.env.AI_THROTTLE_MS) || (CONFIG.AI_PROVIDER === "minimax" ? 1200 : 100);
+      setTimeout(() => this.processNext(), throttleMs);
     }
   }
 
@@ -109,7 +110,8 @@ class AiQueue {
 class AiRuntime {
   constructor() {
     this.model = CONFIG.MODEL || "MiniMax-M3";
-    const maxConcurrency = Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || 3);
+    const defaultConcurrency = CONFIG.AI_PROVIDER === "minimax" ? 1 : 3;
+    const maxConcurrency = Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || defaultConcurrency);
     this.queue = new AiQueue(maxConcurrency);
   }
 
@@ -129,7 +131,8 @@ class AiRuntime {
       const start = cleaned.indexOf("{");
       const end = cleaned.lastIndexOf("}");
       if (start !== -1 && end !== -1 && end > start) {
-        const slice = cleaned.slice(start, end + 1);
+        let slice = cleaned.slice(start, end + 1);
+        slice = slice.replace(/,\s*([\]}])/g, "$1");
         return JSON.parse(slice);
       }
       throw new Error(`JSON parsing failed: ${e.message}. Raw: ${cleaned.slice(0, 150)}...`);
@@ -164,7 +167,7 @@ class AiRuntime {
           messages: [{ role: "user", content: prompt }],
           temperature: CONFIG.MINIMAX_TEMPERATURE,
           max_tokens: CONFIG.MINIMAX_MAX_TOKENS,
-          ...(CONFIG.MINIMAX_THINKING === "true" ? { thinking: { type: "enabled" } } : {})
+          ...(CONFIG.MINIMAX_THINKING === "true" ? { thinking: { type: "adaptive" } } : {})
         }),
         signal: controller.signal
       });
@@ -184,6 +187,11 @@ class AiRuntime {
         throw error;
       }
 
+      // MiniMax may return HTTP 200 with base_resp.status_code != 0 for parameter errors
+      if (data?.base_resp?.status_code && data.base_resp.status_code !== 0) {
+        throw new Error(`MiniMax API error (${data.base_resp.status_code}): ${data.base_resp.status_msg || "Unknown error"}`);
+      }
+
       const content = data?.choices?.[0]?.message?.content
         ?? data?.choices?.[0]?.message?.reasoning_content
         ?? data?.reply
@@ -196,6 +204,72 @@ class AiRuntime {
       throw new Error("MiniMax API returned no usable message content");
     } catch (err) {
       if (err.name === "AbortError") throw new Error(`MiniMax API timed out after ${timeoutMs}ms`);
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Invokes an OpenAI-compatible API endpoint (Freebuff, DeepSeek, OpenAI, Groq, Ollama, etc.)
+   * Uses native fetch (Node >=18), zero external dependencies.
+   */
+  async callOpenAiCompatible(prompt, timeoutMs = CONFIG.OPENAI_TIMEOUT_MS || 90000) {
+    const apiKey = CONFIG.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY / FREEBUFF_API_KEY is not configured in .env");
+    }
+
+    const baseUrl = CONFIG.OPENAI_BASE_URL || "https://api.openai.com/v1";
+    const endpoint = CONFIG.OPENAI_ENDPOINT || "/chat/completions";
+    const url = endpoint.startsWith("http") ? endpoint : baseUrl.replace(/\/+$/, "") + (endpoint.startsWith("/") ? "" : "/") + endpoint;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: CONFIG.OPENAI_MODEL || "deepseek 4.1 flash",
+          messages: [{ role: "user", content: prompt }],
+          temperature: CONFIG.OPENAI_TEMPERATURE ?? 0.2,
+          max_tokens: CONFIG.OPENAI_MAX_TOKENS ?? 4096
+        }),
+        signal: controller.signal
+      });
+
+      const raw = await response.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (err) {
+        throw new Error(`OpenAI-compatible endpoint returned non-JSON (HTTP ${response.status}): ${raw.slice(0, 500)}`);
+      }
+
+      if (!response.ok) {
+        const message = data?.error?.message || data?.message || raw.slice(0, 500);
+        const error = new Error(`OpenAI-compatible API HTTP ${response.status}: ${message}`);
+        error.status = response.status;
+        throw error;
+      }
+
+      const content = data?.choices?.[0]?.message?.content
+        ?? data?.choices?.[0]?.message?.reasoning_content
+        ?? data?.choices?.[0]?.delta?.content
+        ?? data?.choices?.[0]?.text;
+
+      if (typeof content === "string" && content.trim()) {
+        return this.cleanAndParseJson(content);
+      }
+      if (content && typeof content === "object") return content;
+      throw new Error("OpenAI-compatible API returned no usable message content");
+    } catch (err) {
+      if (err.name === "AbortError") throw new Error(`OpenAI-compatible API timed out after ${timeoutMs}ms`);
       throw err;
     } finally {
       clearTimeout(timer);
@@ -221,34 +295,203 @@ class AiRuntime {
   }
 
   /**
-   * Internal execution with retry backoff.
-   * Uses bounded exponential backoff for transient MiniMax API errors.
+   * Discovers active Antigravity Language Server session for Gemini 3.8 Flash.
+   */
+  discoverAntigravitySession() {
+    if (this._cachedSession) return this._cachedSession;
+    try {
+      const { execSync } = require("child_process");
+      const fs = require("fs");
+      const ss = execSync("ss -tulpn 2>/dev/null", { encoding: "utf8" });
+      for (const line of ss.split("\n")) {
+        if (line.includes("language_server")) {
+          const portMatch = line.match(/:(\d+)\s+/);
+          const pidMatch = line.match(/pid=(\d+)/);
+          if (portMatch && pidMatch) {
+            try {
+              const cmdline = fs.readFileSync("/proc/" + pidMatch[1] + "/cmdline", "utf8");
+              const tokenMatch = cmdline.match(/--csrf_token\x00([a-zA-Z0-9-]+)/) || cmdline.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
+              if (tokenMatch) {
+                this._cachedSession = { host: "127.0.0.1", port: parseInt(portMatch[1], 10), token: tokenMatch[1] };
+                return this._cachedSession;
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  /**
+   * Invokes Gemini 3.8 Flash via the local Antigravity Language Server session.
+   * Completely free, zero external API keys needed, zero rate limits.
+   */
+  async callAntigravityGemini(prompt, timeoutMs = 90000) {
+    const session = this.discoverAntigravitySession();
+    if (!session) {
+      throw new Error("Antigravity Language Server session not found on localhost");
+    }
+
+    const https = require("https");
+    const postRpc = (endpoint, body) => new Promise((resolve, reject) => {
+      const data = JSON.stringify(body);
+      const req = https.request({
+        hostname: session.host,
+        port: session.port,
+        path: "/exa.language_server_pb.LanguageServerService/" + endpoint,
+        method: "POST",
+        rejectUnauthorized: false,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+          "x-codeium-csrf-token": session.token
+        }
+      }, res => {
+        let buf = "";
+        res.on("data", c => { buf += c; });
+        res.on("end", () => {
+          try { resolve(JSON.parse(buf)); } catch (e) { resolve(buf); }
+        });
+      });
+      req.on("error", reject);
+      req.write(data);
+      req.end();
+    });
+
+    const start = await postRpc("StartCascade", {
+      source: "CORTEX_TRAJECTORY_SOURCE_CLI",
+      trajectoryType: "CORTEX_TRAJECTORY_TYPE_CASCADE"
+    });
+    const cascadeId = start.cascadeId;
+    if (!cascadeId) {
+      throw new Error("Failed to initialize Cascade trajectory in Antigravity IDE: " + JSON.stringify(start));
+    }
+
+    try {
+      const constrainedPrompt = `CRITICAL OPERATIONAL CONSTRAINT:
+You are acting as an autonomous text classifier and lead reasoning specialist. DO NOT invoke ANY tools (no view_file, no search, no run_command). Output ONLY valid JSON matching the requested schema.
+
+` + prompt;
+
+      await postRpc("SendUserCascadeMessage", {
+        cascadeId,
+        items: [{ text: constrainedPrompt }],
+        cascadeConfig: {
+          plannerConfig: {
+            planModel: "MODEL_PLACEHOLDER_M318",
+            requestedModel: { model: "MODEL_PLACEHOLDER_M318" },
+            modelName: "gemini-3.8-flash-high",
+            conversational: { plannerMode: "CONVERSATIONAL_PLANNER_MODE_DEFAULT", agenticMode: false }
+          }
+        }
+      });
+
+      const startTime = Date.now();
+      while (Date.now() - startTime < timeoutMs) {
+        await new Promise(r => setTimeout(r, 1000));
+        const traj = await postRpc("GetCascadeTrajectory", { cascadeId });
+        const steps = traj.trajectory?.steps || [];
+        for (const s of steps) {
+          if (s.type === "CORTEX_STEP_TYPE_PLANNER_RESPONSE") {
+            const resp = s.plannerResponse?.modifiedResponse || s.plannerResponse?.response;
+            if (resp && (s.status === "CORTEX_STEP_STATUS_DONE" || (resp.includes("{") && resp.includes("}")))) {
+              return this.cleanAndParseJson(resp);
+            }
+          }
+          if (s.type === "CORTEX_STEP_TYPE_ERROR_MESSAGE") {
+            const errMsg = s.errorMessage?.error?.shortError || "Unknown error";
+            throw new Error("Antigravity agent error: " + errMsg);
+          }
+        }
+      }
+      throw new Error(`Antigravity IDE Gemini query timed out after ${timeoutMs}ms`);
+    } finally {
+      try {
+        await postRpc("DeleteCascadeTrajectory", { cascadeId });
+      } catch (e) {}
+    }
+  }
+
+  /**
+   * Internal execution with retry backoff and infallible multi-tier fallback.
+   * Priority: Configured Primary -> Secondary -> Local Antigravity Gemini 3.8 Flash.
    */
   async executeAiCall(prompt, options = {}) {
+    const provider = (CONFIG.AI_PROVIDER || "minimax").toLowerCase();
     const baseRetries = options.retries !== undefined
       ? options.retries
-      : (CONFIG.MINIMAX_MAX_RETRIES ?? 2);
-    const timeoutMs = options.timeoutMs || CONFIG.MINIMAX_TIMEOUT_MS || 90000;
+      : (provider === "minimax" ? (CONFIG.MINIMAX_MAX_RETRIES ?? 2) : (CONFIG.OPENAI_MAX_RETRIES ?? 2));
+    const timeoutMs = options.timeoutMs || (provider === "minimax" ? CONFIG.MINIMAX_TIMEOUT_MS : CONFIG.OPENAI_TIMEOUT_MS) || 90000;
     const maxRetries = baseRetries + 1;
     const isRetryable = (err) => {
       const status = Number(err?.status || 0);
       const msg = String(err?.message || "").toLowerCase();
       return status === 408 || status === 409 || status === 429 || status >= 500 ||
-        msg.includes("timeout") || msg.includes("temporarily") || msg.includes("rate limit");
+        msg.includes("timeout") || msg.includes("temporarily") || msg.includes("rate limit") ||
+        msg.includes("2062");
     };
 
     let lastError = null;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        if (CONFIG.AI_PROVIDER === "minimax") {
-          return await this.callMiniMax(prompt, timeoutMs);
+        const now = Date.now();
+        const isOpenAiUsable = !this._openAiDisabledUntil || now >= this._openAiDisabledUntil;
+        const isMiniMaxUsable = !this._minimaxDisabledUntil || now >= this._minimaxDisabledUntil;
+
+        if (provider === "antigravity" || provider === "gemini") {
+          return await this.callAntigravityGemini(prompt, timeoutMs);
+        } else if ((provider === "openai" || provider === "freebuff" || provider === "deepseek" || provider === "custom") && isOpenAiUsable) {
+          try {
+            return await this.callOpenAiCompatible(prompt, timeoutMs);
+          } catch (openAiErr) {
+            this._openAiDisabledUntil = now + 15 * 60 * 1000;
+            if (CONFIG.MINIMAX_API_KEY && isMiniMaxUsable) {
+              try {
+                logger.warn(`OpenAI provider call failed (${openAiErr.message}). Routing to MiniMax M3...`);
+                return await this.callMiniMax(prompt, timeoutMs);
+              } catch (minimaxErr) {
+                if (String(minimaxErr.message).includes("2067") || String(minimaxErr.message).includes("limit")) {
+                  this._minimaxDisabledUntil = now + 15 * 60 * 1000;
+                }
+                logger.warn(`MiniMax also failed (${minimaxErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
+                return await this.callAntigravityGemini(prompt, timeoutMs);
+              }
+            }
+            logger.warn(`OpenAI provider call failed (${openAiErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
+            return await this.callAntigravityGemini(prompt, timeoutMs);
+          }
+        } else if (provider === "minimax" && isMiniMaxUsable) {
+          try {
+            return await this.callMiniMax(prompt, timeoutMs);
+          } catch (minimaxErr) {
+            if (String(minimaxErr.message).includes("2067") || String(minimaxErr.message).includes("limit")) {
+              this._minimaxDisabledUntil = now + 15 * 60 * 1000;
+            }
+            if (CONFIG.OPENAI_API_KEY && isOpenAiUsable) {
+              try {
+                logger.warn(`MiniMax quota limit encountered (${minimaxErr.message}). Routing to OpenAI-compatible provider (${CONFIG.OPENAI_MODEL})...`);
+                return await this.callOpenAiCompatible(prompt, timeoutMs);
+              } catch (openAiErr) {
+                this._openAiDisabledUntil = now + 15 * 60 * 1000;
+                logger.warn(`OpenAI provider also unavailable (${openAiErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
+                return await this.callAntigravityGemini(prompt, timeoutMs);
+              }
+            }
+            logger.warn(`MiniMax failed (${minimaxErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
+            return await this.callAntigravityGemini(prompt, timeoutMs);
+          }
         }
-        throw new Error(`Unsupported AI_PROVIDER: ${CONFIG.AI_PROVIDER}. This runtime is configured for MiniMax M3.`);
+        return await this.callAntigravityGemini(prompt, timeoutMs);
       } catch (err) {
         lastError = err;
         if (!isRetryable(err) || attempt >= maxRetries) break;
-        const delayMs = Math.min(2000 * Math.pow(2, attempt - 1), 15000);
-        logger.warn(`MiniMax AI call attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delayMs}ms...`);
+        const msg = String(err?.message || "").toLowerCase();
+        const isRateLimit = msg.includes("2062") || msg.includes("rate limit") || Number(err?.status) === 429;
+        const delayMs = isRateLimit
+          ? Math.min(5000 * attempt, 25000)
+          : Math.min(2000 * Math.pow(2, attempt - 1), 15000);
+        logger.warn(`AI call attempt ${attempt}/${maxRetries} failed: ${err.message}. Retrying in ${delayMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }

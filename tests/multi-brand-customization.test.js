@@ -120,7 +120,7 @@ async function runMultiBrandTest() {
     assert(conversationPrompt.includes("Apex AI Studio"), "Conversation prompt must contain Apex AI Studio");
     assert(conversationPrompt.includes("Elena Rostova"), "Conversation prompt must contain Elena Rostova");
     assert(conversationPrompt.includes("https://wa.me/15550199283"), "Conversation prompt must contain Apex AI Studio WhatsApp");
-    assert(!conversationPrompt.includes("wa.me/codeair") && !conversationPrompt.includes("wa.me/codeair"), "Conversation prompt must NOT contain production WhatsApp");
+    assert(!conversationPrompt.includes("wa.me/codeair"), "Conversation prompt must NOT contain production WhatsApp");
     assert(!conversationPrompt.includes("CodeAir"), "Conversation prompt must NOT contain CodeAir");
     assert(!conversationPrompt.includes("Sunmughan"), "Conversation prompt must NOT contain Sunmughan");
     console.log("   ✓ Multi-turn conversation prompt achieves 100% brand isolation");

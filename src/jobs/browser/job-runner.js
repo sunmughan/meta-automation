@@ -71,7 +71,9 @@ class JobAgentRunner {
       }, this.aiRuntime);
 
       if (plan.status === "DONE") {
-        return { status: "DONE", iterations: iteration, snapshot, plan, reason: plan.reason || "" };
+        // Capture FRESH snapshot to verify DONE state — never return stale pre-action snapshot
+        const doneSnapshot = await this.browserAgent.captureLiveSnapshot(`done-verify-${iteration}`);
+        return { status: "DONE", iterations: iteration, snapshot: doneSnapshot, plan, reason: plan.reason || "" };
       }
 
       if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(plan.status)) {
@@ -92,11 +94,15 @@ class JobAgentRunner {
 
       await this.syncOpenedPage(authFlow ? CONFIG.GOOGLE_AUTH_ORIGIN : null, allowedOrigin);
 
+      // Capture FRESH snapshot after every action execution — this is the core agentic principle
+      const postActionSnapshot = await this.browserAgent.captureLiveSnapshot(`post-action-${iteration}`);
+
       if (!result.success) {
         lastReason = result.reason || result.state || "Browser action failed";
         return {
           status: result.state || "FAILED",
           iterations: iteration,
+          snapshot: postActionSnapshot,
           plan,
           result,
           reason: lastReason
@@ -104,7 +110,7 @@ class JobAgentRunner {
       }
 
       if (plan.actions?.some(a => String(a.type).toUpperCase() === "STOP")) {
-        return { status: "DONE", iterations: iteration, plan, result, reason: "Planner requested STOP" };
+        return { status: "DONE", iterations: iteration, snapshot: postActionSnapshot, plan, result, reason: "Planner requested STOP" };
       }
     }
 

@@ -9,6 +9,7 @@ const CONFIG = require("../../config");
 const stateStore = require("../storage/state-store");
 const aiDecisionEngine = require("../ai/ai-decision-engine");
 const duplicateGuard = require("../safety/duplicate-guard");
+const rateLimiter = require("../safety/rate-limiter");
 const threadsDms = require("../platforms/threads/threads-dms");
 const instagramDms = require("../platforms/instagram/instagram-dms");
 const logger = require("../logging/logger");
@@ -175,7 +176,19 @@ class DmMonitor {
       };
     }
 
-    // 8. Live Execution in Browser
+    // 8. Live Execution in Browser — enforce rate limit first
+    const rateCheck = rateLimiter.canPerform("DM_REPLY", platform);
+    if (!rateCheck.allowed) {
+      logger.warn(`[DM MONITOR] DM rate limit reached for @${dmItem.sender}: ${rateCheck.reason}`);
+      stateStore.recordHandledDm(dmTurnId, {
+        username: dmItem.sender,
+        messageText: dmItem.lastMessage,
+        responseText: decision.response_message,
+        status: "RATE_LIMITED"
+      }, platform);
+      return { success: false, reason: rateCheck.reason, rateLimited: true };
+    }
+
     if (platform === "threads") {
       logger.info(`[DM MONITOR] Executing live Threads DM send to @${dmItem.sender}...`);
       stateStore.recordActionTransition("DM", dmTurnId, "RELEVANCE_VERIFIED", "SEND_ATTEMPTED");
@@ -243,17 +256,6 @@ class DmMonitor {
    */
   async scanAndProcessThreadsOnly(options = {}) {
     const results = { threads: [] };
-    if (options.offlineSimulation) {
-      const mockItems = options.mockItems || [
-        { sender: "test_user_sim", lastMessage: "Can you help build my MVP?", threadId: "test_thread_sim" }
-      ];
-      for (const item of mockItems) {
-        const res = await this.processDmItem(item, "threads", { dryRun: true, ...options });
-        results.threads.push({ item, res });
-      }
-      return results;
-    }
-
     try {
       const threadsItems = await threadsDms.scanDms();
       for (const item of threadsItems) {
@@ -271,17 +273,6 @@ class DmMonitor {
    */
   async scanAndProcessAll(options = {}) {
     const results = { threads: [], instagram: [] };
-
-    if (options.offlineSimulation) {
-      const mockItems = options.mockItems || [
-        { sender: "test_user_sim", lastMessage: "Can you help build my MVP?", threadId: "test_thread_sim" }
-      ];
-      for (const item of mockItems) {
-        const res = await this.processDmItem(item, "threads", { dryRun: true, ...options });
-        results.threads.push({ item, res });
-      }
-      return results;
-    }
 
     // Threads DMs
     try {

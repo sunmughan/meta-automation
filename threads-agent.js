@@ -126,13 +126,47 @@ async function commandScan(options = {}) {
   }
 }
 
+function isPostFresh(post, maxAgeHours = 36) {
+  if (!post) return false;
+
+  // 1. Check discovery timestamp
+  if (post.discoveredAt) {
+    const ageHours = (Date.now() - new Date(post.discoveredAt).getTime()) / (1000 * 3600);
+    if (ageHours > maxAgeHours) return false;
+  }
+
+  // 2. Check post text for explicit old dates or stale relative units
+  const text = (post.text || "").slice(0, 200);
+  if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(text)) return false; // Date formats like 05/08/2026
+  if (/\b(202[0-5]|2026-0[1-8])\b/.test(text)) return false;
+  if (/\b([2-9]|\d{2,})d\b/i.test(text)) return false; // 2d, 3d, 4d, 5d...
+  if (/\b\d+w\b/i.test(text)) return false; // 1w, 2w...
+  if (/\b\d+mo\b/i.test(text)) return false; // 1mo, 2mo...
+  if (/\b\d+y\b/i.test(text)) return false; // 1y...
+
+  return true;
+}
+
 function getLeadPriorityScore(post) {
-  // AI-first architecture: deterministic ordering is limited to operational state.
-  // No content/keyword/regex signals are used to rank leads before semantic AI.
   let score = 0;
+  if (!isPostFresh(post)) return -5000; // Deprioritize stale posts
+  
   if (post.status === "COMMENT_PENDING") score += 5000;
   if (post.status === "COMMENT_FAILED") score += 1000;
   if (post.source === "SEARCH" || post.source === "FACEBOOK_KEYWORD_SEARCH" || post.source === "FACEBOOK_GROUP_SEARCH") score += 500;
+  
+  // Prioritize genuine buyer signal candidates for immediate AI evaluation
+  const text = (post.text || "").toLowerCase();
+  if (text.includes("looking for") || text.includes("need a") || text.includes("hire") || text.includes("app developer") || text.includes("mvp") || text.includes("build an app") || text.includes("website developer") || text.includes("build a website")) {
+    score += 800;
+  }
+  if (post.score && post.score >= 80) score += post.score * 2;
+
+  // Freshness boost (within last 12 hours)
+  if (post.discoveredAt) {
+    const ageHours = (Date.now() - new Date(post.discoveredAt).getTime()) / (1000 * 3600);
+    if (ageHours < 12) score += Math.max(0, 300 - Math.floor(ageHours * 20));
+  }
   return score;
 }
 
@@ -175,14 +209,14 @@ async function commandAnalyze(options = {}) {
       if (p.postId.includes("test_") || (p.username && (p.username.includes("user_retry") || p.username.includes("user_test")))) {
         return false;
       }
-      return (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform);
+      return (p.status === "DISCOVERED" || p.status === "COMMENT_PENDING" || retryablePostIds.has(p.postId)) && !stateStore.hasCommented(p.postId, p.platform) && isPostFresh(p);
     })
     .sort((a, b) => getLeadPriorityScore(b) - getLeadPriorityScore(a));
 
   const targetPosts = maxPosts ? unanalyzed.slice(0, maxPosts) : unanalyzed.slice(0, 15);
 
   const platformLabel = targetPlatform ? ` [PLATFORM: ${targetPlatform.toUpperCase()}]` : "";
-  console.log(`Found ${unanalyzed.length} posts pending qualification/posting${platformLabel} (processing ${targetPosts.length} prioritized)...\n`);
+  console.log(`Found ${unanalyzed.length} fresh posts pending qualification/posting${platformLabel} (processing ${targetPosts.length} prioritized)...\n`);
 
   let hotCount = 0;
   let warmCount = 0;
@@ -190,6 +224,15 @@ async function commandAnalyze(options = {}) {
 
   for (let i = 0; i < targetPosts.length; i++) {
     const post = targetPosts[i];
+
+    // Enforce freshness guard
+    if (!isPostFresh(post)) {
+      ignoredCount++;
+      stateStore.updatePostStatus(post.postId, "IGNORED", {
+        reason: "Post is too old (>36h). Only fresh leads are engaged."
+      }, post.platform || "threads");
+      continue;
+    }
 
     // 1. Primary Grounded Semantic AI Reasoning (Zero Premature Discards)
     stateStore.updatePostStatus(post.postId, "ANALYZING", {}, post.platform || "threads");
@@ -619,11 +662,13 @@ async function commandReplies() {
   console.log("==============================================");
   try {
     const replies = await threadsActivityWatcher.checkReplies();
-    console.log(`Threads activity items processed: ${replies ? replies.length : 0}\n`);
+    const count = replies ? replies.length : 0;
+    console.log(`Threads activity items processed: ${count}\n`);
+    return { status: "SUCCESS", count };
   } catch (err) {
-    console.error("Failed processing replies:", err.message);
+    logger.error(`[REPLIES] Failed processing replies: ${err.message}`);
+    return { status: "FAILED", reason: err.message };
   }
-  return 0;
 }
 
 async function commandDms() {
@@ -632,17 +677,20 @@ async function commandDms() {
   console.log("==============================================");
   try {
     const results = await dmMonitor.scanAndProcessThreadsOnly();
-    console.log(`Threads DMs processed: ${results.threads.length}\n`);
+    const count = results.threads.length;
+    console.log(`Threads DMs processed: ${count}\n`);
+    return { status: "SUCCESS", count };
   } catch (err) {
-    console.error("Failed processing Threads DMs:", err.message);
+    logger.error(`[DMS] Failed processing Threads DMs: ${err.message}`);
+    return { status: "FAILED", reason: err.message };
   }
-  return 0;
 }
 
 function getExecutionMode() {
   const modeArg = process.argv.find(a => a.startsWith("--mode="));
   if (modeArg) return modeArg.split("=")[1].trim().toLowerCase();
-  return (CONFIG.EXECUTION_MODE || "round-robin").toLowerCase();
+  if (process.argv.includes("--once")) return "pipeline";
+  return (CONFIG.EXECUTION_MODE || "pipeline").toLowerCase();
 }
 
 async function runThreadsCycle(cycle) {
@@ -934,6 +982,20 @@ async function commandOnboard(options = {}) {
 
       const rawMode = await ask("12. Execution Mode (concurrent = parallel multi-tab for RTX/flagship hardware | round-robin = sequential single-tab for low-resource)", executionMode);
       executionMode = (rawMode.toLowerCase().includes("round") || rawMode.toLowerCase().includes("seq")) ? "round-robin" : "concurrent";
+
+      console.log("\n--- AI Engine & Provider Configuration ---");
+      const providerChoice = await ask("13. Select AI Provider [1 = MiniMax M3, 2 = OpenAI-compatible / Freebuff / DeepSeek]", (CONFIG.AI_PROVIDER === "openai" || CONFIG.AI_PROVIDER === "freebuff") ? "2" : "1");
+      const isCustomOpenAi = providerChoice === "2" || providerChoice.toLowerCase().includes("openai") || providerChoice.toLowerCase().includes("freebuff");
+
+      options.aiProvider = isCustomOpenAi ? "freebuff" : "minimax";
+      if (isCustomOpenAi) {
+        options.openaiApiKey = await ask("14. OpenAI / Freebuff API Key", CONFIG.OPENAI_API_KEY || "fb_live_IsQNdxCNvqCaQtU85QXLfmuOFUsVhYr8dgORVMRY04I");
+        options.openaiBaseUrl = await ask("15. API Base URL", CONFIG.OPENAI_BASE_URL || "https://freebuff.com/api/v1");
+        options.openaiModel = await ask("16. AI Model Name", CONFIG.OPENAI_MODEL || "deepseek 4.1 flash");
+      } else {
+        options.minimaxApiKey = await ask("14. MiniMax API Key", CONFIG.MINIMAX_API_KEY || "");
+        options.minimaxModel = await ask("15. MiniMax Model Name", CONFIG.MINIMAX_MODEL || "MiniMax-M3");
+      }
     } finally {
       rl.close();
     }
@@ -1011,24 +1073,48 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   const envPath = path.resolve(CONFIG.ROOT_DIR, ".env");
   if (fs.existsSync(envPath)) {
     let envContent = fs.readFileSync(envPath, "utf8");
-    if (envContent.includes("THREADS_USERNAME=")) {
-      envContent = envContent.replace(/THREADS_USERNAME=.*(?:\r?\n|$)/, `THREADS_USERNAME=${cleanUsername}\n`);
-    } else {
-      envContent += `\nTHREADS_USERNAME=${cleanUsername}\n`;
+    const upsertEnv = (content, key, val) => {
+      const reg = new RegExp(`^${key}=.*$`, "m");
+      return reg.test(content) ? content.replace(reg, `${key}=${val}`) : content.trimEnd() + `\n${key}=${val}\n`;
+    };
+
+    envContent = upsertEnv(envContent, "THREADS_USERNAME", cleanUsername);
+    envContent = upsertEnv(envContent, "EXECUTION_MODE", executionMode);
+
+    if (options.aiProvider) {
+      envContent = upsertEnv(envContent, "AI_PROVIDER", options.aiProvider);
+      envContent = upsertEnv(envContent, "AI_RUNTIME", options.aiProvider);
     }
-    if (envContent.includes("EXECUTION_MODE=")) {
-      envContent = envContent.replace(/EXECUTION_MODE=.*(?:\r?\n|$)/, `EXECUTION_MODE=${executionMode}\n`);
-    } else {
-      envContent += `\nEXECUTION_MODE=${executionMode}\n`;
+    if (options.openaiApiKey) {
+      envContent = upsertEnv(envContent, "OPENAI_API_KEY", options.openaiApiKey);
+      envContent = upsertEnv(envContent, "FREEBUFF_API_KEY", options.openaiApiKey);
     }
+    if (options.openaiBaseUrl) {
+      envContent = upsertEnv(envContent, "OPENAI_BASE_URL", options.openaiBaseUrl);
+      envContent = upsertEnv(envContent, "FREEBUFF_BASE_URL", options.openaiBaseUrl);
+    }
+    if (options.openaiModel) {
+      envContent = upsertEnv(envContent, "OPENAI_MODEL", options.openaiModel);
+      envContent = upsertEnv(envContent, "AI_MODEL", options.openaiModel);
+    }
+    if (options.minimaxApiKey) {
+      envContent = upsertEnv(envContent, "MINIMAX_API_KEY", options.minimaxApiKey);
+    }
+    if (options.minimaxModel) {
+      envContent = upsertEnv(envContent, "MINIMAX_MODEL", options.minimaxModel);
+      if (options.aiProvider === "minimax") {
+        envContent = upsertEnv(envContent, "AI_MODEL", options.minimaxModel);
+      }
+    }
+
     fs.writeFileSync(envPath, envContent, "utf8");
   }
 
-  // 6. Reload Knowledge in Memory
+  // 6. Reload Knowledge & Config in Memory
   knowledge.loadKnowledge();
 
   console.log("\n==============================================");
-  console.log("   ✅ BRAND ONBOARDING COMPLETED SUCCESSFULLY!");
+  console.log("   ✅ BRAND & AI ONBOARDING COMPLETED SUCCESSFULLY!");
   console.log("==============================================");
   console.log(`  Founder    : ${founderName} (${founderRole})`);
   console.log(`  Threads    : @${cleanUsername}`);
@@ -1043,7 +1129,7 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   console.log(`  Approved   : ${approvedServices.length} capabilities`);
   console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
   console.log(`  Exec Mode  : ${executionMode.toUpperCase()} (${executionMode === "concurrent" ? "Parallel Multi-Tab Continuous" : "Sequential Single-Tab Rotation"})`);
-  console.log(`  AI Engine  : Live MiniMax M3 IDE MiniMax M3`);
+  console.log(`  AI Engine  : Provider=${options.aiProvider || CONFIG.AI_PROVIDER}, Model=${options.openaiModel || options.minimaxModel || CONFIG.MODEL}`);
   console.log("==============================================\n");
   console.log("Your brand knowledge base is saved in ./knowledge/");
   console.log("All qualification engines, response generators, and visual posters");
@@ -1105,12 +1191,27 @@ async function main() {
       await (require("./tests/suite").runAllTests());
       process.exit(0);
       break;
+    case "master":
+    case "orchestrator": {
+      const aiRuntime = require("./src/ai/ai-runtime");
+      const MasterOrchestrator = require("./src/orchestrator/master-orchestrator");
+      const orchestrator = new MasterOrchestrator({ aiRuntime });
+      await orchestrator.runContinuous();
+      break;
+    }
     case "run":
-      await commandRun();
+      if (process.argv.includes("--master") || process.argv.includes("--all")) {
+        const aiRuntime = require("./src/ai/ai-runtime");
+        const MasterOrchestrator = require("./src/orchestrator/master-orchestrator");
+        const orchestrator = new MasterOrchestrator({ aiRuntime });
+        await orchestrator.runContinuous();
+      } else {
+        await commandRun();
+      }
       break;
     default:
       console.log(`Unknown command: ${cmd}`);
-      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, health, accept, test, run");
+      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, health, accept, test, run, master");
       process.exit(1);
   }
 }

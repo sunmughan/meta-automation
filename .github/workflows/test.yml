@@ -15,3 +15,7 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm test
+        env:
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          DRY_RUN: "true"
+          NODE_ENV: "test"

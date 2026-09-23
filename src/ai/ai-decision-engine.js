@@ -136,6 +136,9 @@ class AiDecisionEngine {
     // is handled by the MiniMax M3 AI reasoning engine. Zero regex pre-filters.
 
     try {
+      if (options.forceAiFailure || options.simulateFailure) {
+        throw new Error("Simulated AI Failure for Quarantine Verification");
+      }
       const prompt = this.buildFullSemanticPrompt(post);
       const aiRes = await aiRuntime.callAi(prompt, { taskType: "POST_ANALYSIS" });
       if (aiRes && (aiRes.intent || aiRes.decision)) {
@@ -367,7 +370,8 @@ class AiDecisionEngine {
       }
       throw new Error("AI returned empty conversation turn output");
     } catch (err) {
-      logger.warn(`[AI Engine] MiniMax M3 AI conversation turn reasoning failed: ${err.message}`);
+      logger.warn(`[AI Engine] AI conversation turn reasoning failed: ${err.message}`);
+      const profiles = knowledge.getOfficialProfiles();
       const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company?.whatsapp || profiles.founder?.whatsapp || "";
       const isCallRequest = conversationStage === "DISCOVERY_CALL" || /\b(call|schedule|phone|meeting|consultation|whatsapp)\b/i.test(incomingMessage);
       let fallbackMsg = isCallRequest

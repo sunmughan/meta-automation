@@ -118,9 +118,9 @@ async function runCrossPlatformAudit() {
     });
   }
 
-  // 5. MiniMax M3 runtime configuration
-  test("AI Runtime: MiniMax M3 is the default provider", () => {
-    assert(CONFIG.AI_PROVIDER === "minimax", "AI_PROVIDER must default to minimax");
+  // 5. MiniMax M3 & OpenAI-compatible runtime configuration
+  test("AI Runtime: MiniMax M3 or supported provider configured", () => {
+    assert(["minimax", "freebuff", "openai"].includes(CONFIG.AI_PROVIDER), "AI_PROVIDER must be minimax, freebuff, or openai");
     assert(CONFIG.MINIMAX_MODEL === "MiniMax-M3", "MINIMAX_MODEL must be MiniMax-M3");
     assert(CONFIG.MINIMAX_BASE_URL, "MINIMAX_BASE_URL must be configured");
     assert(CONFIG.MINIMAX_ENDPOINT, "MINIMAX_ENDPOINT must be configured");

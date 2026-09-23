@@ -241,9 +241,9 @@ class ThreadsActions {
         throw new Error("Reply composer textbox not found on post page");
       }
 
-      stateStore.recordActionTransition("COMMENT", post.postId, "PREPARING", "OPENED", { username: post.username });
-
-      await textbox.focus();
+      await textbox.scrollIntoViewIfNeeded?.().catch(() => {});
+      await textbox.click().catch(() => {});
+      await textbox.focus().catch(() => {});
       await new Promise(r => setTimeout(r, 400));
 
       // State Transition: TYPING
@@ -254,7 +254,18 @@ class ThreadsActions {
         await new Promise(r => setTimeout(r, Math.floor(Math.random() * 20) + 15));
       }
 
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 1000));
+      // Ensure text is registered in Lexical/DraftJS composer
+      const hasText = await page.evaluate((el) => (el.innerText || el.textContent || "").trim().length > 3, textbox);
+      if (!hasText) {
+        await page.evaluate((el, text) => {
+          el.focus();
+          document.execCommand("insertText", false, text);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }, textbox, commentText);
+        await new Promise(r => setTimeout(r, 500));
+      }
 
       // State Transition: SUBMITTING
       stateStore.recordActionTransition("COMMENT", post.postId, "TYPING", "SUBMITTING", { username: post.username });
@@ -349,11 +360,16 @@ class ThreadsActions {
       });
 
       if (!postClicked) {
-        logger.warn("Submit button not triggered via standard locators; attempting direct selector search...");
+        logger.warn("Submit button not triggered via standard locators; attempting direct selector search and Ctrl+Enter...");
         try {
           const submitHandle = await page.$('div[role="dialog"] div[role="button"]:not([aria-disabled="true"]), div[role="textbox"] ~ div div[role="button"], div[role="textbox"] ~ div button');
           if (submitHandle) {
             await submitHandle.click();
+          } else {
+            // Standard keyboard submit shortcut
+            await page.keyboard.down("Control");
+            await page.keyboard.press("Enter");
+            await page.keyboard.up("Control");
           }
         } catch (err) {
           logger.warn(`Direct selector click failed: ${err.message}`);

@@ -64,6 +64,16 @@ const CONFIG = {
   MINIMAX_MAX_TOKENS: Math.max(256, Number(process.env.MINIMAX_MAX_TOKENS) || 4096),
   MINIMAX_THINKING: String(process.env.MINIMAX_THINKING || "true").toLowerCase(),
 
+  // OpenAI-Compatible / Freebuff / DeepSeek / Custom Provider Configuration
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || process.env.FREEBUFF_API_KEY || "",
+  OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || process.env.FREEBUFF_BASE_URL || "https://api.openai.com/v1",
+  OPENAI_ENDPOINT: process.env.OPENAI_ENDPOINT || process.env.FREEBUFF_ENDPOINT || "/chat/completions",
+  OPENAI_MODEL: process.env.OPENAI_MODEL || process.env.FREEBUFF_MODEL || "deepseek 4.1 flash",
+  OPENAI_TIMEOUT_MS: Math.max(1000, Number(process.env.OPENAI_TIMEOUT_MS) || 90000),
+  OPENAI_MAX_RETRIES: Math.max(0, Number(process.env.OPENAI_MAX_RETRIES) || 2),
+  OPENAI_TEMPERATURE: Number.isFinite(Number(process.env.OPENAI_TEMPERATURE)) ? Number(process.env.OPENAI_TEMPERATURE) : 0.2,
+  OPENAI_MAX_TOKENS: Math.max(256, Number(process.env.OPENAI_MAX_TOKENS) || 4096),
+
   // Job Revenue Engine
   JOB_AUTOMATION_ENABLED: process.env.JOB_AUTOMATION_ENABLED === "true",
   JOB_APPLICATION_MODE: (process.env.JOB_APPLICATION_MODE || "auto").toLowerCase(),
@@ -116,7 +126,7 @@ const CONFIG = {
   APPROVAL_MODE: process.env.APPROVAL_MODE !== "false",
   DRY_RUN: process.env.DRY_RUN !== "false",
   POSTING_ENABLED: process.env.POSTING_ENABLED === "true",
-  EXECUTION_MODE: (process.env.EXECUTION_MODE || "round-robin").toLowerCase(),
+  EXECUTION_MODE: (process.env.EXECUTION_MODE || "pipeline").toLowerCase(),
 
   // Rate Limits (per hour)
   MAX_NEW_POST_REPLIES_PER_HOUR: Number(process.env.MAX_NEW_POST_REPLIES_PER_HOUR) || 5,

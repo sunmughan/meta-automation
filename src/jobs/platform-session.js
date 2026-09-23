@@ -32,7 +32,8 @@ async function bootstrapPlatformSession({ platform, page, browserAgent, aiRuntim
     return result;
   }
 
-  const snapshot = result.snapshot || await browserAgent.captureLiveSnapshot("auth-result");
+  // ALWAYS capture fresh snapshot — result.snapshot may be pre-action (stale)
+  const snapshot = await browserAgent.captureLiveSnapshot("auth-verification-fresh");
   const authCheck = await confirmAuthenticated(snapshot, aiRuntime, platform, candidateProfile);
   const authenticated = Boolean(authCheck.authenticated);
   const status = authenticated ? "AUTHENTICATED" : "USER_ACTION_REQUIRED";

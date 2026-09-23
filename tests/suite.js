@@ -604,17 +604,18 @@ async function runAllTests() {
     assert.strictEqual((neutralComment.match(/https?:\/\/[^\s]+/g) || []).length, 0, "NEUTRAL comment must contain ZERO links");
   });
 
-  // 39. MiniMax M3 AI Runtime Architecture
-  await test("39. MiniMax M3 AI Runtime Architecture", () => {
+  // 39. Multi-Provider AI Runtime Architecture (MiniMax M3 + OpenAI / Freebuff)
+  await test("39. Multi-Provider AI Runtime Architecture (MiniMax M3 + OpenAI / Freebuff)", () => {
     const aiRuntimeModule = require("../src/ai/ai-runtime");
     const configModule = require("../config");
 
-    assert.strictEqual(configModule.AI_PROVIDER, "minimax", "AI_PROVIDER must be minimax");
-    assert.strictEqual(configModule.AI_RUNTIME, "minimax", "AI_RUNTIME must be minimax");
-    assert.strictEqual(configModule.MINIMAX_MODEL, "MiniMax-M3", "MINIMAX_MODEL must be MiniMax-M3");
-    assert.strictEqual(configModule.MINIMAX_BASE_URL, "https://api.minimax.io/v1", "MiniMax base URL must be configured");
+    assert(["minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_PROVIDER), "AI_PROVIDER must be supported");
+    assert(["minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_RUNTIME), "AI_RUNTIME must be supported");
     assert.strictEqual(typeof aiRuntimeModule.callAi, "function", "callAi must be exposed as primary entry point");
     assert.strictEqual(typeof aiRuntimeModule.callMiniMax, "function", "callMiniMax must be available");
+    assert.strictEqual(typeof aiRuntimeModule.callOpenAiCompatible, "function", "callOpenAiCompatible must be available");
+    assert(configModule.OPENAI_API_KEY && configModule.OPENAI_API_KEY.length > 0, "OPENAI_API_KEY must be configured");
+    assert.strictEqual(configModule.OPENAI_MODEL, "deepseek 4.1 flash", "OPENAI_MODEL must match configured model");
   });
 
   // 40. Unified State Store Lifecycle Semantics
@@ -698,6 +699,7 @@ async function runAllTests() {
 
     const decision = await aiDecisionEngine.qualifyPost(post, {
       useAiCall: true,
+      forceAiFailure: true,
       offlineSimulation: false,
       allowLocalFallback: false
     });

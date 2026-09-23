@@ -1,6 +1,6 @@
 {
   "name": "meta-automation",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Enterprise-grade AI Lead Generation, Social Discovery, and Autonomous Conversational Engagement Engine for Threads, Instagram, LinkedIn, and Facebook.",
   "main": "threads-agent.js",
   "bin": {

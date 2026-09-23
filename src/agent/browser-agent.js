@@ -558,19 +558,24 @@ class BrowserAgent {
         }
       }
 
+      // Determine final state: VERIFIED only if post-condition verification ran and passed
+      // SUBMITTED if no verification block was present (actions ran but outcome not confirmed)
+      const hadVerification = plan.verification && plan.verification.expected;
+      const finalState = hadVerification ? ACTION_STATES.VERIFIED : ACTION_STATES.SUBMITTED;
+
       telemetry.record({
         correlationId,
         platform: this.platform,
         action: "PLAN_COMPLETE",
-        state: ACTION_STATES.VERIFIED,
-        verified: true,
+        state: finalState,
+        verified: hadVerification,
         targetId,
         pageUrl: this.page.url()
       });
 
       return {
         success: true,
-        state: ACTION_STATES.VERIFIED,
+        state: finalState,
         correlationId,
         results
       };

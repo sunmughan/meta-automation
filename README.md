@@ -1,6 +1,6 @@
 # Meta Automation 🚀
 
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg?style=for-the-badge)](https://github.com/sunmughan/meta-automation/releases)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android%20Termux-blueviolet.svg?style=for-the-badge)](#-1-click-native-installers--cross-platform-runners)
 [![Omnichannel](https://img.shields.io/badge/Omnichannel-Threads%20%7C%20LinkedIn%20%7C%20Facebook-success.svg?style=for-the-badge)](#-core-capabilities)
 [![Browsers](https://img.shields.io/badge/Browsers-Chrome%20%7C%20Edge%20%7C%20Brave%20%7C%20Chromium-critical.svg?style=for-the-badge)](#launching-the-browser-in-cdp-mode)
@@ -11,13 +11,27 @@
 
 **Meta Automation** is an enterprise-grade omnichannel autonomous social discovery, AI lead generation, and conversational engagement engine designed for **Threads**, **LinkedIn**, and **Facebook** (with Instagram DM support).
 
-Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds, executive networks, and search queries across all three platforms simultaneously. It passes every discovered interaction directly to the **MiniMax M3 AI Cognitive Brain** (`MiniMax-M3`) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages inbound/outbound sales pipelines — all while running through your authenticated browser session with MiniMax M3 for AI reasoning.
+Engineered by **[CodeAir Software Solutions](https://www.codeair.tech)**, this engine continuously scans platform feeds, executive networks, and search queries across all three platforms simultaneously. It passes every discovered interaction directly to the multi-tier AI reasoning pipeline (Freebuff / DeepSeek / MiniMax M3 with zero-token local Gemini 3.8 Flash failover) for deep semantic reasoning, grounds decisions in dynamic knowledge base contracts, synthesizes hyper-personalized contextual responses, renders Stripe/Linear-grade graphical cards & carousel decks, and manages inbound/outbound sales pipelines — all while running directly through your authenticated browser session via Chrome DevTools Protocol (CDP).
 
 ---
 
-## 🌟 Key Architectural Highlights (v1.6.0)
+## 🌟 Key Architectural Highlights (v1.7.0)
 
-### 1. Agentic Browser Controller Architecture (v1.6.0)
+### 1. Multi-Tier AI Fallback & Self-Healing Circuit-Breaker (v1.7.0)
+- **Multi-Provider Priority Routing**: Seamlessly orchestrates inference requests across OpenAI-compatible endpoints (Freebuff, DeepSeek, Groq, Ollama), **MiniMax M3** (`MiniMax-M3`), and an infallible local **Gemini 3.8 Flash** session.
+- **15-Minute Dynamic Circuit-Breaker**: Automatically traps API quota exhaustion (e.g. MiniMax code 2067) or endpoint 404s, muting the failing provider for 15 minutes and immediately cascading inference down to the next tier without interrupting live browser automation cycles.
+- **Robust JSON Normalization**: Enhanced stream cleaning removes trailing commas and markdown fence artifacts before schema parsing, eliminating AI syntax errors on complex post payloads.
+
+### 2. Real-Time Recency & Freshness Guard (`isPostFresh`) (v1.7.0)
+- **Strict 36-Hour Recency Verification**: Enforces `< 36h` post age constraints across Threads, Facebook, and LinkedIn feeds and search streams.
+- **Stale Post Demotion & Quarantine**: Posts exceeding 36 hours receive an automatic `-5000` priority penalty and are marked `IGNORED`, preventing the agent from engaging with outdated discussions or historical posts.
+
+### 3. Sequential Multi-Platform Pipeline Mode (v1.7.0)
+- **Unified Pipeline Execution**: Running `node threads-agent.js run --once` executes all three platforms in visible sequential rotation:
+  $$\textbf{Threads} \longrightarrow \textbf{Facebook} \longrightarrow \textbf{LinkedIn}$$
+- **Live Out-of-Composer Verification**: Every comment and message submission is verified by inspecting the live DOM outside the composer container, ensuring zero hallucinated actions.
+
+### 4. Agentic Browser Controller Architecture
 Operates with the live browser DOM as the absolute source of truth:
 $$\text{AI Reasoning} \longrightarrow \text{Live Browser State} \longrightarrow \text{Semantic Action} \longrightarrow \text{Real Browser Execution} \longrightarrow \text{Post-Condition Verification} \longrightarrow \text{Structured Telemetry}$$
 - **Browser Session Isolation & User-Controlled Security**: Connects over Chrome DevTools Protocol (`CDP` port 9222) to your existing, logged-in browser session (Chrome, Edge, Brave, Chromium). Eliminates external API deprecations, sandbox restrictions, SMS 2FA hurdles, and account bans.
