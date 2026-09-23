@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const CONFIG = require("../../../config");
-const { generateCoverLetter, qualifyOpportunity } = require("../ai/job-ai");
+const { generateCoverLetter, qualifyOpportunity, verifyApplicationSubmission } = require("../ai/job-ai");
 const JobAgentRunner = require("../browser/job-runner");
 const { generateApplicationDocuments } = require("../documents/document-engine");
 const { getPlatform } = require("../platform-registry");
@@ -125,12 +125,35 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     return { status: result.status || "FAILED", application, result };
   }
 
+  const verificationSnapshot = result.snapshot || await browserAgent.captureLiveSnapshot("application-post-submit-verification");
+  const verification = await verifyApplicationSubmission({
+    platform,
+    opportunity,
+    snapshot: verificationSnapshot
+  }, aiRuntime);
+
+  if (!verification.verified) {
+    jobState.upsertApplication({
+      ...application,
+      status: "UNVERIFIED",
+      reason: verification.evidence || "Submission was not visibly confirmed"
+    });
+    jobState.updateMetric("manualAction");
+    return {
+      status: "UNVERIFIED",
+      application,
+      verification,
+      result
+    };
+  }
+
   const submittedAt = new Date().toISOString();
   jobState.upsertApplication({
     ...application,
     status: "VERIFIED",
     submittedAt,
     verifiedAt: submittedAt,
+    verificationEvidence: verification.evidence,
     correlationId: result.correlationId
   });
   jobState.upsertOpportunity({
