@@ -1043,7 +1043,7 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   console.log(`  Approved   : ${approvedServices.length} capabilities`);
   console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
   console.log(`  Exec Mode  : ${executionMode.toUpperCase()} (${executionMode === "concurrent" ? "Parallel Multi-Tab Continuous" : "Sequential Single-Tab Rotation"})`);
-  console.log(`  AI Engine  : Live MiniMax M3 IDE Gemini 3.8 Flash High`);
+  console.log(`  AI Engine  : Live MiniMax M3 IDE MiniMax M3`);
   console.log("==============================================\n");
   console.log("Your brand knowledge base is saved in ./knowledge/");
   console.log("All qualification engines, response generators, and visual posters");
