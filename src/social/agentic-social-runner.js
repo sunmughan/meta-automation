@@ -197,7 +197,63 @@ class AgenticSocialRunner {
         continue;
       }
 
-      const businessAction = String(plan.businessAction || "").toUpperCase();,      if (SIDE_EFFECT_ACTIONS.has(businessAction)) {,        const behavior = this.userProfile?.behavior || {};,        const controls = { LIKE: "autoLike", COMMENT: "autoComment", REPLY: "autoReply", DM: "autoDm", FOLLOW: "autoFollow", CONNECT: "autoConnect", PUBLISH: "autoPublish" };,        const control = controls[businessAction];,        if (control && behavior[control] !== true) {,          previous.push({ iteration, result: "CONTROL_BLOCKED", reason: control + " is disabled in onboarding", businessAction });,          continue;,        },        if (this.userProfile?.safety?.dryRun === true) {,          previous.push({ iteration, result: "DRY_RUN_BLOCKED", reason: "Dry-run mode blocks side effects", businessAction });,          continue;,        },        if (this.userProfile?.safety?.approval === true) {,          previous.push({ iteration, result: "APPROVAL_REQUIRED", reason: "Approval mode requires human approval", businessAction });,          continue;,        },        const allowed = actionPolicy.canPerform(businessAction, platform);,        if (!allowed.allowed) {,          previous.push({ iteration, result: "RATE_LIMITED", reason: allowed.reason, businessAction });,          continue;,        },      },,      try {
+      const businessAction = String(plan.businessAction || "").toUpperCase();
+      if (SIDE_EFFECT_ACTIONS.has(businessAction)) {
+        const behavior = this.userProfile?.behavior || {};
+        const controls = {
+          LIKE: "autoLike",
+          COMMENT: "autoComment",
+          REPLY: "autoReply",
+          DM: "autoDm",
+          FOLLOW: "autoFollow",
+          CONNECT: "autoConnect",
+          PUBLISH: "autoPublish"
+        };
+        const control = controls[businessAction];
+
+        if (control && behavior[control] !== true) {
+          previous.push({
+            iteration,
+            result: "CONTROL_BLOCKED",
+            reason: control + " is disabled in onboarding",
+            businessAction
+          });
+          continue;
+        }
+
+        if (this.userProfile?.safety?.dryRun === true) {
+          previous.push({
+            iteration,
+            result: "DRY_RUN_BLOCKED",
+            reason: "Dry-run mode blocks side effects",
+            businessAction
+          });
+          continue;
+        }
+
+        if (this.userProfile?.safety?.approval === true) {
+          previous.push({
+            iteration,
+            result: "APPROVAL_REQUIRED",
+            reason: "Approval mode requires human approval",
+            businessAction
+          });
+          continue;
+        }
+
+        const allowed = actionPolicy.canPerform(businessAction, platform);
+        if (!allowed.allowed) {
+          previous.push({
+            iteration,
+            result: "RATE_LIMITED",
+            reason: allowed.reason,
+            businessAction
+          });
+          continue;
+        }
+      }
+
+      try {
         agent.validatePlan({ actions: [action] });
         const before = snapshot;
         const result = await agent.executePlan({ actions: [action] }, correlation);
