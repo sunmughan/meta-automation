@@ -977,6 +977,9 @@ async function commandOnboard(options = {}) {
     objective: saved.behavior?.objective || "Build genuine business relationships and discover relevant opportunities",
     cta: saved.behavior?.cta || "",
     forbidden: saved.behavior?.forbidden || "",
+    autoLike: saved.behavior?.autoLike ?? false,
+    autoComment: saved.behavior?.autoComment ?? false,
+    autoReply: saved.behavior?.autoReply ?? false,
     autoDm: saved.behavior?.autoDm ?? false,
     autoFollow: saved.behavior?.autoFollow ?? false,
     autoConnect: saved.behavior?.autoConnect ?? false,
@@ -1052,6 +1055,9 @@ async function commandOnboard(options = {}) {
       behavior.objective = await ask("Primary objective", behavior.objective);
       behavior.cta = await ask("Preferred CTA (optional)", behavior.cta);
       behavior.forbidden = await ask("Topics / claims to avoid (optional)", behavior.forbidden);
+      behavior.autoLike = await yesNo("Allow autonomous likes?", behavior.autoLike);
+      behavior.autoComment = await yesNo("Allow autonomous comments?", behavior.autoComment);
+      behavior.autoReply = await yesNo("Allow autonomous replies?", behavior.autoReply);
       behavior.autoDm = await yesNo("Allow autonomous DM replies?", behavior.autoDm);
       behavior.autoFollow = await yesNo("Allow autonomous follows?", behavior.autoFollow);
       behavior.autoConnect = await yesNo("Allow autonomous connection requests?", behavior.autoConnect);
@@ -1169,6 +1175,9 @@ async function commandOnboard(options = {}) {
   console.log("Execution  : " + browser.mode);
   console.log("Dry Run    : " + (safety.dryRun ? "ON" : "OFF"));
   console.log("Approval   : " + (safety.approval ? "ON" : "OFF"));
+  console.log("Auto Likes : " + (behavior.autoLike ? "ON" : "OFF"));
+  console.log("Auto Comments: " + (behavior.autoComment ? "ON" : "OFF"));
+  console.log("Auto Replies: " + (behavior.autoReply ? "ON" : "OFF"));
   console.log("Auto DMs   : " + (behavior.autoDm ? "ON" : "OFF"));
   console.log("Auto Follow: " + (behavior.autoFollow ? "ON" : "OFF"));
   console.log("Auto Connect: " + (behavior.autoConnect ? "ON" : "OFF"));
