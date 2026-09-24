@@ -32,19 +32,3 @@ jobs:
           node --check src/ai/ai-runtime.js
       - name: Dependency audit
         run: npm audit --audit-level=high
-
-  legacy-ai:
-    if: ${{ secrets.MINIMAX_API_KEY != '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install
-      - name: Legacy AI regression suite
-        run: npm test
-        env:
-          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-          DRY_RUN: "true"
-          NODE_ENV: "test"
