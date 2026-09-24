@@ -31,9 +31,14 @@ fi
 # 2. Ensure Chromium CDP is active on port 9222
 echo "[2/5] Verifying Chromium CDP on port 9222..."
 if ! curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
-    echo "🌐 Launching Chromium with remote debugging :9222..."
+    echo "🌐 Launching Termux Chromium with remote debugging :9222..."
     mkdir -p "$HOME/.config/chromium"
-    nohup chromium \
+    CHROMIUM_BIN="$(command -v chromium-browser 2>/dev/null || command -v chromium 2>/dev/null || true)"
+    if [ -z "$CHROMIUM_BIN" ]; then
+        echo "❌ Termux Chromium executable not found. Expected chromium-browser or chromium."
+        exit 1
+    fi
+    nohup "$CHROMIUM_BIN" \
         --remote-debugging-port=9222 \
         --user-data-dir="$HOME/.config/chromium" \
         --no-sandbox \
@@ -51,12 +56,15 @@ else
     node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
 fi
 
-# 3. Check MiniMax AI configuration
- echo "[3/5] Checking MiniMax M3 configuration..."
-if [ -n "${MINIMAX_API_KEY:-}" ]; then
-    echo "✅ MiniMax API key is available in the environment."
+# 3. Check primary Antigravity AI runtime
+echo "[3/5] Checking Antigravity agentic AI configuration..."
+if command -v agy >/dev/null 2>&1; then
+    echo "✅ Antigravity CLI detected: $(command -v agy)"
+    echo "   Antigravity is the PRIMARY agentic AI runtime."
 else
-    echo "ℹ️  MiniMax API key will be loaded from the project .env file at startup."
+    echo "❌ Antigravity CLI (agy) is not available in PATH."
+    echo "   Run: command -v agy"
+    echo "   The automation will not silently switch the primary runtime to MiniMax."
 fi
 
 # 4. Check Authentication
