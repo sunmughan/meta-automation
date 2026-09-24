@@ -23,6 +23,8 @@ async function main() {
     maxIterations: Number(options.iterations || process.env.SOCIAL_AGENT_MAX_ITERATIONS || 8)
   });
 
+  if (options.resume) runner.guard.resume();
+
   const results = await runner.runContinuous({
     once: Boolean(options.once),
     platform: options.platform,
