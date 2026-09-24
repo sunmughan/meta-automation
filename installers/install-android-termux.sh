@@ -108,6 +108,11 @@ fi
 
 node "$SCRIPT_DIR/scripts/setup-job-engine.js"
 
+# setup-job-engine configures the job engine independently; social/agentic runtime remains Antigravity-first.
+sed -i 's|^AI_PROVIDER=.*|AI_PROVIDER=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
+sed -i 's|^AI_RUNTIME=.*|AI_RUNTIME=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
+sed -i 's|^AI_MODEL=.*|AI_MODEL=Gemini 3.8 Flash|' "$SCRIPT_DIR/.env" 2>/dev/null || true
+
 # 9. Create 1-Tap Launcher in Termux Home & Termux Widget
 echo "[8/8] Creating 1-tap launchers for Android..."
 mkdir -p "$HOME/.shortcuts"
