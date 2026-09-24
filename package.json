@@ -28,7 +28,7 @@
     "jobs:google": "node job-agent.js google",
     "desktop:layout": "node scripts/layout-cdp-windows.js",
     "agentic:social": "node agentic-social.js",
-    "test:agentic": "node tests/agentic-v2.test.js"
+    "test:agentic": "node tests/agentic-v2.test.js && node tests/onboarding-v2.test.js"
   },
   "repository": {
     "type": "git",
