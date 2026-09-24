@@ -77,7 +77,21 @@ class UniversalBrowserAgent {
           });
         }
         if (role === "dialog" || el.getAttribute("aria-modal") === "true") dialogs.push({ path: item.path, name: nameOf(el), text: cleanText(text, 1000) });
-        if ((tag === "article" || role === "article") && cards.length < cardLimit) cards.push({ path: item.path, text: cleanText(text, 1200) });
+        if ((tag === "article" || role === "article") && cards.length < cardLimit) {
+          const descendantLinks = [];
+          for (const linked of all) {
+            if (linked.path.length <= item.path.length) continue;
+            if (!item.path.every((v, i) => linked.path[i] === v)) continue;
+            if (linked.el.tagName.toLowerCase() === "a" && descendantLinks.length < 8) {
+              descendantLinks.push({
+                text: cleanText(linked.el.innerText || linked.el.textContent || linked.el.getAttribute("aria-label") || "", 120),
+                href: cleanText(linked.el.getAttribute("href") || "", 500)
+              });
+            }
+          }
+          const authorLink = descendantLinks.find(link => link.text);
+          cards.push({ path: item.path, text: cleanText(text, 1200), author: authorLink?.text || "", hrefs: descendantLinks });
+        }
         if (tag === "a") links.push({ path: item.path, text: cleanText(el.innerText || el.textContent || "", 160), href: cleanText(el.getAttribute("href") || "", 500) });
       }
       return { url: window.location.href, title: document.title || "", bodyText: cleanText(document.body?.innerText || "", 16000), interactiveElements: interactive, visibleCards: cards, activeDialogs: dialogs, visibleLinks: links.slice(0, 200), capturedAt: new Date().toISOString() };
