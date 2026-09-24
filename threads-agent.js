@@ -1101,7 +1101,8 @@ async function commandOnboard(options = {}) {
   profiles.whatsapp = validUrl(profiles.whatsapp, "WhatsApp URL");
   company.website = validUrl(company.website, "Company website");
   company.product = validUrl(company.product, "Product URL");
-  profiles.threads = String(profiles.threads || "").trim();\n  while (profiles.threads.startsWith("@")) profiles.threads = profiles.threads.slice(1);
+  profiles.threads = String(profiles.threads || "").trim();
+  while (profiles.threads.startsWith("@")) profiles.threads = profiles.threads.slice(1);
   company.approved = parseList(company.approved);
   company.excluded = parseList(company.excluded);
   browser.platforms = parseList(browser.platforms).filter(item => ["threads","facebook","linkedin"].includes(item.toLowerCase())).map(item => item.toLowerCase());
