@@ -1081,8 +1081,9 @@ async function commandOnboard(options = {}) {
       safety.connects = Number(await ask("Max connections/hour", String(safety.connects)));
       safety.publishes = Number(await ask("Max publishes/hour", String(safety.publishes)));
       safety.scanSeconds = Number(await ask("Scan interval seconds", String(safety.scanSeconds)));
-      options.aiProvider = askChoice(await ask("AI provider (minimax/openai)", CONFIG.AI_PROVIDER), ["minimax","openai"], "minimax");
-      options.minimaxModel = await ask("AI model", CONFIG.MODEL);
+      options.aiProvider = askChoice(await ask("Primary AI provider (antigravity/minimax/openai)", CONFIG.AI_PROVIDER), ["antigravity","minimax","openai"], "antigravity");
+      options.aiModel = await ask("AI model (Antigravity uses your authenticated account)", CONFIG.MODEL);
+      if (options.aiProvider === "antigravity") options.antigravityModel = await ask("Antigravity model (blank = provider default)", process.env.ANTIGRAVITY_MODEL || "");
       if (options.aiProvider === "minimax") options.minimaxApiKey = await ask("MiniMax API key (blank keeps existing)", "");
       if (options.aiProvider === "openai") {
         options.openaiApiKey = await ask("OpenAI-compatible API key (blank keeps existing)", "");
@@ -1117,7 +1118,7 @@ async function commandOnboard(options = {}) {
   if (!Number.isFinite(safety.publishes) || safety.publishes < 0) safety.publishes = 2;
   if (!Number.isFinite(safety.scanSeconds) || safety.scanSeconds < 60) safety.scanSeconds = 300;
 
-  const profile = { identity, profiles, company, behavior, browser, safety, ai: { provider: options.aiProvider || CONFIG.AI_PROVIDER, model: options.minimaxModel || CONFIG.MODEL } };
+  const profile = { identity, profiles, company, behavior, browser, safety, ai: { provider: options.aiProvider || CONFIG.AI_PROVIDER, model: options.aiModel || CONFIG.MODEL } };
   fs.mkdirSync(privateDir, { recursive: true });
   fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2) + "\n", "utf8");
 
@@ -1162,6 +1163,7 @@ async function commandOnboard(options = {}) {
   envContent = upsertEnv(envContent, "AI_PROVIDER", profile.ai.provider);
   envContent = upsertEnv(envContent, "AI_RUNTIME", profile.ai.provider);
   envContent = upsertEnv(envContent, "AI_MODEL", profile.ai.model);
+  if (options.antigravityModel !== undefined) envContent = upsertEnv(envContent, "ANTIGRAVITY_MODEL", options.antigravityModel);
   if (options.minimaxApiKey) envContent = upsertEnv(envContent, "MINIMAX_API_KEY", options.minimaxApiKey);
   if (options.openaiApiKey) envContent = upsertEnv(envContent, "OPENAI_API_KEY", options.openaiApiKey);
   if (options.openaiBaseUrl) envContent = upsertEnv(envContent, "OPENAI_BASE_URL", options.openaiBaseUrl);
