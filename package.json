@@ -12,7 +12,7 @@
     "onboard": "node threads-agent.js onboard",
     "configure": "node threads-agent.js onboard",
     "start": "node scripts/desktop-runner.js",
-    "start:social": "node threads-agent.js run",
+    "start:social": "node agentic-social.js",
     "auth": "node threads-agent.js auth",
     "scan": "node threads-agent.js scan",
     "analyze": "node threads-agent.js analyze",
@@ -26,7 +26,9 @@
     "jobs:run": "node job-agent.js run",
     "jobs:status": "node job-agent.js status",
     "jobs:google": "node job-agent.js google",
-    "desktop:layout": "node scripts/layout-cdp-windows.js"
+    "desktop:layout": "node scripts/layout-cdp-windows.js",
+    "agentic:social": "node agentic-social.js",
+    "test:agentic": "node tests/agentic-v2.test.js"
   },
   "repository": {
     "type": "git",

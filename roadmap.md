@@ -111,3 +111,17 @@ Never commit `.env`, browser session data, the base resume, candidate profile st
 ## Verification status
 
 Repository changes have been statically inspected through GitHub. A real end-to-end execution still requires the user's machine with Node dependencies, a valid MiniMax API key, a working browser/CDP session and the required marketplace authentication. No live external execution is claimed from this environment.
+
+
+## Agentic Social V2
+
+The social execution plane now has a universal browser agent, cross-platform security gate, relationship lifecycle state, AI next-best-action planning, visual recovery evidence, and omnichannel content generation.
+
+The intended execution contract is:
+OBSERVE -> SECURITY CHECK -> IDENTITY CONTEXT -> NEXT BEST ACTION -> EXECUTE ONE ACTION -> FRESH OBSERVE -> AI VERIFY -> UPDATE RELATIONSHIP
+
+The V2 path does not depend on platform-specific CSS selectors, XPath expressions, coordinate tables, or regex-based UI decisions.
+
+The current repository contains both the mature legacy platform adapters and the new universal agentic plane. `npm run start:social` and `npm run agentic:social` use the V2 plane. Legacy platform commands remain available for compatibility.
+
+The repository does not claim live E2E verification from GitHub alone. Run `npm run test:agentic` locally first, then exercise each platform with a real authenticated browser/CDP session. The multimodal recovery bridge uses the official Antigravity Interactions API when `GEMINI_API_KEY` is configured; Google documents image input for the Antigravity agent and currently lists Gemini 3.8 Flash as the default model. citeturn333813search0turn333813search6

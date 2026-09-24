@@ -540,3 +540,24 @@ npm run jobs:profile
 npm run jobs:run
 npm run jobs:status
 ```
+
+
+## 🤖 Agentic Social V2
+
+The V2 social runtime is a separate end-to-end execution plane for Threads, Facebook, and LinkedIn.
+
+The execution contract is: Live DOM observation -> semantic browser snapshot -> security gate -> identity and relationship context -> AI next-best-action -> AI execution plan -> one browser action -> fresh observation -> AI evidence verification -> relationship state update.
+
+V2 deliberately does not use platform-specific selectors, XPath, coordinate tables, or regex-based interaction decisions in its execution path. Every interactive target is selected from the current live semantic snapshot by element ID. When semantic recovery is insufficient, the runtime captures visual evidence and asks a multimodal model to describe the missing target; it then re-observes the live DOM before acting.
+
+Security challenges, login gates, identity checks, or uncertain security states pause the entire social plane and require manual intervention. The runner never solves CAPTCHAs or bypasses security controls.
+
+Agentic Social commands:
+`npm run test:agentic`
+`npm run agentic:social -- --once`
+`npm run agentic:social -- --platform=threads --once`
+`npm run agentic:social -- --platform=facebook --once`
+`npm run agentic:social -- --platform=linkedin --once`
+`npm run agentic:social -- --goal="discover relevant software buyers and contribute useful public responses"`
+
+The V2 relationship model is cross-platform. A person can accumulate touchpoints from Threads, Facebook, and LinkedIn under one lifecycle record instead of being treated as three unrelated leads.

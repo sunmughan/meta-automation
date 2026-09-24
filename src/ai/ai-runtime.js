@@ -116,30 +116,33 @@ class AiRuntime {
   }
 
   cleanAndParseJson(text) {
-    if (!text || typeof text !== "string") {
-      throw new Error("Empty or invalid AI output");
-    }
-
+    if (!text || typeof text !== "string") throw new Error("Empty or invalid AI output");
     let cleaned = text.trim();
-    // Strip markdown code fences if present
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-
-    try {
-      return JSON.parse(cleaned);
-    } catch (e) {
-      // Find outermost JSON object
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      if (start !== -1 && end !== -1 && end > start) {
-        let slice = cleaned.slice(start, end + 1);
-        slice = slice.replace(/,\s*([\]}])/g, "$1");
-        return JSON.parse(slice);
-      }
-      throw new Error(`JSON parsing failed: ${e.message}. Raw: ${cleaned.slice(0, 150)}...`);
+    const fence = String.fromCharCode(96).repeat(3);
+    if (cleaned.startsWith(fence)) cleaned = cleaned.slice(fence.length).trim();
+    if (cleaned.endsWith(fence)) cleaned = cleaned.slice(0, -fence.length).trim();
+    try { return JSON.parse(cleaned); } catch (_) {}
+    let start = -1;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    const quote = String.fromCharCode(34);
+    for (let i = 0; i < cleaned.length; i += 1) {
+      const ch = cleaned[i];
+      if (escaped) { escaped = false; continue; }
+      if (ch === "\\") { escaped = true; continue; }
+      if (ch === quote) { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") { if (depth === 0) start = i; depth += 1; }
+      else if (ch === "}") { depth -= 1; if (depth === 0 && start >= 0) {
+        try { return JSON.parse(cleaned.slice(start, i + 1)); } catch (_) {}
+      }}
     }
+    throw new Error("JSON parsing failed. Raw: " + cleaned.slice(0, 150));
   }
 
   /**
+   * Invokes MiniMax  /**
    * Invokes MiniMax M3 through the official HTTP API.
    * Uses native fetch (Node >=18), so no additional SDK dependency is required.
    */
@@ -303,27 +306,37 @@ class AiRuntime {
       const { execSync } = require("child_process");
       const fs = require("fs");
       const ss = execSync("ss -tulpn 2>/dev/null", { encoding: "utf8" });
+      const nul = String.fromCharCode(0);
       for (const line of ss.split("\n")) {
-        if (line.includes("language_server")) {
-          const portMatch = line.match(/:(\d+)\s+/);
-          const pidMatch = line.match(/pid=(\d+)/);
-          if (portMatch && pidMatch) {
-            try {
-              const cmdline = fs.readFileSync("/proc/" + pidMatch[1] + "/cmdline", "utf8");
-              const tokenMatch = cmdline.match(/--csrf_token\x00([a-zA-Z0-9-]+)/) || cmdline.match(/--csrf_token\s+([a-zA-Z0-9-]+)/);
-              if (tokenMatch) {
-                this._cachedSession = { host: "127.0.0.1", port: parseInt(portMatch[1], 10), token: tokenMatch[1] };
-                return this._cachedSession;
-              }
-            } catch (e) {}
-          }
-        }
+        if (!line.includes("language_server")) continue;
+        const afterColon = line.lastIndexOf(":");
+        if (afterColon < 0) continue;
+        const port = Number(line.slice(afterColon + 1).split(" ")[0].trim());
+        if (!Number.isInteger(port) || port <= 0) continue;
+        const pidKey = "pid=";
+        const pidStart = line.indexOf(pidKey);
+        if (pidStart < 0) continue;
+        const pid = Number(line.slice(pidStart + pidKey.length).split(",")[0].split(")")[0].trim());
+        if (!Number.isInteger(pid) || pid <= 0) continue;
+        try {
+          const cmdline = fs.readFileSync("/proc/" + pid + "/cmdline", "utf8");
+          const tokenKey = "--csrf_token";
+          const tokenStart = cmdline.indexOf(tokenKey);
+          if (tokenStart < 0) continue;
+          let token = cmdline.slice(tokenStart + tokenKey.length);
+          while (token.startsWith(nul) || token.startsWith(" ")) token = token.slice(1);
+          token = token.split(nul)[0].split(" ")[0].trim();
+          if (!token) continue;
+          this._cachedSession = { host: "127.0.0.1", port, token };
+          return this._cachedSession;
+        } catch (_) {}
       }
-    } catch (e) {}
+    } catch (_) {}
     return null;
   }
 
   /**
+   * Invokes Gemini 3.8 Flash  /**
    * Invokes Gemini 3.8 Flash via the local Antigravity Language Server session.
    * Completely free, zero external API keys needed, zero rate limits.
    */
@@ -417,6 +430,43 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
    * Internal execution with retry backoff and infallible multi-tier fallback.
    * Priority: Configured Primary -> Secondary -> Local Antigravity Gemini 3.8 Flash.
    */
+  async callVision(prompt, imagePath, timeoutMs = 120000) {
+    const fs = require("fs");
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not configured for multimodal recovery");
+    if (!imagePath || !fs.existsSync(imagePath)) throw new Error("Vision image evidence file is missing");
+    const base64Image = fs.readFileSync(imagePath, { encoding: "base64" });
+    const body = {
+      agent: process.env.ANTIGRAVITY_AGENT || "antigravity-preview-09-2026",
+      input: [
+        { type: "text", text: prompt },
+        { type: "image", data: base64Image, mime_type: "image/png" }
+      ],
+      agent_config: { type: "antigravity", model: process.env.ANTIGRAVITY_VISION_MODEL || "gemini-3.8-flash" },
+      environment: "remote"
+    };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); } catch (_) { throw new Error("Vision endpoint returned non-JSON HTTP " + response.status); }
+      if (!response.ok) throw new Error("Vision endpoint HTTP " + response.status + ": " + (data?.error?.message || "request failed"));
+      const output = data?.output_text || data?.output?.[0]?.text || data?.response || "";
+      if (!String(output).trim()) throw new Error("Vision endpoint returned no output");
+      return this.cleanAndParseJson(String(output));
+    } catch (err) {
+      if (err.name === "AbortError") throw new Error("Vision request timed out after " + timeoutMs + "ms");
+      throw err;
+    } finally { clearTimeout(timer); }
+  }
+
   async executeAiCall(prompt, options = {}) {
     const provider = (CONFIG.AI_PROVIDER || "minimax").toLowerCase();
     const baseRetries = options.retries !== undefined
