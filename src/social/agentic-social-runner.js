@@ -239,6 +239,7 @@ class AgenticSocialRunner {
         }
 
         if (verification?.verified && businessAction) {
+          actionPolicy.record(businessAction, platform, nextAction?.personId || correlation, { goal });
           const personId = nextAction?.personId;
           if (personId) {
             relationshipEngine.recordTouchpoint(personId, {
