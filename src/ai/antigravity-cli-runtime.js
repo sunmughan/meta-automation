@@ -27,7 +27,7 @@ function callAntigravityCli(prompt, options = {}) {
   const binary = process.env.ANTIGRAVITY_CLI_BIN || "agy";
   const args = [
     "-p", String(prompt),
-    "--output-format", "json",
+    "--output-format", "text",
     "--print-timeout", Math.max(1, Math.ceil(timeoutMs / 1000)) + "s"
   ];
   if (process.env.ANTIGRAVITY_MODEL) args.push("--model", process.env.ANTIGRAVITY_MODEL);
