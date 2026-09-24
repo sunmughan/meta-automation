@@ -7,6 +7,7 @@
 
 const CONFIG = require("../../config");
 const logger = require("../logging/logger");
+const { callAntigravityCli } = require("./antigravity-cli-runtime");
 
 /**
  * In-memory asynchronous queue and concurrency worker for MiniMax reasoning calls.
@@ -109,8 +110,8 @@ class AiQueue {
 
 class AiRuntime {
   constructor() {
-    this.model = CONFIG.MODEL || "MiniMax-M3";
-    const defaultConcurrency = CONFIG.AI_PROVIDER === "minimax" ? 1 : 3;
+    this.model = CONFIG.MODEL || "Gemini 3.8 Flash";
+    const defaultConcurrency = CONFIG.AI_PROVIDER === "antigravity" ? 1 : (CONFIG.AI_PROVIDER === "minimax" ? 1 : 3);
     const maxConcurrency = Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || defaultConcurrency);
     this.queue = new AiQueue(maxConcurrency);
   }
@@ -428,6 +429,21 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
   }
 
   /**
+   * Primary Antigravity runtime. Uses the locally authenticated `agy` CLI first.
+   * Falls back to the existing local Antigravity language-server bridge only when
+   * the CLI is unavailable or fails, never to an external API by default.
+   */
+  async callAntigravity(prompt, timeoutMs = CONFIG.ANTIGRAVITY_TIMEOUT_MS) {
+    try {
+      const raw = await callAntigravityCli(prompt, { timeoutMs, cwd: CONFIG.ROOT_DIR });
+      return this.cleanAndParseJson(raw);
+    } catch (cliErr) {
+      logger.warn("Antigravity CLI unavailable/failed; trying local Language Server bridge: " + cliErr.message);
+      return this.callAntigravityGemini(prompt, timeoutMs);
+    }
+  }
+
+  /**
    * Internal execution with retry backoff and infallible multi-tier fallback.
    * Priority: Configured Primary -> Secondary -> Local Antigravity Gemini 3.8 Flash.
    */
@@ -470,11 +486,11 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
   }
 
   async executeAiCall(prompt, options = {}) {
-    const provider = (CONFIG.AI_PROVIDER || "minimax").toLowerCase();
+    const provider = (CONFIG.AI_PROVIDER || "antigravity").toLowerCase();
     const baseRetries = options.retries !== undefined
       ? options.retries
-      : (provider === "minimax" ? (CONFIG.MINIMAX_MAX_RETRIES ?? 2) : (CONFIG.OPENAI_MAX_RETRIES ?? 2));
-    const timeoutMs = options.timeoutMs || (provider === "minimax" ? CONFIG.MINIMAX_TIMEOUT_MS : CONFIG.OPENAI_TIMEOUT_MS) || 90000;
+      : (provider === "minimax" ? (CONFIG.MINIMAX_MAX_RETRIES ?? 2) : (provider === "antigravity" || provider === "gemini" ? 1 : (CONFIG.OPENAI_MAX_RETRIES ?? 2)));
+    const timeoutMs = options.timeoutMs || (provider === "minimax" ? CONFIG.MINIMAX_TIMEOUT_MS : (provider === "antigravity" || provider === "gemini" ? CONFIG.ANTIGRAVITY_TIMEOUT_MS : CONFIG.OPENAI_TIMEOUT_MS)) || 90000;
     const maxRetries = baseRetries + 1;
     const isRetryable = (err) => {
       const status = Number(err?.status || 0);
@@ -492,7 +508,7 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
         const isMiniMaxUsable = !this._minimaxDisabledUntil || now >= this._minimaxDisabledUntil;
 
         if (provider === "antigravity" || provider === "gemini") {
-          return await this.callAntigravityGemini(prompt, timeoutMs);
+          return await this.callAntigravity(prompt, timeoutMs);
         } else if ((provider === "openai" || provider === "freebuff" || provider === "deepseek" || provider === "custom") && isOpenAiUsable) {
           try {
             return await this.callOpenAiCompatible(prompt, timeoutMs);
