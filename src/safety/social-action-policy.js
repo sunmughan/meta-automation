@@ -5,7 +5,7 @@
 const stateStore = require("../storage/state-store");
 
 const DEFAULT_LIMITS = Object.freeze({
-  COMMENT: 5,
+  LIKE: 30,\n  COMMENT: 5,
   REPLY: 5,
   DM: 5,
   CONNECT: 10,
@@ -16,7 +16,7 @@ const DEFAULT_LIMITS = Object.freeze({
 function limits() {
   return {
     ...DEFAULT_LIMITS,
-    COMMENT: Number(process.env.SOCIAL_MAX_COMMENTS_PER_HOUR || DEFAULT_LIMITS.COMMENT),
+    LIKE: Number(process.env.SOCIAL_MAX_LIKES_PER_HOUR || DEFAULT_LIMITS.LIKE),\n    COMMENT: Number(process.env.SOCIAL_MAX_COMMENTS_PER_HOUR || DEFAULT_LIMITS.COMMENT),
     REPLY: Number(process.env.SOCIAL_MAX_REPLIES_PER_HOUR || DEFAULT_LIMITS.REPLY),
     DM: Number(process.env.SOCIAL_MAX_DMS_PER_HOUR || DEFAULT_LIMITS.DM),
     CONNECT: Number(process.env.SOCIAL_MAX_CONNECTS_PER_HOUR || DEFAULT_LIMITS.CONNECT),
