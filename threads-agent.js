@@ -994,7 +994,8 @@ async function commandOnboard(options = {}) {
   let safety = {
     dryRun: saved.safety?.dryRun ?? true,
     approval: saved.safety?.approval ?? true,
-    likes: Number(saved.safety?.likes || 30),\n    comments: Number(saved.safety?.comments || 5),
+    likes: Number(saved.safety?.likes || 30),
+    comments: Number(saved.safety?.comments || 5),
     replies: Number(saved.safety?.replies || 5),
     dms: Number(saved.safety?.dms || 5),
     follows: Number(saved.safety?.follows || 10),
@@ -1072,7 +1073,8 @@ async function commandOnboard(options = {}) {
       console.log("\n--- 6/6 · SAFETY & AI ---");
       safety.dryRun = await yesNo("Start in DRY RUN mode?", safety.dryRun);
       safety.approval = await yesNo("Require approval before side effects?", safety.approval);
-      safety.likes = Number(await ask("Max likes/hour", String(safety.likes)));\n      safety.comments = Number(await ask("Max comments/hour", String(safety.comments)));
+      safety.likes = Number(await ask("Max likes/hour", String(safety.likes)));
+      safety.comments = Number(await ask("Max comments/hour", String(safety.comments)));
       safety.replies = Number(await ask("Max replies/hour", String(safety.replies)));
       safety.dms = Number(await ask("Max DMs/hour", String(safety.dms)));
       safety.follows = Number(await ask("Max follows/hour", String(safety.follows)));
