@@ -35,7 +35,7 @@ const ALLOWED_ACTIONS = new Set([
 ]);
 
 function cleanText(value, max = 400) {
-  return String(value || "").trim().split(/\s+/).filter(Boolean).join(" ").slice(0, max);
+  return String(value || "").trim().split(" ").filter(Boolean).join(" ").slice(0, max);
 }
 
 function normalized(value) {
