@@ -19,8 +19,12 @@ export DISPLAY="${DISPLAY:-:1}"
 if command -v termux-x11 >/dev/null 2>&1; then
     if ! pgrep -f "termux-x11" >/dev/null; then
         echo "[1/5] Starting Termux:X11 server on display $DISPLAY..."
-        termux-x11 "$DISPLAY" -xstartup "sleep 1" &
-        sleep 2
+        if pgrep -f "termux-x11.*$DISPLAY" >/dev/null 2>&1; then
+            echo "ℹ️  Termux:X11 is already running on $DISPLAY; reusing it."
+        else
+            termux-x11 "$DISPLAY" -xstartup "sleep 1" &
+            sleep 2
+        fi
     else
         echo "[1/5] Termux:X11 server active on $DISPLAY."
     fi
