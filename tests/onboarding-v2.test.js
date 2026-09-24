@@ -34,7 +34,7 @@ const requiredPrompts = [
   "Execution mode",
   "Start in DRY RUN mode?",
   "Require approval before side effects?",
-  "Max comments/hour",
+  "Max likes/hour",\n  "Max comments/hour",
   "Max replies/hour",
   "Max DMs/hour",
   "Max follows/hour",
