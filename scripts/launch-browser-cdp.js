@@ -462,6 +462,7 @@ async function launchBrowser(preference = null) {
 
   const args = [
     `--remote-debugging-port=${CDP_PORT}`,
+    "--remote-debugging-address=127.0.0.1",
     `--user-data-dir=${browser.userDataDir}`,
     "--no-first-run",
     "--no-default-browser-check",
