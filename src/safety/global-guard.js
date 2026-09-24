@@ -73,8 +73,7 @@ class GlobalGuard {
         dialogs: snapshot?.activeDialogs,
         interactiveElements: snapshot?.interactiveElements
       })
-    ].join("
-");
+    ].join("\n");
 
     let result;
     try {
