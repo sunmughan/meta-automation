@@ -27,26 +27,30 @@ pkg update -y || apt update -y
 echo "[2/8] Enabling x11-repo and tur-repo..."
 pkg install -y x11-repo tur-repo || true
 
-# 4. Install Node.js, Chromium, Termux:X11, Git, Tar, Curl, Bash and Pulseaudio
+# 4. Install Node.js, Chromium, Termux:X11, Git, ADB, and browser tooling
 echo "[3/8] Installing Node.js LTS, Chromium, X11, and terminal utilities..."
 pkg install -y \
     nodejs-lts \
     git \
     curl \
+    wget \
+    jq \
     tar \
     bash \
     findutils \
+    procps \
     termux-x11-nightly \
     chromium \
+    android-tools \
     pulseaudio \
     xorg-xauth \
-    procps || true
+    xorg-xdpyinfo || true
 
 echo "✅ Node.js: $(node -v 2>/dev/null || echo 'Installed')"
-echo "✅ Chromium: $(chromium --version 2>/dev/null || echo 'Installed')"
+echo "✅ Chromium: $(chromium-browser --version 2>/dev/null || chromium --version 2>/dev/null || echo 'Installed')"
 
 # 5. Configure MiniMax M3 environment
- echo "[4/8] Preparing MiniMax M3 + job-revenue environment..."
+ echo "[4/8] Preparing Antigravity-first AI + job-revenue environment..."
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
@@ -77,12 +81,31 @@ fi
 
 # Ensure DISPLAY=:1 and localhost CDP in .env
 sed -i 's/^DISPLAY=.*/DISPLAY=:1/' "$SCRIPT_DIR/.env" 2>/dev/null || true
-sed -i 's/^THREADS_CDP_URL=.*/THREADS_CDP_URL=http:\/\/127.0.0.1:9222/' "$SCRIPT_DIR/.env" 2>/dev/null || true
+sed -i 's|^THREADS_CDP_URL=.*|THREADS_CDP_URL=http://127.0.0.1:9222|' "$SCRIPT_DIR/.env" 2>/dev/null || true
+sed -i 's|^AI_PROVIDER=.*|AI_PROVIDER=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
+sed -i 's|^AI_RUNTIME=.*|AI_RUNTIME=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
+sed -i 's|^AI_MODEL=.*|AI_MODEL=Gemini 3.8 Flash|' "$SCRIPT_DIR/.env" 2>/dev/null || true
 
 # 8. Set Executable Permissions
 chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js "$SCRIPT_DIR"/job-agent.js "$SCRIPT_DIR"/start-termux 2>/dev/null || true
 
 # 7. Run the agentic setup after dependencies are available.
+if command -v agy >/dev/null 2>&1; then
+    echo "✅ Antigravity CLI detected: $(command -v agy)"
+else
+    echo "⚠️  Antigravity CLI (agy) was not found in PATH."
+    echo "    Keep your existing authenticated Antigravity installation and add agy to PATH."
+fi
+
+if command -v chromium-browser >/dev/null 2>&1; then
+    echo "✅ Termux Chromium executable: $(command -v chromium-browser)"
+elif command -v chromium >/dev/null 2>&1; then
+    echo "✅ Termux Chromium executable: $(command -v chromium)"
+else
+    echo "❌ Termux Chromium executable was not found after installation."
+    exit 1
+fi
+
 node "$SCRIPT_DIR/scripts/setup-job-engine.js"
 
 # 9. Create 1-Tap Launcher in Termux Home & Termux Widget
