@@ -1,5 +1,9 @@
 name: Agentic Social V2
 
+permissions:
+  contents: read
+  security-events: write
+
 on:
   pull_request:
   push:
@@ -24,6 +28,9 @@ jobs:
 
       - name: Static agentic architecture audit
         run: npm run test:agentic
+
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
 
       - name: Syntax check
         run: |
