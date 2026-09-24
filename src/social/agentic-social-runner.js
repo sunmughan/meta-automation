@@ -14,7 +14,9 @@ const VisualFallback = require("../agent/visual-fallback");
 const NextBestAction = require("../agentic/next-best-action");
 const relationshipEngine = require("../leads/relationship-engine");
 const identityGraph = require("../leads/identity-graph");
-const rateLimiter = require("../safety/rate-limiter");
+const actionPolicy = require("../safety/social-action-policy");
+const fs = require("fs");
+const path = require("path");
 const telemetry = require("../telemetry/action-telemetry");
 const logger = require("../logging/logger");
 
@@ -30,7 +32,7 @@ const PLATFORM_ORIGINS = {
   linkedin: "https://www.linkedin.com"
 };
 
-const SIDE_EFFECT_ACTIONS = new Set(["COMMENT", "REPLY", "DM", "CONNECT", "FOLLOW", "PUBLISH"]);
+const SIDE_EFFECT_ACTIONS = new Set(["LIKE", "COMMENT", "REPLY", "DM", "CONNECT", "FOLLOW", "PUBLISH"]);
 
 function buildAgentPlanPrompt({ platform, goal, snapshot, nextAction, visualEvidence, previous }) {
   return [
@@ -103,6 +105,8 @@ class AgenticSocialRunner {
     this.visualFallback = new VisualFallback({ aiRuntime: this.aiRuntime });
     this.nextBestAction = new NextBestAction({ aiRuntime: this.aiRuntime });
     this.maxIterations = Number(options.maxIterations || process.env.SOCIAL_AGENT_MAX_ITERATIONS || 8);
+    const profilePath = path.resolve(CONFIG.ROOT_DIR, "private", "user-profile.json");
+    this.userProfile = fs.existsSync(profilePath) ? JSON.parse(fs.readFileSync(profilePath, "utf8")) : null;
   }
 
   async runPlatform(platform, goal) {
@@ -193,20 +197,7 @@ class AgenticSocialRunner {
         continue;
       }
 
-      const businessAction = String(plan.businessAction || "").toUpperCase();
-      if (SIDE_EFFECT_ACTIONS.has(businessAction)) {
-        const allowed = rateLimiter.canPerformAction(
-          businessAction === "DM" ? "DM_REPLY" : "COMMENT",
-          platform
-        );
-        if (!allowed.allowed) {
-          previous.push({ iteration, result: "RATE_LIMITED", reason: allowed.reason });
-          await new Promise(resolve => setTimeout(resolve, 1200));
-          continue;
-        }
-      }
-
-      try {
+      const businessAction = String(plan.businessAction || "").toUpperCase();,      if (SIDE_EFFECT_ACTIONS.has(businessAction)) {,        const behavior = this.userProfile?.behavior || {};,        const controls = { LIKE: "autoLike", COMMENT: "autoComment", REPLY: "autoReply", DM: "autoDm", FOLLOW: "autoFollow", CONNECT: "autoConnect", PUBLISH: "autoPublish" };,        const control = controls[businessAction];,        if (control && behavior[control] !== true) {,          previous.push({ iteration, result: "CONTROL_BLOCKED", reason: control + " is disabled in onboarding", businessAction });,          continue;,        },        if (this.userProfile?.safety?.dryRun === true) {,          previous.push({ iteration, result: "DRY_RUN_BLOCKED", reason: "Dry-run mode blocks side effects", businessAction });,          continue;,        },        if (this.userProfile?.safety?.approval === true) {,          previous.push({ iteration, result: "APPROVAL_REQUIRED", reason: "Approval mode requires human approval", businessAction });,          continue;,        },        const allowed = actionPolicy.canPerform(businessAction, platform);,        if (!allowed.allowed) {,          previous.push({ iteration, result: "RATE_LIMITED", reason: allowed.reason, businessAction });,          continue;,        },      },,      try {
         agent.validatePlan({ actions: [action] });
         const before = snapshot;
         const result = await agent.executePlan({ actions: [action] }, correlation);
