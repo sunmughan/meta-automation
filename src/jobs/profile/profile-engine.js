@@ -30,6 +30,23 @@ function loadCandidateProfile() {
   return JSON.parse(fs.readFileSync(CONFIG.JOB_PROFILE_PATH, "utf8"));
 }
 
+function createCandidateProfile({ googleAccountEmail = "", baseResumePath = "", preferences = {} } = {}) {
+  return {
+    version: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    googleAccountEmail: String(googleAccountEmail || "").trim(),
+    baseResumePath: String(baseResumePath || "").trim(),
+    preferences: {
+      remoteOnly: preferences.remoteOnly !== false,
+      projectOnly: preferences.projectOnly !== false,
+      minMatchScore: Number.isFinite(Number(preferences.minMatchScore))
+        ? Number(preferences.minMatchScore)
+        : 75
+    }
+  };
+}
+
 function saveCandidateProfile(profile) {
   fs.mkdirSync(path.dirname(CONFIG.JOB_PROFILE_PATH), { recursive: true });
   fs.writeFileSync(CONFIG.JOB_PROFILE_PATH, JSON.stringify(profile, null, 2), "utf8");
