@@ -72,18 +72,8 @@ async function main() {
 
   console.log("\n=== Meta Automation • Agentic Job Revenue Engine Setup ===\n");
 
-  let minimaxKey = process.env.MINIMAX_API_KEY || "";
-  if (!minimaxKey && fs.existsSync(envPath)) {
-    const envText = fs.readFileSync(envPath, "utf8");
-    const match = envText.match(/^MINIMAX_API_KEY=(.*)$/m);
-    minimaxKey = (match?.[1] || "").trim();
-  }
-  if (!minimaxKey) {
-    minimaxKey = await askSecret("MiniMax API key (stored only in local .env): ");
-    if (!minimaxKey) throw new Error("MiniMax API key is required. Add it to .env or provide it during setup.");
-    await setEnvValue("MINIMAX_API_KEY", minimaxKey);
-  }
-
+  console.log("AI runtime: " + (CONFIG.AI_PROVIDER || "antigravity") + " (primary)");
+  console.log("MiniMax is optional and is not required for setup.");
   const email = (await ask(`Google account email [${CONFIG.GOOGLE_ACCOUNT_EMAIL}]: `)).trim() || CONFIG.GOOGLE_ACCOUNT_EMAIL;
   const resume = (await ask(`Base resume path [${CONFIG.JOB_BASE_RESUME_PATH || "not set"}]: `)).trim() || CONFIG.JOB_BASE_RESUME_PATH;
   const mode = (await ask(`Application mode (auto/manual) [${CONFIG.JOB_APPLICATION_MODE}]: `)).trim().toLowerCase() || CONFIG.JOB_APPLICATION_MODE;
@@ -92,9 +82,10 @@ async function main() {
 
   await setEnvValue("GOOGLE_ACCOUNT_EMAIL", email);
   await setEnvValue("GOOGLE_AUTH_ORIGIN", CONFIG.GOOGLE_AUTH_ORIGIN);
-  await setEnvValue("AI_PROVIDER", "minimax");
-  await setEnvValue("AI_RUNTIME", "minimax");
-  await setEnvValue("AI_MODEL", "MiniMax-M3");
+  // Preserve the configured primary runtime. Antigravity is the default.
+  await setEnvValue("AI_PROVIDER", CONFIG.AI_PROVIDER || "antigravity");
+  await setEnvValue("AI_RUNTIME", CONFIG.AI_RUNTIME || "antigravity");
+  await setEnvValue("AI_MODEL", CONFIG.MODEL || "Gemini 3.8 Flash");
   await setEnvValue("MINIMAX_BASE_URL", CONFIG.MINIMAX_BASE_URL);
   await setEnvValue("MINIMAX_ENDPOINT", CONFIG.MINIMAX_ENDPOINT);
   await setEnvValue("MINIMAX_MODEL", CONFIG.MINIMAX_MODEL);
