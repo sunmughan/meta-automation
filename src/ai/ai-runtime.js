@@ -443,7 +443,8 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
         { type: "image", data: base64Image, mime_type: "image/png" }
       ],
       agent_config: { type: "antigravity", model: process.env.ANTIGRAVITY_VISION_MODEL || "gemini-3.8-flash" },
-      environment: "remote"
+      environment: "remote",
+      tools: []
     };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
