@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "platforms": {
+    "threads": {
+      "origin": "https://www.threads.com",
+      "startUrl": "https://www.threads.com/",
+      "browserPageMethod": "getThreadsPage",
+      "enabled": true
+    },
+    "facebook": {
+      "origin": "https://www.facebook.com",
+      "startUrl": "https://www.facebook.com/",
+      "browserPageMethod": "getFacebookPage",
+      "enabled": true
+    },
+    "linkedin": {
+      "origin": "https://www.linkedin.com",
+      "startUrl": "https://www.linkedin.com/feed/",
+      "browserPageMethod": "getLinkedInPage",
+      "enabled": true
+    }
+  }
+}
