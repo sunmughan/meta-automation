@@ -1,0 +1,40 @@
+name: Agentic Social V2
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - agentic-social-v2
+
+jobs:
+  agentic-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Static agentic architecture audit
+        run: npm run test:agentic
+
+      - name: Syntax check
+        run: |
+          node --check agentic-social.js
+          node --check src/agent/universal-browser-agent.js
+          node --check src/agent/visual-fallback.js
+          node --check src/agentic/next-best-action.js
+          node --check src/leads/relationship-engine.js
+          node --check src/leads/intelligent-identity-resolver.js
+          node --check src/safety/global-guard.js
+          node --check src/safety/social-action-policy.js
+          node --check src/social/agentic-social-runner.js
+          node --check src/content/omnichannel-content.js
+          node --check src/ai/ai-runtime.js
