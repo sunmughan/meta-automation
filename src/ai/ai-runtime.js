@@ -151,7 +151,8 @@ class AiRuntime {
       throw new Error("MINIMAX_API_KEY is not configured. Add it to .env before running with AI_PROVIDER=minimax.");
     }
 
-    const baseUrl = String(CONFIG.MINIMAX_BASE_URL || "https://api.minimax.io/v1").replace(/\/+$/, "");
+    let baseUrl = String(CONFIG.MINIMAX_BASE_URL || "https://api.minimax.io/v1");
+    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
     const endpoint = CONFIG.MINIMAX_ENDPOINT || "/text/chatcompletion_v2";
     const url = endpoint.startsWith("http") ? endpoint : baseUrl + (endpoint.startsWith("/") ? "" : "/") + endpoint;
 
@@ -225,7 +226,7 @@ class AiRuntime {
 
     const baseUrl = CONFIG.OPENAI_BASE_URL || "https://api.openai.com/v1";
     const endpoint = CONFIG.OPENAI_ENDPOINT || "/chat/completions";
-    const url = endpoint.startsWith("http") ? endpoint : baseUrl.replace(/\/+$/, "") + (endpoint.startsWith("/") ? "" : "/") + endpoint;
+    const url = endpoint.startsWith("http") ? endpoint : baseUrl + (endpoint.startsWith("/") ? "" : "/") + endpoint;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
