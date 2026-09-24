@@ -989,7 +989,7 @@ async function commandOnboard(options = {}) {
 
       options.aiProvider = isCustomOpenAi ? "freebuff" : "minimax";
       if (isCustomOpenAi) {
-        options.openaiApiKey = await ask("14. OpenAI / Freebuff API Key", CONFIG.OPENAI_API_KEY || "fb_live_IsQNdxCNvqCaQtU85QXLfmuOFUsVhYr8dgORVMRY04I");
+        options.openaiApiKey = await ask("14. OpenAI / Freebuff API Key", CONFIG.OPENAI_API_KEY || "");
         options.openaiBaseUrl = await ask("15. API Base URL", CONFIG.OPENAI_BASE_URL || "https://freebuff.com/api/v1");
         options.openaiModel = await ask("16. AI Model Name", CONFIG.OPENAI_MODEL || "deepseek 4.1 flash");
       } else {
@@ -1074,8 +1074,18 @@ ${excludedServices.map(s => `- ${s}`).join("\n")}
   if (fs.existsSync(envPath)) {
     let envContent = fs.readFileSync(envPath, "utf8");
     const upsertEnv = (content, key, val) => {
-      const reg = new RegExp(`^${key}=.*$`, "m");
-      return reg.test(content) ? content.replace(reg, `${key}=${val}`) : content.trimEnd() + `\n${key}=${val}\n`;
+      const prefix = key + "=";
+      const lines = String(content || "").split(String.fromCharCode(10));
+      let found = false;
+      const next = lines.map(line => {
+        if (line.trimStart().startsWith(prefix)) {
+          found = true;
+          return prefix + String(val ?? "");
+        }
+        return line;
+      });
+      if (!found) next.push(prefix + String(val ?? ""));
+      return next.join(String.fromCharCode(10)) + String.fromCharCode(10);
     };
 
     envContent = upsertEnv(envContent, "THREADS_USERNAME", cleanUsername);
