@@ -74,7 +74,7 @@ function getBrowserCatalog() {
       chromium: {
         name: "Chromium (Termux)",
         type: "chromium",
-        binaries: [`${prefix}/bin/chromium`, "/data/data/com.termux/files/usr/bin/chromium"],
+        binaries: [`${prefix}/bin/chromium-browser`, `${prefix}/bin/chromium`, "/data/data/com.termux/files/usr/bin/chromium-browser", "/data/data/com.termux/files/usr/bin/chromium"],
         userDataDir: path.join(home, ".config/chromium"),
         flags: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
       },
@@ -88,7 +88,7 @@ function getBrowserCatalog() {
       chrome: {
         name: "Chrome / Chromium (Termux)",
         type: "chrome",
-        binaries: [`${prefix}/bin/chromium`],
+        binaries: [`${prefix}/bin/chromium-browser`, `${prefix}/bin/chromium`],
         userDataDir: path.join(home, ".config/chromium"),
         flags: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
       },
@@ -391,7 +391,7 @@ function resolveBrowser(preference = null) {
 
   // 5. Fallback via 'which' command on Unix
   if (OS !== "win32") {
-    for (const cmd of ["brave-browser-stable", "brave", "google-chrome-stable", "google-chrome", "microsoft-edge-stable", "microsoft-edge", "chromium"]) {
+    for (const cmd of ["brave-browser-stable", "brave", "google-chrome-stable", "google-chrome", "microsoft-edge-stable", "microsoft-edge", "chromium-browser", "chromium"]) {
       try {
         const found = execSync(`which ${cmd} 2>/dev/null`, { encoding: "utf8" }).trim();
         if (found && fs.existsSync(found)) {
