@@ -45,3 +45,6 @@ jobs:
           node --check src/social/agentic-social-runner.js
           node --check src/content/omnichannel-content.js
           node --check src/ai/ai-runtime.js
+          node --check src/ai/antigravity-cli-runtime.js
+          node --check scripts/launch-browser-cdp.js
+          node --check scripts/android-chrome-cdp.js
