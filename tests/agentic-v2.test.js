@@ -9,6 +9,8 @@ const files = [
   "src/agent/visual-fallback.js",
   "src/agentic/next-best-action.js",
   "src/content/omnichannel-content.js",
+  "src/leads/intelligent-identity-resolver.js",
+  "src/safety/social-action-policy.js",
   "src/social/agentic-social-runner.js"
 ];
 
