@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/env bash
 # start-termux
 # Master launcher for Meta Automation on Android (Termux + Termux:X11)
 
@@ -15,92 +15,61 @@ echo "=================================================="
 
 export DISPLAY="${DISPLAY:-:1}"
 
+if [ "$1" == "--restart" ] || [ "$1" == "-r" ]; then
+    echo "🔄 Stopping existing automation daemon before restart..."
+    "$SCRIPT_DIR/stop-automation" >/dev/null 2>&1 || true
+    sleep 1
+    shift
+fi
+
 # 1. Ensure Termux:X11 server is alive
 if command -v termux-x11 >/dev/null 2>&1; then
-    if ! pgrep -f "termux-x11" >/dev/null; then
-        echo "[1/5] Starting Termux:X11 server on display $DISPLAY..."
-        termux-x11 "$DISPLAY" -xstartup "sleep 1" &
-        sleep 2
-    else
+    if (DISPLAY="$DISPLAY" xdpyinfo >/dev/null 2>&1); then
         echo "[1/5] Termux:X11 server active on $DISPLAY."
+    else
+        echo "[1/5] Initializing Termux:X11 server on display $DISPLAY..."
+        pkill -9 -f "termux-x11.*$DISPLAY" >/dev/null 2>&1 || true
+        am broadcast -a com.termux.x11.ACTION_STOP >/dev/null 2>&1 || true
+        rm -f "/data/data/com.termux/files/usr/tmp/.X${DISPLAY#:}-lock" "/tmp/.X${DISPLAY#:}-lock" >/dev/null 2>&1 || true
+        rm -f "/data/data/com.termux/files/usr/tmp/.X11-unix/X${DISPLAY#:}" "/tmp/.X11-unix/X${DISPLAY#:}" >/dev/null 2>&1 || true
+        am start -n com.termux.x11/.MainActivity >/dev/null 2>&1 || true
+        sleep 1
+        nohup termux-x11 "$DISPLAY" -ac >/dev/null 2>&1 &
+        sleep 2
+        if (DISPLAY="$DISPLAY" xdpyinfo >/dev/null 2>&1); then
+            echo "✅ Termux:X11 server active on $DISPLAY."
+        else
+            echo "⚠️  Could not confirm Termux:X11 server on $DISPLAY."
+        fi
     fi
 else
     echo "⚠️  [1/5] termux-x11 binary not found. Ensure 'termux-x11-nightly' is installed and companion app is installed."
 fi
 
-# 2. Ensure Chromium CDP is active on port 9222
+# 2. Ensure chromium CDP is active on port 9222
 echo "[2/5] Verifying Chromium CDP on port 9222..."
 if ! curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
-    echo "🌐 Launching Chromium with remote debugging :9222..."
-    mkdir -p "$HOME/.config/chromium"
-    nohup chromium \
-        --remote-debugging-port=9222 \
-        --user-data-dir="$HOME/.config/chromium" \
-        --no-sandbox \
-        --disable-gpu \
-        --disable-dev-shm-usage \
-        --restore-last-session \
-        >> "$SCRIPT_DIR/logs/chromium.log" 2>&1 &
-    sleep 3
+    echo "🌐 Launching Termux Chromium with remote debugging :9222..."
+    DISPLAY="$DISPLAY" node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
 fi
 
 if curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
     echo "✅ Chromium CDP is active and ready on http://127.0.0.1:9222."
 else
-    echo "⚠️  Chromium CDP could not be verified on :9222. Checking with launch-browser-cdp.js..."
-    node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
+    echo "⚠️  Chromium CDP could not be verified on :9222."
 fi
 
-# 3. Check MiniMax AI configuration
- echo "[3/5] Checking MiniMax M3 configuration..."
-if [ -n "${MINIMAX_API_KEY:-}" ]; then
-    echo "✅ MiniMax API key is available in the environment."
+# 3. Check primary Antigravity AI runtime
+echo "[3/5] Checking Antigravity agentic AI configuration..."
+if command -v agy >/dev/null 2>&1; then
+    echo "✅ Antigravity CLI detected: $(command -v agy)"
+    echo "   Antigravity is the PRIMARY agentic AI runtime."
 else
-    echo "ℹ️  MiniMax API key will be loaded from the project .env file at startup."
+    echo "❌ Antigravity CLI (agy) is not available in PATH."
+    echo "   Run: command -v agy"
+    echo "   The automation will not silently switch the primary runtime to MiniMax."
 fi
 
-# 4. Check Authentication
-echo "[4/5] Checking platform authentication status..."
-node threads-agent.js auth > /dev/null 2>&1 || true
-
-# 5. Check if already running
-if [ -f "$PID_FILE" ]; then
-    EXISTING_PID=$(cat "$PID_FILE" 2>/dev/null)
-    if [ -n "$EXISTING_PID" ] && kill -0 "$EXISTING_PID" 2>/dev/null; then
-        echo ""
-        echo "=================================================="
-        echo "  🟢 Automation is ALREADY running (PID: $EXISTING_PID)"
-        echo "=================================================="
-        echo "Live activity : tail -f $LOG_FILE"
-        echo "Check status  : ./status-automation"
-        echo "Stop command  : ./stop-automation"
-        echo "=================================================="
-        exit 0
-    fi
-    rm -f "$PID_FILE"
-fi
-
-# 5. Launch Foreground vs Background
-if [ "$1" == "--foreground" ] || [ "$1" == "-f" ]; then
-    echo "[5/5] Starting automation loop in FOREGROUND..."
-    echo "Press Ctrl+C to stop."
-    echo "=================================================="
-    node threads-agent.js run
-else
-    echo "[5/5] Starting automation loop in BACKGROUND..."
-    nohup node threads-agent.js run >> "$LOG_FILE" 2>&1 &
-    AGENT_PID=$!
-    echo "$AGENT_PID" > "$PID_FILE"
-    sleep 2
-
-    if kill -0 "$AGENT_PID" 2>/dev/null; then
-        echo "✅ Automation daemon successfully started in background!"
-        echo "   PID: $AGENT_PID"
-        echo "   Logs: tail -f $LOG_FILE"
-        echo "   Status: ./status-automation"
-        echo "   Stop: ./stop-automation"
-    else
-        echo "❌ Failed to start automation daemon. Check $LOG_FILE"
-        exit 1
-    fi
-fi
+# 4. Launch Autopilot Mode Selector (Social Autopilot vs Job Autopilot)
+echo "[4/4] Launching Meta Automation Autopilot runtime..."
+exec node "$SCRIPT_DIR/scripts/desktop-runner.js" "$@"

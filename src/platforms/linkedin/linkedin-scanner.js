@@ -94,7 +94,10 @@ class LinkedInScanner {
             
             const actorLink = el.querySelector("a[href*='/in/']");
             const actorNameEl = el.querySelector(".update-components-actor__name, .feed-shared-actor__name, [data-view-name='actor-title'] span, .update-components-actor__title");
-            const username = actorNameEl ? actorNameEl.innerText.trim().replace(/[\r\n]+/g, " ") : (actorLink ? (actorLink.innerText || actorLink.href.split("/in/")[1]?.replace(/\//g, "")) : "linkedin_user");
+            const rawAuthorName = actorNameEl ? actorNameEl.innerText.trim().replace(/[\r\n]+/g, " ") : "";
+            const slug = actorLink ? (actorLink.href.split("/in/")[1]?.replace(/[/\\?#].*$/, "") || "") : "";
+            const authorName = rawAuthorName || (actorLink ? actorLink.innerText.trim() : "");
+            const username = slug || authorName || "";
 
             const headlineEl = el.querySelector(".update-components-actor__description, .feed-shared-actor__description");
             const headline = headlineEl ? headlineEl.innerText.trim().replace(/[\r\n]+/g, " ") : "";
@@ -112,6 +115,7 @@ class LinkedInScanner {
               postId,
               url,
               username,
+              authorName: authorName || username,
               headline,
               text,
               platform: "linkedin"

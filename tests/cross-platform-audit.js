@@ -120,7 +120,7 @@ async function runCrossPlatformAudit() {
 
   // 5. MiniMax M3 & OpenAI-compatible runtime configuration
   test("AI Runtime: MiniMax M3 or supported provider configured", () => {
-    assert(["minimax", "freebuff", "openai"].includes(CONFIG.AI_PROVIDER), "AI_PROVIDER must be minimax, freebuff, or openai");
+    assert(["antigravity", "minimax", "freebuff", "openai"].includes(CONFIG.AI_PROVIDER), "AI_PROVIDER must be a supported provider");
     assert(CONFIG.MINIMAX_MODEL === "MiniMax-M3", "MINIMAX_MODEL must be MiniMax-M3");
     assert(CONFIG.MINIMAX_BASE_URL, "MINIMAX_BASE_URL must be configured");
     assert(CONFIG.MINIMAX_ENDPOINT, "MINIMAX_ENDPOINT must be configured");
@@ -130,16 +130,17 @@ async function runCrossPlatformAudit() {
   test("AI Runtime: no legacy external AI CLI dependency", () => {
     const runtimeCode = fs.readFileSync(path.join(ROOT, "src/ai/ai-runtime.js"), "utf8");
     assert(!runtimeCode.includes("resolveAgyBinary"), "Runtime must not depend on obsolete CLI resolution");
+    assert(runtimeCode.includes("callAntigravityCli"), "Runtime must include the primary Antigravity CLI adapter");
     assert(!runtimeCode.includes("spawn("), "Runtime must not spawn an external AI CLI");
     assert(runtimeCode.includes("callMiniMax"), "Runtime must include MiniMax execution");
   });
 
   // 7. Termux installer must not install Antigravity
-  test("Termux: installer is MiniMax-based", () => {
+  test("Termux: installer is Antigravity-first", () => {
     const termuxScript = path.join(ROOT, "installers/install-android-termux.sh");
     const content = fs.readFileSync(termuxScript, "utf8");
     assert(!content.includes("wallentx/antigravity-cli-termux"), "Termux installer must not install Antigravity CLI");
-    assert(content.includes("MINIMAX"), "Termux installer must mention MiniMax configuration");
+    assert(content.includes("Antigravity") || content.includes("antigravity"), "Termux installer must mention Antigravity configuration");
     assert(content.includes("termux-x11-nightly"), "Must include termux-x11-nightly");
   });
 

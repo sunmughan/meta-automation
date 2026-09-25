@@ -62,10 +62,18 @@ async function completeAllProfiles() {
   const results = {};
   for (const platform of getEnabledPlatforms()) {
     const state = jobState.state.platforms[platform.id];
-    if (state?.status !== "AUTHENTICATED") {
+    if (state?.status !== "AUTHENTICATED" && state?.status !== "READY") {
       results[platform.id] = {
         status: "SKIPPED",
         reason: "Platform is not authenticated"
+      };
+      continue;
+    }
+
+    if (state?.profileStatus === "READY") {
+      results[platform.id] = {
+        status: "READY",
+        reason: "Profile is already complete and verified"
       };
       continue;
     }

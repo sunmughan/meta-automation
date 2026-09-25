@@ -929,211 +929,269 @@ async function commandRun() {
 }
 
 async function commandOnboard(options = {}) {
-  console.log("\n==============================================");
-  console.log("   🎓 MiniMax M3 BRAND ONBOARDING WIZARD");
-  console.log("   Train the AI System on Your Business in Seconds");
-  console.log("==============================================\n");
+  console.log("\n============================================================");
+  console.log("        🤖 AGENTIC AUTOMATION — FIRST-TIME SETUP");
+  console.log("============================================================");
+  console.log("This setup teaches the agent WHO it represents, WHAT it can");
+  console.log("offer, WHERE it may operate, HOW it should communicate, and");
+  console.log("WHICH safety controls are enabled. Passwords and 2FA codes");
+  console.log("are never requested.\n");
 
   const currentFounder = knowledge.getFounderInfo();
   const currentCompany = knowledge.getCompanyInfo();
   const currentProfiles = knowledge.getOfficialProfiles();
+  const privateDir = path.resolve(CONFIG.ROOT_DIR, "private");
+  const profilePath = path.join(privateDir, "user-profile.json");
+  let saved = {};
+  if (fs.existsSync(profilePath)) {
+    try { saved = JSON.parse(fs.readFileSync(profilePath, "utf8")); } catch (_) {}
+  }
 
-  let founderName = options.founderName;
-  let founderRole = options.founderRole;
-  let founderProfile = options.founderProfile;
-  let founderWhatsApp = options.founderWhatsApp || options.whatsappUrl || options.whatsapp;
-  let threadsUsername = options.threadsUsername;
-  let companyName = options.companyName;
-  let companyWebsite = options.companyWebsite;
-  let companyProduct = options.companyProduct;
-  let companySummary = options.companySummary;
-  let approvedServices = options.approvedServices;
-  let excludedServices = options.excludedServices;
-  let executionMode = options.executionMode || CONFIG.EXECUTION_MODE || "concurrent";
+  let identity = {
+    name: options.founderName || saved.identity?.name || currentFounder.name || "",
+    role: options.founderRole || saved.identity?.role || currentFounder.role || "",
+    bio: options.bio || saved.identity?.bio || "",
+    expertise: options.expertise || saved.identity?.expertise || "",
+    location: options.location || saved.identity?.location || "",
+    timezone: options.timezone || saved.identity?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    languages: options.languages || saved.identity?.languages || ""
+  };
+  let profiles = {
+    linkedin: options.founderProfile || saved.profiles?.linkedin || currentProfiles.founder?.linkedin || "",
+    threads: options.threadsUsername || saved.profiles?.threads || currentFounder.threadsUsername || "",
+    github: options.github || saved.profiles?.github || "",
+    website: options.personalWebsite || saved.profiles?.website || "",
+    whatsapp: options.founderWhatsApp || saved.profiles?.whatsapp || currentProfiles.founder?.whatsapp || ""
+  };
+  let company = {
+    name: options.companyName || saved.company?.name || currentCompany.name || "",
+    website: options.companyWebsite || saved.company?.website || currentCompany.website || "",
+    summary: options.companySummary || saved.company?.summary || currentCompany.summary || "",
+    product: options.companyProduct || saved.company?.product || currentCompany.productUrl || "",
+    audience: options.audience || saved.company?.audience || "",
+    approved: options.approvedServices || saved.company?.approved || "Custom Software, SaaS, Web Apps, Mobile Apps, AI Workflows",
+    excluded: options.excludedServices || saved.company?.excluded || "Graphic Design, SEO, Accounting, Recruitment"
+  };
+  let behavior = {
+    voice: saved.behavior?.voice || "Professional, human, concise, helpful",
+    objective: saved.behavior?.objective || "Build genuine business relationships and discover relevant opportunities",
+    cta: saved.behavior?.cta || "",
+    forbidden: saved.behavior?.forbidden || "",
+    autoLike: saved.behavior?.autoLike ?? false,
+    autoComment: saved.behavior?.autoComment ?? false,
+    autoReply: saved.behavior?.autoReply ?? false,
+    autoDm: saved.behavior?.autoDm ?? false,
+    autoFollow: saved.behavior?.autoFollow ?? false,
+    autoConnect: saved.behavior?.autoConnect ?? false,
+    autoPublish: saved.behavior?.autoPublish ?? false
+  };
+  let browser = {
+    type: saved.browser?.type || CONFIG.BROWSER_TYPE || "auto",
+    cdpUrl: saved.browser?.cdpUrl || CONFIG.CDP_URL || "http://127.0.0.1:9222",
+    platforms: saved.browser?.platforms || ["threads", "facebook", "linkedin"],
+    mode: saved.browser?.mode || CONFIG.EXECUTION_MODE || "round-robin"
+  };
+  let safety = {
+    dryRun: saved.safety?.dryRun ?? true,
+    approval: saved.safety?.approval ?? true,
+    likes: Number(saved.safety?.likes || 30),
+    comments: Number(saved.safety?.comments || 5),
+    replies: Number(saved.safety?.replies || 5),
+    dms: Number(saved.safety?.dms || 5),
+    follows: Number(saved.safety?.follows || 10),
+    connects: Number(saved.safety?.connects || 10),
+    publishes: Number(saved.safety?.publishes || 2),
+    scanSeconds: Number(saved.safety?.scanSeconds || 300)
+  };
+
+  const parseList = value => Array.isArray(value) ? value.map(item => String(item).trim()).filter(Boolean) : String(value || "").split(",").map(item => item.trim()).filter(Boolean);
+  const askChoice = (value, allowed, fallback) => allowed.includes(String(value || "").toLowerCase()) ? String(value).toLowerCase() : fallback;
+  const validUrl = (value, label) => {
+    const text = String(value || "").trim();
+    if (!text) return "";
+    try {
+      const url = new URL(text);
+      if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error();
+      return url.toString();
+    } catch (_) {
+      throw new Error(label + " must be a valid http(s) URL");
+    }
+  };
 
   if (!options.nonInteractive) {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const ask = (query, fallback = "") => new Promise(resolve => {
+      const prompt = fallback ? query + " [" + fallback + "]: " : query + ": ";
+      rl.question(prompt, answer => resolve(answer.trim() || fallback));
     });
-    const ask = (query, defaultVal = "") => new Promise(resolve => {
-      const prompt = defaultVal ? `${query} [${defaultVal}]: ` : `${query}: `;
-      rl.question(prompt, answer => resolve(answer.trim() || defaultVal));
-    });
-
+    const yesNo = async (query, fallback) => (await ask(query + " (y/n)", fallback ? "y" : "n")).toLowerCase().startsWith("y");
     try {
-      founderName = await ask("1. Founder Full Name", currentFounder.name || "");
-      founderRole = await ask("2. Founder Role / Title", currentFounder.role || "");
-      founderProfile = await ask("3. Founder Profile / LinkedIn URL", currentProfiles.founder.linkedin || "");
-      threadsUsername = await ask("4. Threads Username (without @)", currentFounder.threadsUsername || CONFIG.THREADS_USERNAME || "");
-      companyName = await ask("5. Company / Brand Name", currentCompany.name || "");
-      companyWebsite = await ask("6. Company Website URL", currentCompany.website || "");
-      companyProduct = await ask("7. Product / Specialty URL (optional)", currentCompany.productUrl || "");
-      companySummary = await ask("8. Company Brief Summary", currentCompany.summary || "");
+      console.log("--- 1/6 · YOUR IDENTITY ---");
+      identity.name = await ask("Full name", identity.name);
+      identity.role = await ask("Role / title", identity.role);
+      identity.bio = await ask("Professional bio", identity.bio);
+      identity.expertise = await ask("Skills / expertise (comma-separated)", identity.expertise);
+      identity.location = await ask("Location (optional)", identity.location);
+      identity.timezone = await ask("Timezone", identity.timezone);
+      identity.languages = await ask("Languages (optional)", identity.languages);
 
-      const rawApproved = await ask("9. Core Approved Services (comma-separated)", "Custom Software, SaaS MVPs, Web Applications, Mobile Apps, AI Workflows");
-      approvedServices = rawApproved.split(",").map(s => s.trim()).filter(Boolean);
+      console.log("\n--- 2/6 · VERIFIED PROFILES ---");
+      profiles.linkedin = await ask("LinkedIn URL", profiles.linkedin);
+      profiles.threads = await ask("Threads username (without @)", profiles.threads);
+      profiles.github = await ask("GitHub URL (optional)", profiles.github);
+      profiles.website = await ask("Personal website / portfolio (optional)", profiles.website);
+      profiles.whatsapp = await ask("WhatsApp booking URL (optional)", profiles.whatsapp);
 
-      const rawExcluded = await ask("10. Excluded Non-Core Services (comma-separated)", "Graphic Design, SEO Marketing, Accounting, Recruitment");
-      excludedServices = rawExcluded.split(",").map(s => s.trim()).filter(Boolean);
+      console.log("\n--- 3/6 · COMPANY / BRAND ---");
+      company.name = await ask("Company / brand name", company.name);
+      company.website = await ask("Company website", company.website);
+      company.summary = await ask("What does the company do?", company.summary);
+      company.product = await ask("Main product / demo URL (optional)", company.product);
+      company.audience = await ask("Ideal customers / audience", company.audience);
+      company.approved = await ask("Approved services (comma-separated)", company.approved);
+      company.excluded = await ask("Excluded / do-not-sell services (comma-separated)", company.excluded);
 
-      const defaultWhatsApp = currentProfiles.company?.whatsapp || currentProfiles.founder?.whatsapp || "";
-      founderWhatsApp = await ask("11. Founder / Brand Direct WhatsApp Booking URL (optional)", founderWhatsApp || defaultWhatsApp);
+      console.log("\n--- 4/6 · AGENT BEHAVIOUR ---");
+      behavior.voice = await ask("Communication style", behavior.voice);
+      behavior.objective = await ask("Primary objective", behavior.objective);
+      behavior.cta = await ask("Preferred CTA (optional)", behavior.cta);
+      behavior.forbidden = await ask("Topics / claims to avoid (optional)", behavior.forbidden);
+      behavior.autoLike = await yesNo("Allow autonomous likes?", behavior.autoLike);
+      behavior.autoComment = await yesNo("Allow autonomous comments?", behavior.autoComment);
+      behavior.autoReply = await yesNo("Allow autonomous replies?", behavior.autoReply);
+      behavior.autoDm = await yesNo("Allow autonomous DM replies?", behavior.autoDm);
+      behavior.autoFollow = await yesNo("Allow autonomous follows?", behavior.autoFollow);
+      behavior.autoConnect = await yesNo("Allow autonomous connection requests?", behavior.autoConnect);
+      behavior.autoPublish = await yesNo("Allow autonomous publishing?", behavior.autoPublish);
 
-      const rawMode = await ask("12. Execution Mode (concurrent = parallel multi-tab for RTX/flagship hardware | round-robin = sequential single-tab for low-resource)", executionMode);
-      executionMode = (rawMode.toLowerCase().includes("round") || rawMode.toLowerCase().includes("seq")) ? "round-robin" : "concurrent";
+      console.log("\n--- 5/6 · BROWSER & PLATFORMS ---");
+      browser.type = askChoice(await ask("Browser (auto/chrome/edge/brave/chromium)", browser.type), ["auto","chrome","edge","brave","chromium"], "auto");
+      browser.cdpUrl = await ask("Browser CDP URL", browser.cdpUrl);
+      browser.platforms = parseList(await ask("Enabled platforms (threads, facebook, linkedin)", browser.platforms.join(", ")));
+      browser.mode = askChoice(await ask("Execution mode (round-robin/concurrent)", browser.mode), ["round-robin","concurrent"], "round-robin");
 
-      console.log("\n--- AI Engine & Provider Configuration ---");
-      const providerChoice = await ask("13. Select AI Provider [1 = MiniMax M3, 2 = OpenAI-compatible / Freebuff / DeepSeek]", (CONFIG.AI_PROVIDER === "openai" || CONFIG.AI_PROVIDER === "freebuff") ? "2" : "1");
-      const isCustomOpenAi = providerChoice === "2" || providerChoice.toLowerCase().includes("openai") || providerChoice.toLowerCase().includes("freebuff");
-
-      options.aiProvider = isCustomOpenAi ? "freebuff" : "minimax";
-      if (isCustomOpenAi) {
-        options.openaiApiKey = await ask("14. OpenAI / Freebuff API Key", CONFIG.OPENAI_API_KEY || "fb_live_IsQNdxCNvqCaQtU85QXLfmuOFUsVhYr8dgORVMRY04I");
-        options.openaiBaseUrl = await ask("15. API Base URL", CONFIG.OPENAI_BASE_URL || "https://freebuff.com/api/v1");
-        options.openaiModel = await ask("16. AI Model Name", CONFIG.OPENAI_MODEL || "deepseek 4.1 flash");
-      } else {
-        options.minimaxApiKey = await ask("14. MiniMax API Key", CONFIG.MINIMAX_API_KEY || "");
-        options.minimaxModel = await ask("15. MiniMax Model Name", CONFIG.MINIMAX_MODEL || "MiniMax-M3");
+      console.log("\n--- 6/6 · SAFETY & AI ---");
+      safety.dryRun = await yesNo("Start in DRY RUN mode?", safety.dryRun);
+      safety.approval = await yesNo("Require approval before side effects?", safety.approval);
+      safety.likes = Number(await ask("Max likes/hour", String(safety.likes)));
+      safety.comments = Number(await ask("Max comments/hour", String(safety.comments)));
+      safety.replies = Number(await ask("Max replies/hour", String(safety.replies)));
+      safety.dms = Number(await ask("Max DMs/hour", String(safety.dms)));
+      safety.follows = Number(await ask("Max follows/hour", String(safety.follows)));
+      safety.connects = Number(await ask("Max connections/hour", String(safety.connects)));
+      safety.publishes = Number(await ask("Max publishes/hour", String(safety.publishes)));
+      safety.scanSeconds = Number(await ask("Scan interval seconds", String(safety.scanSeconds)));
+      options.aiProvider = askChoice(await ask("Primary AI provider (antigravity/minimax/openai)", CONFIG.AI_PROVIDER), ["antigravity","minimax","openai"], "antigravity");
+      options.aiModel = await ask("AI model (Antigravity uses your authenticated account)", CONFIG.MODEL);
+      if (options.aiProvider === "antigravity") options.antigravityModel = await ask("Antigravity model (blank = provider default)", process.env.ANTIGRAVITY_MODEL || "");
+      if (options.aiProvider === "minimax") options.minimaxApiKey = await ask("MiniMax API key (blank keeps existing)", "");
+      if (options.aiProvider === "openai") {
+        options.openaiApiKey = await ask("OpenAI-compatible API key (blank keeps existing)", "");
+        options.openaiBaseUrl = await ask("OpenAI-compatible base URL", CONFIG.OPENAI_BASE_URL);
       }
     } finally {
       rl.close();
     }
   } else {
-    approvedServices = Array.isArray(approvedServices) ? approvedServices : (approvedServices || "").split(",").map(s => s.trim()).filter(Boolean);
-    excludedServices = Array.isArray(excludedServices) ? excludedServices : (excludedServices || "").split(",").map(s => s.trim()).filter(Boolean);
+    company.approved = parseList(company.approved);
+    company.excluded = parseList(company.excluded);
+    browser.platforms = parseList(browser.platforms);
   }
+
+  profiles.linkedin = validUrl(profiles.linkedin, "LinkedIn URL");
+  profiles.github = validUrl(profiles.github, "GitHub URL");
+  profiles.website = validUrl(profiles.website, "Personal website");
+  profiles.whatsapp = validUrl(profiles.whatsapp, "WhatsApp URL");
+  company.website = validUrl(company.website, "Company website");
+  company.product = validUrl(company.product, "Product URL");
+  profiles.threads = String(profiles.threads || "").trim();
+  while (profiles.threads.startsWith("@")) profiles.threads = profiles.threads.slice(1);
+  company.approved = parseList(company.approved);
+  company.excluded = parseList(company.excluded);
+  browser.platforms = parseList(browser.platforms).filter(item => ["threads","facebook","linkedin"].includes(item.toLowerCase())).map(item => item.toLowerCase());
+  if (!browser.platforms.length) browser.platforms = ["threads"];
+  if (!Number.isFinite(safety.comments) || safety.comments < 0) safety.comments = 5;
+  if (!Number.isFinite(safety.replies) || safety.replies < 0) safety.replies = 5;
+  if (!Number.isFinite(safety.dms) || safety.dms < 0) safety.dms = 5;
+  if (!Number.isFinite(safety.follows) || safety.follows < 0) safety.follows = 10;
+  if (!Number.isFinite(safety.connects) || safety.connects < 0) safety.connects = 10;
+  if (!Number.isFinite(safety.publishes) || safety.publishes < 0) safety.publishes = 2;
+  if (!Number.isFinite(safety.scanSeconds) || safety.scanSeconds < 60) safety.scanSeconds = 300;
+
+  const profile = { identity, profiles, company, behavior, browser, safety, ai: { provider: options.aiProvider || CONFIG.AI_PROVIDER, model: options.aiModel || CONFIG.MODEL } };
+  fs.mkdirSync(privateDir, { recursive: true });
+  fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2) + "\n", "utf8");
 
   const knowledgeDir = path.resolve(CONFIG.ROOT_DIR, "knowledge");
-  if (!fs.existsSync(knowledgeDir)) {
-    fs.mkdirSync(knowledgeDir, { recursive: true });
-  }
+  fs.mkdirSync(knowledgeDir, { recursive: true });
+  fs.writeFileSync(path.join(knowledgeDir, "founder.md"), "# Founder Profile\n\nName: " + identity.name + "\nRole: " + identity.role + "\nBio: " + identity.bio + "\nExpertise: " + parseList(identity.expertise).join(", ") + "\nLocation: " + identity.location + "\nTimezone: " + identity.timezone + "\nLanguages: " + identity.languages + "\n\n## Verified Profiles\nThreads: @" + profiles.threads + "\nLinkedIn: " + profiles.linkedin + "\nGitHub: " + profiles.github + "\nWebsite: " + profiles.website + "\nWhatsApp: " + profiles.whatsapp + "\n", "utf8");
+  fs.writeFileSync(path.join(knowledgeDir, "company.md"), "# Company Profile\n\nName: " + company.name + "\nWebsite: " + company.website + "\nProduct: " + (company.product || "None") + "\nWhatsApp: " + profiles.whatsapp + "\n\n## Summary\n" + company.summary + "\n\n## Audience\n" + company.audience + "\n", "utf8");
+  fs.writeFileSync(path.join(knowledgeDir, "profiles.md"), "# Official Profiles & URLs\n\n## Founder\nName: " + identity.name + "\nLinkedIn: " + profiles.linkedin + "\nThreads: @" + profiles.threads + "\nGitHub: " + profiles.github + "\nWebsite: " + profiles.website + "\nWhatsApp: " + profiles.whatsapp + "\n\n## Company\nName: " + company.name + "\nWebsite: " + company.website + "\nProduct: " + (company.product || "None") + "\nWhatsApp: " + profiles.whatsapp + "\n", "utf8");
+  fs.writeFileSync(path.join(knowledgeDir, "services.md"), "# Services & Capabilities\n\n## Approved Capabilities\n" + company.approved.map(item => "- " + item).join("\n") + "\n\n## Excluded Capabilities\n" + company.excluded.map(item => "- " + item).join("\n") + "\n", "utf8");
 
-  const cleanUsername = String(threadsUsername || "user").replace(/^@/, "").trim();
-
-  // 1. Write knowledge/founder.md
-  const founderMd = `# Founder Profile
-
-## Identity
-Name: ${founderName}
-Role: ${founderRole}
-Threads: @${cleanUsername}
-LinkedIn: ${founderProfile}
-WhatsApp: ${founderWhatsApp || ""}
-
-## Background & Philosophy
-${founderName} is the ${founderRole} of ${companyName}.
-`;
-  fs.writeFileSync(path.join(knowledgeDir, "founder.md"), founderMd, "utf8");
-
-  // 2. Write knowledge/company.md
-  const companyMd = `# Company Profile
-
-## Identity
-Name: ${companyName}
-Website: ${companyWebsite}
-Product: ${companyProduct || "None"}
-WhatsApp: ${founderWhatsApp || ""}
-
-## Summary
-${companySummary}
-`;
-  fs.writeFileSync(path.join(knowledgeDir, "company.md"), companyMd, "utf8");
-
-  // 3. Write knowledge/profiles.md
-  const profilesMd = `# Official Profiles & URLs
-
-## Founder
-Name: ${founderName}
-Role: ${founderRole}
-Threads: @${cleanUsername}
-LinkedIn: ${founderProfile}
-WhatsApp: ${founderWhatsApp || ""}
-
-## Company
-Name: ${companyName}
-Website: ${companyWebsite}
-Product: ${companyProduct || "None"}
-WhatsApp: ${founderWhatsApp || ""}
-`;
-  fs.writeFileSync(path.join(knowledgeDir, "profiles.md"), profilesMd, "utf8");
-
-  // 4. Write knowledge/services.md
-  const servicesMd = `# Services & Capabilities
-
-## Approved Capabilities
-${approvedServices.map(s => `- ${s}`).join("\n")}
-
-## Excluded Capabilities
-${excludedServices.map(s => `- ${s}`).join("\n")}
-`;
-  fs.writeFileSync(path.join(knowledgeDir, "services.md"), servicesMd, "utf8");
-
-  // 5. Update .env if present
   const envPath = path.resolve(CONFIG.ROOT_DIR, ".env");
-  if (fs.existsSync(envPath)) {
-    let envContent = fs.readFileSync(envPath, "utf8");
-    const upsertEnv = (content, key, val) => {
-      const reg = new RegExp(`^${key}=.*$`, "m");
-      return reg.test(content) ? content.replace(reg, `${key}=${val}`) : content.trimEnd() + `\n${key}=${val}\n`;
-    };
+  let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
+  const upsertEnv = (content, key, value) => {
+    const prefix = key + "=";
+    const lines = String(content || "").split(String.fromCharCode(10));
+    let found = false;
+    const next = lines.map(line => {
+      if (line.trimStart().startsWith(prefix)) { found = true; return prefix + String(value ?? ""); }
+      return line;
+    });
+    if (!found) next.push(prefix + String(value ?? ""));
+    return next.join(String.fromCharCode(10));
+  };
+  envContent = upsertEnv(envContent, "BROWSER_TYPE", browser.type);
+  envContent = upsertEnv(envContent, "THREADS_CDP_URL", browser.cdpUrl);
+  envContent = upsertEnv(envContent, "CDP_URL", browser.cdpUrl);
+  envContent = upsertEnv(envContent, "EXECUTION_MODE", browser.mode);
+  envContent = upsertEnv(envContent, "PLATFORM_TARGET", browser.platforms[0]);
+  envContent = upsertEnv(envContent, "DRY_RUN", String(safety.dryRun));
+  envContent = upsertEnv(envContent, "APPROVAL_MODE", String(safety.approval));
+  envContent = upsertEnv(envContent, "POSTING_ENABLED", String(behavior.autoPublish));
+  envContent = upsertEnv(envContent, "MAX_NEW_POST_REPLIES_PER_HOUR", String(safety.comments));
+  envContent = upsertEnv(envContent, "MAX_TOTAL_REPLIES_PER_HOUR", String(safety.replies));
+  envContent = upsertEnv(envContent, "MAX_DM_REPLIES_PER_HOUR", String(safety.dms));
+  envContent = upsertEnv(envContent, "SCAN_INTERVAL_SECONDS", String(safety.scanSeconds));
+  envContent = upsertEnv(envContent, "SOCIAL_MAX_COMMENTS_PER_HOUR", String(safety.comments));
+  envContent = upsertEnv(envContent, "SOCIAL_MAX_REPLIES_PER_HOUR", String(safety.replies));
+  envContent = upsertEnv(envContent, "SOCIAL_MAX_DMS_PER_HOUR", String(safety.dms));
+  envContent = upsertEnv(envContent, "SOCIAL_MAX_FOLLOWS_PER_HOUR", String(safety.follows));
+  envContent = upsertEnv(envContent, "SOCIAL_MAX_CONNECTS_PER_HOUR", String(safety.connects));
+  envContent = upsertEnv(envContent, "SOCIAL_MAX_PUBLISHES_PER_HOUR", String(safety.publishes));
+  envContent = upsertEnv(envContent, "AI_PROVIDER", profile.ai.provider);
+  envContent = upsertEnv(envContent, "AI_RUNTIME", profile.ai.provider);
+  envContent = upsertEnv(envContent, "AI_MODEL", profile.ai.model);
+  if (options.antigravityModel !== undefined) envContent = upsertEnv(envContent, "ANTIGRAVITY_MODEL", options.antigravityModel);
+  if (options.minimaxApiKey) envContent = upsertEnv(envContent, "MINIMAX_API_KEY", options.minimaxApiKey);
+  if (options.openaiApiKey) envContent = upsertEnv(envContent, "OPENAI_API_KEY", options.openaiApiKey);
+  if (options.openaiBaseUrl) envContent = upsertEnv(envContent, "OPENAI_BASE_URL", options.openaiBaseUrl);
+  fs.writeFileSync(envPath, envContent, { encoding: "utf8", mode: 0o600 });
 
-    envContent = upsertEnv(envContent, "THREADS_USERNAME", cleanUsername);
-    envContent = upsertEnv(envContent, "EXECUTION_MODE", executionMode);
-
-    if (options.aiProvider) {
-      envContent = upsertEnv(envContent, "AI_PROVIDER", options.aiProvider);
-      envContent = upsertEnv(envContent, "AI_RUNTIME", options.aiProvider);
-    }
-    if (options.openaiApiKey) {
-      envContent = upsertEnv(envContent, "OPENAI_API_KEY", options.openaiApiKey);
-      envContent = upsertEnv(envContent, "FREEBUFF_API_KEY", options.openaiApiKey);
-    }
-    if (options.openaiBaseUrl) {
-      envContent = upsertEnv(envContent, "OPENAI_BASE_URL", options.openaiBaseUrl);
-      envContent = upsertEnv(envContent, "FREEBUFF_BASE_URL", options.openaiBaseUrl);
-    }
-    if (options.openaiModel) {
-      envContent = upsertEnv(envContent, "OPENAI_MODEL", options.openaiModel);
-      envContent = upsertEnv(envContent, "AI_MODEL", options.openaiModel);
-    }
-    if (options.minimaxApiKey) {
-      envContent = upsertEnv(envContent, "MINIMAX_API_KEY", options.minimaxApiKey);
-    }
-    if (options.minimaxModel) {
-      envContent = upsertEnv(envContent, "MINIMAX_MODEL", options.minimaxModel);
-      if (options.aiProvider === "minimax") {
-        envContent = upsertEnv(envContent, "AI_MODEL", options.minimaxModel);
-      }
-    }
-
-    fs.writeFileSync(envPath, envContent, "utf8");
-  }
-
-  // 6. Reload Knowledge & Config in Memory
   knowledge.loadKnowledge();
-
-  console.log("\n==============================================");
-  console.log("   ✅ BRAND & AI ONBOARDING COMPLETED SUCCESSFULLY!");
-  console.log("==============================================");
-  console.log(`  Founder    : ${founderName} (${founderRole})`);
-  console.log(`  Threads    : @${cleanUsername}`);
-  console.log(`  Company    : ${companyName}`);
-  console.log(`  Website    : ${companyWebsite}`);
-  if (companyProduct) {
-    console.log(`  Product    : ${companyProduct}`);
-  }
-  if (founderWhatsApp) {
-    console.log(`  WhatsApp   : ${founderWhatsApp}`);
-  }
-  console.log(`  Approved   : ${approvedServices.length} capabilities`);
-  console.log(`  Excluded   : ${excludedServices.length} non-core areas`);
-  console.log(`  Exec Mode  : ${executionMode.toUpperCase()} (${executionMode === "concurrent" ? "Parallel Multi-Tab Continuous" : "Sequential Single-Tab Rotation"})`);
-  console.log(`  AI Engine  : Provider=${options.aiProvider || CONFIG.AI_PROVIDER}, Model=${options.openaiModel || options.minimaxModel || CONFIG.MODEL}`);
-  console.log("==============================================\n");
-  console.log("Your brand knowledge base is saved in ./knowledge/");
-  console.log("All qualification engines, response generators, and visual posters");
-  console.log("are now 100% grounded in your brand identity with zero hardcoding!\n");
+  console.log("\n============================================================");
+  console.log("              ✅ ONBOARDING COMPLETE");
+  console.log("============================================================");
+  console.log("Identity   : " + identity.name + " · " + identity.role);
+  console.log("Company    : " + company.name);
+  console.log("Platforms  : " + browser.platforms.join(", "));
+  console.log("Browser    : " + browser.type + " · " + browser.cdpUrl);
+  console.log("Execution  : " + browser.mode);
+  console.log("Dry Run    : " + (safety.dryRun ? "ON" : "OFF"));
+  console.log("Approval   : " + (safety.approval ? "ON" : "OFF"));
+  console.log("Auto Likes : " + (behavior.autoLike ? "ON" : "OFF"));
+  console.log("Auto Comments: " + (behavior.autoComment ? "ON" : "OFF"));
+  console.log("Auto Replies: " + (behavior.autoReply ? "ON" : "OFF"));
+  console.log("Auto DMs   : " + (behavior.autoDm ? "ON" : "OFF"));
+  console.log("Auto Follow: " + (behavior.autoFollow ? "ON" : "OFF"));
+  console.log("Auto Connect: " + (behavior.autoConnect ? "ON" : "OFF"));
+  console.log("Auto Publish: " + (behavior.autoPublish ? "ON" : "OFF"));
+  console.log("AI         : " + profile.ai.provider + " · " + profile.ai.model);
+  console.log("Profile    : ./private/user-profile.json");
+  console.log("Knowledge  : ./knowledge/");
+  console.log("Security   : CAPTCHA, login and identity challenges require manual action.");
+  console.log("============================================================\n");
   return 0;
 }
 

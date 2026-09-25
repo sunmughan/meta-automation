@@ -136,9 +136,21 @@ class FacebookSearchEngine {
             }
 
             // Find author
-            const authorEl = el.querySelector("h2 a, h3 a, strong a, span[dir='auto'] strong, [role='link'] strong, a[role='link'][tabindex='0']");
-            const username = authorEl ? authorEl.innerText.trim().replace(/[\r\n]+/g, " ") : "facebook_buyer";
-            const authorProfileUrl = authorEl && authorEl.href ? (authorEl.href.startsWith("/") ? "https://www.facebook.com" + authorEl.href : authorEl.href) : "";
+            let authorName = "";
+            let authorProfileUrl = "";
+            const authorCandidates = Array.from(el.querySelectorAll("h2 a, h3 a, h4 a, a[href*='profile.php'], a[href*='/user/'], strong a, a strong, span[dir='auto'] strong, [role='link'] strong, a[role='link']"));
+            for (const cand of authorCandidates) {
+              const rawT = (cand.innerText || "").trim().replace(/[\r\n]+/g, " ");
+              const h = (cand.getAttribute("href") || cand.href || "").trim();
+              if (rawT.length >= 2 && !/^(like|comment|share|follow|join|sponsored|public|group|see more|view|reactions?|\d+\s*[hmdws]|yesterday|just now)$/i.test(rawT)) {
+                authorName = rawT;
+                if (h && !h.includes("/search/") && !h.includes("/posts/")) {
+                  authorProfileUrl = h.startsWith("/") ? "https://www.facebook.com" + h : h;
+                }
+                break;
+              }
+            }
+            const username = authorName || "";
 
             // Find post text
             const textEl = el.querySelector("div[dir='auto'][style*='text-align'], div[data-ad-preview='message'], div[data-ad-comet-preview='message'], div[dir='auto']");
@@ -164,6 +176,7 @@ class FacebookSearchEngine {
                 postId,
                 url: url || `https://www.facebook.com/search/posts/?q=${encodeURIComponent(searchQuery || "buyer")}&#${postId}`,
                 username,
+                authorName: authorName || username,
                 authorProfileUrl,
                 groupName,
                 text,

@@ -68,8 +68,16 @@ class FacebookProfileManager {
             const url = linkEl ? linkEl.href : "";
 
             // Author name
-            const authorEl = el.querySelector("h2 a, h3 a, strong a, span[dir='auto'] strong, [role='link'] strong");
-            const username = authorEl ? authorEl.innerText.trim().replace(/[\r\n]+/g, " ") : "facebook_user";
+            let authorName = "";
+            const authorCandidates = Array.from(el.querySelectorAll("h2 a, h3 a, strong a, a strong, span[dir='auto'] strong, [role='link'] strong, a[role='link']"));
+            for (const cand of authorCandidates) {
+              const rawT = (cand.innerText || "").trim().replace(/[\r\n]+/g, " ");
+              if (rawT.length >= 2 && !/^(like|comment|share|follow|join|sponsored|public|group|see more|view|\d+\s*[hmdws]|yesterday|just now)$/i.test(rawT)) {
+                authorName = rawT;
+                break;
+              }
+            }
+            const username = authorName || "";
 
             // Post content
             const messageEl = el.querySelector("div[dir='auto'][style*='text-align'], div[data-ad-comet-preview='message'], div[dir='auto']");
@@ -83,6 +91,7 @@ class FacebookProfileManager {
               postId,
               url,
               username,
+              authorName: authorName || username,
               text,
               platform: "facebook"
             };

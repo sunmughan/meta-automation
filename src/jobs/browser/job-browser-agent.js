@@ -1,4 +1,4 @@
-const BrowserAgent = require("../../agent/browser-agent");
+const { BrowserAgent } = require("../../agent/browser-agent");
 const CONFIG = require("../../../config");
 
 class JobBrowserAgent extends BrowserAgent {

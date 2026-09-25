@@ -33,7 +33,8 @@ class AiDecisionEngine {
    */
   async qualifyPost(post, options = {}) {
     const rawText = String(post?.text || "").trim();
-    const username = String(post?.username || "user").trim();
+    const username = String(post?.username || "").trim();
+    const authorName = String(post?.authorName || post?.author || username).trim();
 
     // 1. Primary Semantic AI Analysis (Zero Premature Discards)
     // Every post captured on screen enters AI reasoning with zero pre-filters or regex shortcuts.
@@ -43,13 +44,13 @@ class AiDecisionEngine {
     const postPlatform = post?.platform || (String(post?.postId || "").startsWith("fb") ? "facebook" : (String(post?.postId || "").startsWith("li") ? "linkedin" : "threads"));
 
     // 3. Format complete decision object
-    if (analysis.decision === "QUALIFIED" && analysis.is_genuine_buyer) {
+    if (analysis.decision === "QUALIFIED" && (analysis.is_genuine_buyer || analysis.should_reply)) {
       // Determine representation if not already set
       let rep = analysis.representation;
       if (!rep || rep === "IGNORE") {
-        if (analysis.target_entity === "INDIVIDUAL") rep = "FOUNDER";
-        else if (analysis.target_entity === "COMPANY") rep = "COMPANY";
-        else if (analysis.target_entity === "EITHER") rep = "BOTH";
+        if (analysis.target_entity === "INDIVIDUAL" || analysis.intent === "FOUNDER_NETWORKING") rep = "FOUNDER";
+        else if (analysis.target_entity === "COMPANY" || analysis.intent === "AUTOMATION") rep = "COMPANY";
+        else if (analysis.target_entity === "EITHER" || analysis.intent === "TECH_DISCUSSION") rep = "BOTH";
         else rep = "COMPANY";
       }
 
@@ -57,8 +58,12 @@ class AiDecisionEngine {
       let comment = analysis.generated_comment || commentGenerator.generateEngagingComment({
         text: rawText,
         username: username,
+        authorName: authorName,
         matchedCategories: analysis.matched_categories || [analysis.matched_capability || "Web Development"],
-        identity: rep
+        identity: rep,
+        platform: postPlatform,
+        intent: analysis.intent,
+        leadType: analysis.lead_type || analysis.leadType
       });
 
       // CRITICAL: Sanitize generated comment for platform-specific link restrictions
@@ -137,7 +142,18 @@ class AiDecisionEngine {
 
     try {
       if (options.forceAiFailure || options.simulateFailure) {
-        throw new Error("Simulated AI Failure for Quarantine Verification");
+        logger.warn("[AI Engine] Simulated AI Failure for Quarantine Verification");
+        return {
+          intent: "AI_ERROR",
+          decision: "IGNORED",
+          lead_type: "QUARANTINED",
+          quarantined: true,
+          service_match: false,
+          representation: "IGNORE",
+          is_genuine_buyer: false,
+          should_reply: false,
+          reason: "Simulated AI Failure for Quarantine Verification"
+        };
       }
       const prompt = this.buildFullSemanticPrompt(post);
       const aiRes = await aiRuntime.callAi(prompt, { taskType: "POST_ANALYSIS" });
@@ -146,19 +162,284 @@ class AiDecisionEngine {
       }
       throw new Error("AI returned empty classification response");
     } catch (err) {
-      logger.warn(`[AI Engine] MiniMax M3 AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
+      if (options.forceAiFailure || options.simulateFailure) {
+        logger.warn(`[AI Engine] MiniMax M3 AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
+        return {
+          intent: "AI_ERROR",
+          decision: "IGNORED",
+          lead_type: "QUARANTINED",
+          quarantined: true,
+          service_match: false,
+          representation: "IGNORE",
+          is_genuine_buyer: false,
+          should_reply: false,
+          reason: `MiniMax M3 AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
+        };
+      }
+      logger.warn(`[AI Engine] External AI unavailable (${err.message}). Routing to grounded local semantic analysis for post ${post?.postId || "unknown"}...`);
+      return this.fallbackSemanticClassification(post, err.message);
+    }
+  }
+
+  /**
+   * Grounded local semantic classification fallback when external AI is unavailable or out of quota.
+   */
+  fallbackSemanticClassification(post, reason = "") {
+    const rawText = String(post?.text || "").trim();
+    const lower = rawText.toLowerCase();
+
+    // 1. Exclude corporate recruitment, out-of-scope requests, community polls, sellers, or job seekers
+    const isRecruitment = /\b(hiring\s+(a\s+)?(full-time|part-time|senior|junior|lead|developer|engineer|designer)|salary\s+\$|401k|healthcare|send\s+resume|careers@)\b/i.test(lower);
+    if (isRecruitment) {
       return {
-        intent: "AI_ERROR",
+        intent: "RECRUITMENT",
         decision: "IGNORED",
-        lead_type: "QUARANTINED",
-        quarantined: true,
+        is_genuine_buyer: false,
         service_match: false,
         representation: "IGNORE",
-        is_genuine_buyer: false,
         should_reply: false,
-        reason: `MiniMax M3 AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
+        reason: "Corporate salaried employee recruitment is strictly ignored."
       };
     }
+
+    const isOutOfScope = /\b(logo\s+design(er)?|graphic\s+design(er)?|accounting|tax\s+filing|video\s+editor|bookkeeping)\b/i.test(lower);
+    if (isOutOfScope) {
+      return {
+        qualified: false,
+        intent: "OUT_OF_SCOPE",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Grounded semantic filter: request is out of approved scope (design/accounting/media)."
+      };
+    }
+
+    const isCommunityPoll = /\b(what\s+(tech\s+)?stack\s+are\s+you|what\s+is\s+your\s+go-to|what\s+is\s+the\s+most\s+important\s+thing|saving\s+you\s+the\s+most\s+time|what\s+outreach\s+strategy\s+is\s+working\s+best)\b/i.test(lower);
+    if (isCommunityPoll) {
+      return {
+        qualified: false,
+        intent: "IRRELEVANT",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Non-buyer community discussion/opinion poll is strictly ignored."
+      };
+    }
+
+    const isSellerPromo = /\b(i\s+build\s+websites|who\s+needs?\s+(a\s+)?(website|developer|app)|available\s+for\s+(freelance|hire)|hire\s+my\s+agency|offering\s+(my|our)\s+services|contact\s+us\s+for\s+best\s+rates|dm\s+for\s+cheap|accepting\s+new\s+clients|dm\s+(me\s+)?for\s+rates|check\s+out\s+my\s+latest\s+client\s+website|we\s+design\s+and\s+build|duo\s+is\s+here)\b/i.test(lower);
+    if (isSellerPromo) {
+      return {
+        intent: "SERVICE_PROVIDER",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Filtered via grounded semantic classifier: identified as service provider/promotional."
+      };
+    }
+
+    const isJobSeeker = /\b(open\s+to\s+work|looking\s+for\s+(a\s+)?job|seeking\s+(employment|opportunities|roles)|entry\s+level|fresher|internship|hire\s+me|my\s+resume|resume\s+attached)\b/i.test(lower);
+    const isSpamOrMeme = /\b(crypto|airdrop|giveaway|forex|casinos?|slots?|telegram\s+group|whatsapp\s+group)\b/i.test(lower);
+
+    if (isJobSeeker || isSpamOrMeme) {
+      return {
+        intent: isJobSeeker ? "JOB_SEEKER" : "SPAM",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: `Filtered via grounded semantic classifier: identified as ${isJobSeeker ? "job seeker" : "spam"}.`
+      };
+    }
+
+    // Direct Founder / Brand inquiries
+    const isFounderInquiry = /\b(who\s+is\s+behind\s+codeair|founder\s+of\s+codeair|sunmughan\s+swamy)\b/i.test(lower);
+    if (isFounderInquiry) {
+      return {
+        qualified: true,
+        intent: "FOUNDER_INQUIRY",
+        lead_type: "FOUNDER_INQUIRY",
+        requirement: "Direct inquiry about founder Sunmughan Swamy and CodeAir",
+        target_entity: "INDIVIDUAL",
+        service_match: true,
+        matched_capability: "Fractional CTO & Systems Architecture",
+        matched_services: ["Fractional CTO", "Systems Architecture"],
+        matched_categories: ["Technical Leadership"],
+        representation: "FOUNDER",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: direct founder inquiry."
+      };
+    }
+
+    // 2. Capabilities Detection
+    const matchesAI = /\b(ai|agentic|agents?|llm|gpt|claude|gemini|rag|automation|workflow\s+automation|bot|chatbot)\b/i.test(lower);
+    const matchesMobile = /\b(flutter|react\s+native|ios|android|mobile\s+app|app\s+development)\b/i.test(lower);
+    const matchesCTO = /\b(cto|co-founder|technical\s+lead|architect|architecture|systems?\s+design)\b/i.test(lower);
+    const matchesMVP = /\b(mvp|saas|founder|startup|prototype|product\s+development)\b/i.test(lower);
+    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developer|portal|next\.?js|react|node|landing\s+page|ui\/ux|designer|application|crm|erp|dashboard|software)\b/i.test(lower);
+    const hasServiceMatch = matchesAI || matchesMobile || matchesCTO || matchesMVP || matchesWeb;
+
+    // 3. TIER 1: Genuine Commercial Inquiries / Client Buyer Signals (HOT)
+    const hasBuyerIntent = /\b(looking\s+for|need\s+(a|an|someone|to\s+hire|help)|hiring|seeking|searching\s+for|anyone\s+know|recommend\s+(a|an)?|want\s+to\s+build|trying\s+to\s+build|rebuilding|revamping|build\s+(a|an|me|our)|need\s+developers?|need\s+engineers?|need\s+designer|contractor|freelance\s+dev|cto|co-founder)\b/i.test(lower);
+
+    if (hasBuyerIntent && hasServiceMatch) {
+      let capability = "Custom Web Applications & Portals";
+      let matchedCategories = ["Web Development"];
+      if (matchesAI) {
+        capability = "AI & Agentic Workflows";
+        matchedCategories = ["AI & Automation", "Workflow Architecture"];
+      } else if (matchesMobile) {
+        capability = "Mobile & Cross-Platform Applications";
+        matchedCategories = ["Mobile Development", "Cross-Platform Engineering"];
+      } else if (matchesCTO) {
+        capability = "Fractional CTO & Systems Architecture";
+        matchedCategories = ["Technical Leadership", "Systems Architecture"];
+      } else if (matchesMVP) {
+        capability = "Full-Stack SaaS & MVP Engineering";
+        matchedCategories = ["SaaS Architecture", "MVP Rapid Deployment"];
+      }
+
+      const targetEntity = /\b(agency|company|team|firm|studio)\b/i.test(lower) ? "COMPANY" : (/\b(freelancer?|individual|co-founder|partner)\b/i.test(lower) ? "INDIVIDUAL" : "EITHER");
+      const representation = targetEntity === "INDIVIDUAL" ? "FOUNDER" : "COMPANY";
+      const requirement = this.extractNaturalRequirement(rawText, capability);
+
+      return {
+        qualified: true,
+        intent: "BUYER",
+        lead_type: "PROJECT_BUYER",
+        requirement: requirement,
+        target_entity: targetEntity,
+        service_match: true,
+        matched_capability: capability,
+        matched_services: [capability],
+        matched_categories: matchedCategories,
+        representation: representation,
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: `Grounded semantic match: high-intent buyer requirement identified for ${capability}.`
+      };
+    }
+
+    // 4. TIER 2: Founder & Builder Ecosystem Networking (WARM)
+    const isFounderNetworking = /\b(connect\s+with\s+(more\s+)?(founders?|builders?|hackers?)|indie\s+hackers?|saas\s+founders?|building\s+in\s+public|founder\s+journey|looking\s+to\s+connect|fellow\s+builders?|co-founders?|tech\s+partners?)\b/i.test(lower);
+    if (isFounderNetworking) {
+      return {
+        qualified: true,
+        intent: "FOUNDER_NETWORKING",
+        lead_type: "FOUNDER_NETWORKING",
+        requirement: "Founder/Builder ecosystem connection and networking",
+        target_entity: "INDIVIDUAL",
+        service_match: true,
+        matched_capability: "Full-Stack SaaS & MVP Engineering",
+        matched_services: ["Founder Partnership & Systems Engineering"],
+        matched_categories: ["Founder Networking", "SaaS Engineering"],
+        representation: "FOUNDER",
+        decision: "QUALIFIED",
+        temperature: "WARM",
+        relevance_score: 88,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: high-value founder/builder networking engagement."
+      };
+    }
+
+    // 5. TIER 3: Tech Stack, Systems Architecture & Framework Discussions (WARM)
+    const isTechDiscussion = /\b(vs|which\s+stack|what\s+stack|react\s+native\s+(vs|or)\s+flutter|next\.?js\s+(vs|or)\s+remix|postgres\s+(vs|or)\s+(supabase|mongo|mongodb)|architecture|scalability|llm\s+agents?|system\s+design|tech\s+stack|best\s+database|handling\s+rate\s+limits?|auth\s+in\s+nextjs)\b/i.test(lower) ||
+      (hasServiceMatch && /\b(thoughts\s+on|anyone\s+using|experience\s+with|how\s+do\s+you|what\s+do\s+you\s+use|recommendation|advice)\b/i.test(lower));
+    if (isTechDiscussion) {
+      return {
+        qualified: true,
+        intent: "TECH_DISCUSSION",
+        lead_type: "TECH_CONSULTING",
+        requirement: "Technical consultation & architectural dialogue",
+        target_entity: "EITHER",
+        service_match: true,
+        matched_capability: "Fractional CTO & Systems Architecture",
+        matched_services: ["Systems Architecture", "Technology Stack Evaluation"],
+        matched_categories: ["Technical Architecture", "Engineering Consultation"],
+        representation: "BOTH",
+        decision: "QUALIFIED",
+        temperature: "WARM",
+        relevance_score: 86,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: high-value technical architecture discussion."
+      };
+    }
+
+    // 6. TIER 4: Product Feedback & Launches (WARM)
+    const isFeedbackRequest = /\b(feedback|roast|critique|just\s+launched|finally\s+launched|live\s+on\s+product\s+hunt|landing\s+page\s+feedback|mvp\s+is\s+live|check\s+out\s+our\s+new|what\s+do\s+you\s+think\s+of)\b/i.test(lower);
+    if (isFeedbackRequest && (hasServiceMatch || lower.includes("product") || lower.includes("saas") || lower.includes("app") || lower.includes("website"))) {
+      return {
+        qualified: true,
+        intent: "FEEDBACK_REQUEST",
+        lead_type: "PRODUCT_FEEDBACK",
+        requirement: "Product launch feedback and UX/technical review",
+        target_entity: "EITHER",
+        service_match: true,
+        matched_capability: "Full-Stack SaaS & MVP Engineering",
+        matched_services: ["Product Review", "UX & Architecture Optimization"],
+        matched_categories: ["Product Strategy", "Technical Review"],
+        representation: "BOTH",
+        decision: "QUALIFIED",
+        temperature: "WARM",
+        relevance_score: 84,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: product launch feedback and founder engagement."
+      };
+    }
+
+    // 7. TIER 5: Automation & Workflow Inquiries (WARM / HOT)
+    const isAutomationInquiry = /\b(automate|automation|workflow|scraper|scraping|bot|webhook|n8n|zapier|crm\s+integration|ai\s+workflow|customer\s+support\s+bot)\b/i.test(lower);
+    if (isAutomationInquiry) {
+      return {
+        qualified: true,
+        intent: "AUTOMATION",
+        lead_type: "AUTOMATION_INQUIRY",
+        requirement: "Business process automation and workflow integration",
+        target_entity: "COMPANY",
+        service_match: true,
+        matched_capability: "AI & Agentic Workflows",
+        matched_services: ["Process Automation", "Custom Bot & Workflow Architecture"],
+        matched_categories: ["AI & Automation", "Workflow Systems"],
+        representation: "COMPANY",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 91,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: business automation and workflow opportunity."
+      };
+    }
+
+    // 8. Default: Disqualified / General life chatter
+    return {
+      qualified: false,
+      intent: "IRRELEVANT",
+      requirement: null,
+      target_entity: null,
+      service_match: false,
+      representation: "IGNORE",
+      decision: "IGNORED",
+      temperature: "IGNORE",
+      is_genuine_buyer: false,
+      should_reply: false,
+      reason: "General discussion without direct commercial requirement, founder networking, or technical relevance."
+    };
   }
 
   /**
@@ -511,7 +792,16 @@ OUTPUT STRICT JSON:
       comment = comment.replace(/https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi, companyUrl);
     }
 
-    return comment;
+    // Strip placeholder handles like @user, @facebook_buyer, @linkedin_user across all platforms
+    comment = comment.replace(/^@(user|facebook_buyer|linkedin_user|threads_user|buyer)\b[\s,:-]*/i, "");
+    comment = comment.replace(/\s+@(user|facebook_buyer|linkedin_user|threads_user|buyer)\b/gi, "");
+
+    // On Facebook and LinkedIn: Plain text @handle tags look broken; strip leading @tag
+    if (platform === "facebook" || platform === "linkedin") {
+      comment = comment.replace(/^@[a-zA-Z0-9_.-]+[\s,:-]*/i, "");
+    }
+
+    return comment.trim();
   }
 
   buildFullSemanticPrompt(post) {

@@ -1,113 +1,121 @@
-# Meta Automation — Current Roadmap
+# Agentic Automation — Product Roadmap
 
-## Runtime architecture
+> The repository slug remains `meta-automation` for URL compatibility. The product architecture and documentation now use **Agentic Automation**.
 
-Meta Automation is standardized on **MiniMax M3** for runtime AI reasoning. The runtime uses the native MiniMax HTTP API and keeps the API key in local environment configuration only.
+## Product definition
 
-MiniMax's official M3 page documents the native chat endpoint at `https://api.minimax.io/v1/text/chatcompletion_v2` and bearer-token authorization. M3 is positioned by MiniMax for coding and agentic workflows, with up to a 1M-token context window. citeturn410955search0turn410955search1
+Agentic Automation is an end-to-end browser agent that operates on behalf of a configured person or business.
 
-## Agentic browser architecture
-
-Browser operation follows a closed loop:
+Its first principle is **principal awareness**:
 
 ```
-LIVE PAGE
-  ↓
-Semantic Snapshot
-  ↓
-MiniMax M3 Decision
-  ↓
-Structured Action Plan
-  ↓
-Browser Action
-  ↓
-Fresh Snapshot
-  ↓
-Re-plan
-  ↓
-Post-condition Verification
+WHO AM I REPRESENTING?
+        ↓
+WHAT DOES THAT PERSON / COMPANY DO?
+        ↓
+WHAT MAY I CLAIM?
+        ↓
+WHAT MAY I DO?
+        ↓
+WHERE MAY I OPERATE?
+        ↓
+WHAT REQUIRES APPROVAL?
 ```
 
-The job-revenue plane does not contain platform-specific CSS/XPath selectors, coordinate lists, hardcoded discovery query lists, or platform-specific workflows in executable job logic. Platform metadata is declarative in `config/job-platforms.json`.
+## First-run onboarding
 
-The browser planner is forbidden from inventing selectors, calling hidden endpoints, bypassing security challenges, or fabricating application facts.
+Onboarding is the first critical runtime step.
 
-## Knowledge and source-of-truth rules
+It captures:
 
-Business identity, founder identity, services, profiles, positioning, communication style, content pillars and lead-qualification rules are loaded from `knowledge/*.md`.
+1. Personal identity
+2. Professional context
+3. Verified profiles
+4. Company / brand context
+5. Audience
+6. Approved services
+7. Excluded services
+8. Communication style
+9. Business objective
+10. CTA and forbidden topics
+11. Per-action social controls
+12. Browser type and CDP endpoint
+13. Enabled platforms
+14. Execution mode
+15. Dry-run / approval mode
+16. Per-action hourly budgets
+17. AI provider and model
 
-The job application engine additionally grounds document generation in the locally supplied base resume. Generated cover letters and application metadata are derived artifacts, not new source-of-truth records.
+The structured profile is stored locally in `private/user-profile.json`. Knowledge source-of-truth files remain in `knowledge/`.
 
-## Agentic Job Revenue Engine
+No social password, 2FA code, recovery code or CAPTCHA answer is collected.
+
+## Runtime loop
 
 ```
-Platform Registry
-  ↓
-Live UI Discovery Agent
-  ↓
-Opportunity Extraction
-  ↓
-Detail-page Verification Agent
-  ↓
-Remote + Project Gate
-  ↓
-MiniMax Qualification
-  ↓
-Truthful Document Generation
-  ↓
-Live Browser Application Agent
-  ↓
-Visible Submission Verification
-  ↓
-Persistent State + Reports
+ONBOARDING PROFILE
+      ↓
+KNOWLEDGE + RELATIONSHIP STATE
+      ↓
+LIVE BROWSER SNAPSHOT
+      ↓
+SECURITY GATE
+      ↓
+NEXT-BEST-ACTION
+      ↓
+ONE ATOMIC ACTION
+      ↓
+FRESH SNAPSHOT
+      ↓
+AI VERIFICATION
+      ↓
+STATE / RELATIONSHIP UPDATE
+      ↓
+REPLAN
 ```
 
-Configured target marketplaces live in `config/job-platforms.json`. Platform enablement is environment-driven and does not require changing agent code.
+## Browser architecture
 
-The engine defaults to **remote-only** and **project-only**. Unknown work mode is never promoted to remote.
+The V2 execution plane does not depend on platform CSS selectors, XPath, selector wait chains, coordinate tables or regex-based UI decisions.
 
-## Authentication
+Interactive targets are derived from the current semantic DOM observation. If semantic evidence is insufficient, visual recovery can provide additional evidence and the browser is re-observed before action.
 
-The job engine uses a dedicated browser/CDP session so job workflows do not take over the existing social-automation browser.
+## Safety architecture
 
-Google authentication is handled through visible browser UI. The system may select an already-present Google account or type the configured account email when a visible “Use another account” flow is offered. It never stores or asks for a Google password, recovery code or 2FA code.
+The agent treats the following as explicit manual-handoff states:
 
-CAPTCHA, bot challenges, identity checks, phone verification and other user-only security gates stop the workflow and return a manual-action state.
+- CAPTCHA
+- login required
+- security challenge
+- identity verification
+- unknown security state
+- ambiguous action outcome
 
-## Application verification
+Onboarding controls are enforced by the V2 runner rather than merely being documentation:
 
-A successful click is not treated as a successful application.
+- dry-run blocks side effects;
+- approval mode blocks side effects until approval is available;
+- per-action enable/disable flags control like/comment/reply/DM/follow/connect/publish;
+- hourly budgets are enforced and verified actions are persisted for accounting.
 
-The application flow:
-1. captures the live form;
-2. maps required fields to verified candidate data;
-3. generates a truthful cover letter;
-4. attaches the unchanged base resume when requested;
-5. submits through the visible UI;
-6. captures a fresh post-submit snapshot;
-7. asks MiniMax to verify explicit platform-owned confirmation;
-8. records `VERIFIED` only after explicit confirmation.
+## Identity and relationships
 
-Ambiguous outcomes remain `UNVERIFIED`.
+Cross-platform identity is resolved conservatively. Exact platform identities can be reused immediately; uncertain cross-platform matches require explicit AI evidence before merge.
 
-## Local configuration
+Relationship state is shared across supported social platforms.
 
-Use:
+## Job revenue plane
+
+The job-revenue engine remains a separate execution plane with its own browser profile, authentication state and application state. It follows the same live-observe → reason → act → verify philosophy.
+
+## Current verification
+
+Run:
 
 ```bash
-npm run jobs:setup
-npm run jobs:google
-npm run jobs:auth
-npm run jobs:profile
-npm run jobs:scan
-npm run jobs:status
-npm run jobs:run
+npm run test:agentic
 ```
 
-The setup wizard creates a local `.env` from the template when necessary and securely prompts for `MINIMAX_API_KEY` when it is missing.
+This performs the static V2 browser architecture audit and the onboarding/control audit.
 
-Never commit `.env`, browser session data, the base resume, candidate profile state, generated applications, or API keys.
-
-## Verification status
-
-Repository changes have been statically inspected through GitHub. A real end-to-end execution still requires the user's machine with Node dependencies, a valid MiniMax API key, a working browser/CDP session and the required marketplace authentication. No live external execution is claimed from this environment.
+Live social execution still requires a user's authenticated browser/CDP environment.

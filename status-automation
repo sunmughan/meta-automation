@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/env bash
 # Reports both Meta Automation workers and their isolated browser CDP sessions.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,6 +7,22 @@ cd "$SCRIPT_DIR" || exit 1
 echo "=================================================="
 echo "  META AUTOMATION — SYSTEM STATUS"
 echo "=================================================="
+
+# Check Active Autopilot Mode
+node -e '
+const { getActiveMode } = require("./src/core/autopilot-manager");
+const active = getActiveMode();
+if (active.mode === "social") {
+  console.log("  🟢 ACTIVE AUTOPILOT MODE : SOCIAL AUTOPILOT (PID " + active.pid + ")");
+} else if (active.mode === "job") {
+  console.log("  🟢 ACTIVE AUTOPILOT MODE : JOB AUTOPILOT - FREELANCER ONLY (PID " + active.pid + ")");
+} else if (active.mode === "conflict") {
+  console.log("  ⚠️  ACTIVE AUTOPILOT MODE : CONFLICT (Both Running - Run ./stop-automation)");
+} else {
+  console.log("  ⚪ ACTIVE AUTOPILOT MODE : NONE (IDLE)");
+}
+' 2>/dev/null || true
+echo "--------------------------------------------------"
 
 show_worker() {
   local name="$1"

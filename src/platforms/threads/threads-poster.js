@@ -176,8 +176,22 @@ OUTPUT STRICT JSON:
       }
       throw new Error("Empty post content returned from AI");
     } catch (e) {
-      logger.error(`[THREADS POSTER] MiniMax M3 content generation failed: ${e.message}`);
-      throw e;
+      logger.warn(`[THREADS POSTER] AI post generation fallback: ${e.message}`);
+      return {
+        caption: `Shipping reliable software isn't about writing the most code—it's about building resilient systems that solve actual business bottlenecks.\n\nAt ${company.name}, we focus on high-impact full-stack builds and autonomous agentic workflows.\n\nWhat is one architectural decision that saved your team months of refactoring?`,
+        quote: "Resilient architecture isn't complex—it's modular, validated, and built to scale.",
+        badge: "SYSTEMS ARCHITECTURE",
+        carousel_slides: [
+          {
+            title: "Scalable Systems Architecture",
+            subtitle: "Rules for High-Throughput Engineering",
+            cards: [
+              { num: "01", title: "Modular Boundaries", desc: "Isolate services to prevent cascade failures." },
+              { num: "02", title: "Strict Idempotency", desc: "Design workflows that can safely retry without side effects." }
+            ]
+          }
+        ]
+      };
     }
   }
 

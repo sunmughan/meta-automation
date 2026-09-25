@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "stages": {
+    "OBSERVED": {
+      "allowedTransitions": ["IDENTIFIED", "QUALIFIED", "MONITORING"],
+      "defaultNext": "IDENTIFIED"
+    },
+    "IDENTIFIED": {
+      "allowedTransitions": ["QUALIFIED", "ENGAGED", "MONITORING"],
+      "defaultNext": "QUALIFIED"
+    },
+    "QUALIFIED": {
+      "allowedTransitions": ["ENGAGED", "MONITORING", "HANDOFF"],
+      "defaultNext": "ENGAGED"
+    },
+    "ENGAGED": {
+      "allowedTransitions": ["RESPONDED", "CONVERSATION", "MONITORING", "HANDOFF"],
+      "defaultNext": "CONVERSATION"
+    },
+    "RESPONDED": {
+      "allowedTransitions": ["CONVERSATION", "QUALIFIED", "HANDOFF"],
+      "defaultNext": "CONVERSATION"
+    },
+    "CONVERSATION": {
+      "allowedTransitions": ["OPPORTUNITY", "MONITORING", "HANDOFF", "LOST"],
+      "defaultNext": "OPPORTUNITY"
+    },
+    "OPPORTUNITY": {
+      "allowedTransitions": ["HANDOFF", "WON", "LOST"],
+      "defaultNext": "HANDOFF"
+    },
+    "HANDOFF": {
+      "allowedTransitions": ["WON", "LOST", "MONITORING"],
+      "defaultNext": "MONITORING"
+    },
+    "WON": {
+      "allowedTransitions": [],
+      "defaultNext": null
+    },
+    "LOST": {
+      "allowedTransitions": ["MONITORING"],
+      "defaultNext": "MONITORING"
+    },
+    "MONITORING": {
+      "allowedTransitions": ["IDENTIFIED", "QUALIFIED", "ENGAGED"],
+      "defaultNext": "IDENTIFIED"
+    }
+  }
+}

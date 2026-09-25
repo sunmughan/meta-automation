@@ -1,15 +1,15 @@
 {
   "version": 1,
   "platforms": [
-    {"id":"upwork","name":"Upwork","url":"https://www.upwork.com/","mode":"BID_MARKETPLACE","enabled":true},
+    {"id":"upwork","name":"Upwork","url":"https://www.upwork.com/","mode":"BID_MARKETPLACE","enabled":false},
     {"id":"freelancer","name":"Freelancer","url":"https://www.freelancer.com/","mode":"BID_MARKETPLACE","enabled":true},
-    {"id":"contra","name":"Contra","url":"https://contra.com/","mode":"APPLY_MARKETPLACE","enabled":true},
-    {"id":"peopleperhour","name":"PeoplePerHour","url":"https://www.peopleperhour.com/","mode":"PROPOSAL_MARKETPLACE","enabled":true},
-    {"id":"guru","name":"Guru","url":"https://www.guru.com/","mode":"QUOTE_MARKETPLACE","enabled":true},
-    {"id":"workana","name":"Workana","url":"https://www.workana.com/","mode":"PROPOSAL_MARKETPLACE","enabled":true},
-    {"id":"malt","name":"Malt","url":"https://www.malt.com/","mode":"PROJECT_QUOTE","enabled":true},
-    {"id":"arc","name":"Arc","url":"https://arc.dev/","mode":"JOB_APPLICATION","enabled":true},
-    {"id":"toptal","name":"Toptal","url":"https://www.toptal.com/","mode":"TALENT_NETWORK","enabled":true},
-    {"id":"fiverr","name":"Fiverr","url":"https://www.fiverr.com/","mode":"SELLER_INBOUND","enabled":true}
+    {"id":"contra","name":"Contra","url":"https://contra.com/","mode":"APPLY_MARKETPLACE","enabled":false},
+    {"id":"peopleperhour","name":"PeoplePerHour","url":"https://www.peopleperhour.com/","mode":"PROPOSAL_MARKETPLACE","enabled":false},
+    {"id":"guru","name":"Guru","url":"https://www.guru.com/","mode":"QUOTE_MARKETPLACE","enabled":false},
+    {"id":"workana","name":"Workana","url":"https://www.workana.com/","mode":"PROPOSAL_MARKETPLACE","enabled":false},
+    {"id":"malt","name":"Malt","url":"https://www.malt.com/","mode":"PROJECT_QUOTE","enabled":false},
+    {"id":"arc","name":"Arc","url":"https://arc.dev/","mode":"JOB_APPLICATION","enabled":false},
+    {"id":"toptal","name":"Toptal","url":"https://www.toptal.com/","mode":"TALENT_NETWORK","enabled":false},
+    {"id":"fiverr","name":"Fiverr","url":"https://www.fiverr.com/","mode":"SELLER_INBOUND","enabled":false}
   ]
 }

@@ -172,7 +172,13 @@ class LinkedInActivityWatcher {
           const lastText = (lastBubble.innerText || "").trim();
 
           // Check if last message was sent by us
-          const isFromSelf = Boolean(lastBubble.closest(".msg-s-message-group--from-self, [class*='from-self']"));
+          const isFromSelf = Boolean(
+            lastBubble.closest(".msg-s-message-group--from-self, [class*='from-self'], .msg-s-event-listitem--outgoing, [class*='outgoing'], [class*='is-self'], [class*='self']") ||
+            (lastBubble.closest(".msg-s-event-listitem, .msg-s-message-group") &&
+             (lastBubble.closest(".msg-s-event-listitem, .msg-s-message-group").innerText || "").toLowerCase().includes("you sent")) ||
+            (lastBubble.closest(".msg-s-event-listitem, .msg-s-message-group") &&
+             (lastBubble.closest(".msg-s-event-listitem, .msg-s-message-group").querySelector(".msg-s-message-group__name, .msg-s-event-listitem__name")?.innerText || "").toLowerCase().includes("sunmughan"))
+          );
 
           return {
             lastText,
@@ -180,6 +186,14 @@ class LinkedInActivityWatcher {
             totalMessages: bubbleNodes.length
           };
         });
+
+        const convThreadKey = `li_thread_${conv.username.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}`;
+        if (stateStore.state.dms[convThreadKey] && stateStore.state.dms[convThreadKey].lastOutbound) {
+          if (messageData?.isFromSelf || stateStore.state.dms[convThreadKey].lastIncomingText === messageData?.lastText) {
+            logger.info(`[LINKEDIN MESSAGES] Skipping @${conv.username}: Already sent response to this user, awaiting their reply.`);
+            continue;
+          }
+        }
 
         if (!messageData || messageData.isFromSelf) {
           logger.info(`[LINKEDIN MESSAGES] Skipping @${conv.username}: Last message was sent by us or awaiting reply.`);
@@ -255,6 +269,13 @@ class LinkedInActivityWatcher {
               text: replyMessage,
               username: conv.username
             });
+            stateStore.state.dms[convThreadKey] = {
+              lastOutbound: new Date().toISOString(),
+              lastIncomingText: messageData.lastText,
+              responseText: replyMessage,
+              username: conv.username
+            };
+            stateStore.saveState();
             logger.info(`✅ Sent live LinkedIn message response to @${conv.username} and verified it!`);
             processedCount++;
           } else {
