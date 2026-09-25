@@ -15,9 +15,11 @@ applications/
 # Runtime & State Files
 *.pid
 threads-agent.pid
+job-agent.pid
 threads-engagement-state.json
 threads-leads.json
 threads-leads-ai.json
+autopilot-mode.json
 
 # Logs & Media artifacts
 logs/*

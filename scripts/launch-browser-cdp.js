@@ -489,9 +489,7 @@ async function launchBrowser(preference = null) {
   ];
 
   const env = { ...process.env };
-  if (browser.display) {
-    env.DISPLAY = browser.display;
-  }
+  env.DISPLAY = browser.display || process.env.DISPLAY || ":1";
 
   const logFile = path.resolve(__dirname, "../logs/browser.log");
   try {

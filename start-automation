@@ -7,4 +7,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
+if [ -n "$PREFIX" ] && [[ "$PREFIX" == *"com.termux"* ]]; then
+  exec "$SCRIPT_DIR/start-termux" "$@"
+fi
 exec node "$SCRIPT_DIR/scripts/desktop-runner.js" "$@"

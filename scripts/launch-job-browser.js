@@ -46,6 +46,10 @@ async function launch() {
     console.log(`Job browser CDP already active on ${CONFIG.JOB_BROWSER_CDP_URL}`);
     return true;
   }
+  if (port !== 9222 && await isActive(9222)) {
+    console.log(`Job browser reusing active browser on CDP :9222`);
+    return true;
+  }
 
   const browser = resolveBrowser();
   const userDataDir = path.resolve(CONFIG.JOB_BROWSER_USER_DATA_DIR);

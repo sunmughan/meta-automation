@@ -523,11 +523,11 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
                   this._minimaxDisabledUntil = now + 15 * 60 * 1000;
                 }
                 logger.warn(`MiniMax also failed (${minimaxErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-                return await this.callAntigravityGemini(prompt, timeoutMs);
+                return await this.callAntigravity(prompt, timeoutMs);
               }
             }
             logger.warn(`OpenAI provider call failed (${openAiErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-            return await this.callAntigravityGemini(prompt, timeoutMs);
+            return await this.callAntigravity(prompt, timeoutMs);
           }
         } else if (provider === "minimax" && isMiniMaxUsable) {
           try {
@@ -543,14 +543,14 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
               } catch (openAiErr) {
                 this._openAiDisabledUntil = now + 15 * 60 * 1000;
                 logger.warn(`OpenAI provider also unavailable (${openAiErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-                return await this.callAntigravityGemini(prompt, timeoutMs);
+                return await this.callAntigravity(prompt, timeoutMs);
               }
             }
             logger.warn(`MiniMax failed (${minimaxErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-            return await this.callAntigravityGemini(prompt, timeoutMs);
+            return await this.callAntigravity(prompt, timeoutMs);
           }
         }
-        return await this.callAntigravityGemini(prompt, timeoutMs);
+        return await this.callAntigravity(prompt, timeoutMs);
       } catch (err) {
         lastError = err;
         if (!isRetryable(err) || attempt >= maxRetries) break;
