@@ -49,12 +49,12 @@ pkg install -y \
 echo "✅ Node.js: $(node -v 2>/dev/null || echo 'Installed')"
 echo "✅ Chromium: $(chromium-browser --version 2>/dev/null || chromium --version 2>/dev/null || echo 'Installed')"
 
-# 5. Configure MiniMax M3 environment
+# 5. Configure Antigravity-first AI environment
  echo "[4/8] Preparing Antigravity-first AI + job-revenue environment..."
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
-# The setup wizard securely prompts for MINIMAX_API_KEY when it is missing; no key is committed.
+# Antigravity is primary. MiniMax is optional and is never required by this installer.
 
 # 6. Configure Termux:X11 Display & Preferences
 echo "[5/8] Configuring Termux:X11 display (:1) and preferences..."
@@ -147,7 +147,7 @@ cp "$HOME/start-meta.sh" "$HOME/.shortcuts/start-meta" 2>/dev/null || true
 # Verify with test suite
 echo ""
 echo "Running test suite audit..."
-npm test
+npm run test:agentic
 
 echo ""
 echo "=================================================="
