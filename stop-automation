@@ -55,8 +55,10 @@ if [ -n "$PIDS" ]; then
   STOPPED=true
 fi
 
+rm -f "$SCRIPT_DIR/autopilot-mode.json" 2>/dev/null || true
+
 if [ "$STOPPED" = true ]; then
-  echo "✅ Social + Job workers stopped."
+  echo "✅ Active Autopilot worker stopped."
 else
   echo "⚪ No active automation workers found."
 fi

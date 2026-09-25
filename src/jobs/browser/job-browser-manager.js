@@ -17,10 +17,10 @@ class JobBrowserManager {
     this.page = null;
   }
 
-  async isReachable(timeoutMs = 1500) {
+  async isReachable(targetUrl = CONFIG.JOB_BROWSER_CDP_URL, timeoutMs = 1500) {
     return new Promise(resolve => {
       try {
-        const url = new URL(CONFIG.JOB_BROWSER_CDP_URL);
+        const url = new URL(targetUrl);
         const request = http.get({
           hostname: url.hostname,
           port: url.port,
@@ -35,14 +35,26 @@ class JobBrowserManager {
     });
   }
 
+  async resolveCdpUrl() {
+    if (await this.isReachable(CONFIG.JOB_BROWSER_CDP_URL)) {
+      return CONFIG.JOB_BROWSER_CDP_URL;
+    }
+    const fallbackUrl = "http://127.0.0.1:9222";
+    if (await this.isReachable(fallbackUrl)) {
+      return fallbackUrl;
+    }
+    return CONFIG.JOB_BROWSER_CDP_URL;
+  }
+
   async connect() {
     if (this.browser?.connected) return this.browser;
-    if (!(await this.isReachable())) {
-      throw new Error(`Job browser CDP is not reachable at ${CONFIG.JOB_BROWSER_CDP_URL}. Start the dedicated job browser first.`);
+    const cdpUrl = await this.resolveCdpUrl();
+    if (!(await this.isReachable(cdpUrl))) {
+      throw new Error(`Job browser CDP is not reachable at ${cdpUrl}. Start the browser first.`);
     }
     const puppeteer = await getPuppeteer();
     this.browser = await puppeteer.connect({
-      browserURL: CONFIG.JOB_BROWSER_CDP_URL,
+      browserURL: cdpUrl,
       defaultViewport: null
     });
     logger.info(`Connected to job browser: ${await this.browser.version()}`);
@@ -53,6 +65,11 @@ class JobBrowserManager {
     await this.connect();
     if (this.page && !this.page.isClosed()) return this.page;
     const pages = await this.browser.pages();
+    const flPage = pages.find(p => p.url().includes("freelancer.com"));
+    if (flPage) {
+      this.page = flPage;
+      return this.page;
+    }
     const reusable = pages.find(p => p.url() === "about:blank" || p.url().includes("newtab"));
     this.page = reusable || await this.browser.newPage();
     return this.page;

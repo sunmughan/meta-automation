@@ -1,6 +1,4 @@
 #!/data/data/com.termux/files/usr/bin/env bash
-SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
-mkdir -p logs
-node scripts/launch-job-browser.js || exit 1
-node job-agent.js run
+exec node "$SCRIPT_DIR/scripts/desktop-runner.js" --mode=job "$@"

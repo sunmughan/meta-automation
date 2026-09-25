@@ -23,7 +23,9 @@ function getAllPlatforms() {
 }
 
 function getEnabledPlatforms() {
+  const activeOnly = process.env.JOB_ACTIVE_PLATFORM ? process.env.JOB_ACTIVE_PLATFORM.toLowerCase() : null;
   return loadRegistry().filter(platform => {
+    if (activeOnly && platform.id.toLowerCase() !== activeOnly) return false;
     const envKey = `JOB_${platform.id.toUpperCase()}_ENABLED`;
     return platform.enabled && process.env[envKey] !== "false";
   });
