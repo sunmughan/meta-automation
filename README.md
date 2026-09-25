@@ -393,42 +393,72 @@ The user's configured voice, business context, audience and approved capabilitie
 
 ---
 
-# 💼 Agentic Job Revenue Engine
+# 💼 Dual Autopilot Architecture & Job Revenue Engine
 
-The repository also contains a separate job/revenue automation plane.
-
-It uses the same general agentic philosophy:
+Meta Automation operates with a **strict Dual Autopilot Architecture** dividing operations into two mutually exclusive planes:
 
 ```
-LIVE MARKETPLACE UI
-      ↓
-DISCOVER
-      ↓
-VERIFY
-      ↓
-QUALIFY
-      ↓
-GENERATE TRUTHFUL DOCUMENTS
-      ↓
-APPLY THROUGH VISIBLE UI
-      ↓
-VERIFY SUBMISSION
-      ↓
-PERSIST RESULT
+                      ┌──────────────────────────────────────┐
+                      │    Meta Automation Master Runner     │
+                      │     (./start-termux / npm start)     │
+                      └──────────────────┬───────────────────┘
+                                         │ Interactive Mode Prompt
+                     ┌───────────────────┴───────────────────┐
+                     ▼                                       ▼
+        ┌─────────────────────────┐             ┌─────────────────────────┐
+        │   1. Social Autopilot   │             │    2. Job Autopilot     │
+        │  (Threads, FB, LinkedIn)│             │ (Freelancer.com Engine) │
+        └────────────┬────────────┘             └────────────┬────────────┘
+                     │                                       │
+        • CDP Port :9222                        • CDP Port :9222 / :9223
+        • Omnichannel Leads                     • Tab Isolation: ONLY Freelancer
+        • Context-Aware DMs                     • Auto Portfolio Publisher
+        • Verified Engagements                  • Autonomous Job Proposal AI
 ```
 
-Job automation has its own browser profile and state.
+### 🔒 Mutual Exclusivity & Single Active Engine Rule
+To prevent cross-contamination between social networking and high-focus client proposals:
+- **Exactly ONE mode is active at any time.**
+- Starting one autopilot automatically checks and cleanly terminates the other if running.
+- **Freelancer Tab Isolation**: When Job Autopilot launches, all non-freelancer tabs (Threads, Facebook, Instagram, LinkedIn) are automatically detected and closed via CDP. Only `freelancer.com` tabs remain open and focused.
 
-Run:
+---
+
+### 🎨 Autonomous Portfolio Engine & Profile Builder
+The runtime includes a built-in high-DPI portfolio generator and automated publisher:
+- **1000x1000 Canvas Renderer** ([scripts/generate-portfolio-cards.js](file:///data/data/com.termux/files/home/meta-automation/scripts/generate-portfolio-cards.js)): Generates publication-ready showcase cards with gradient branding, tech badges, impact metrics, and typography using Chromium's native HTML5 canvas over CDP.
+- **Automated Publisher** ([scripts/upload-freelancer-portfolio.js](file:///data/data/com.termux/files/home/meta-automation/scripts/upload-freelancer-portfolio.js)): Automates the multi-step Freelancer.com `/discover/publish` workflow over CDP, uploading cards via `DOM.setFileInputFiles`, populating compliant descriptions (>=140 chars), injecting skill tags, and publishing live.
+- **Showcase Projects**: Nita Kitchenware B2B E-Commerce, Zynero Games, OpenPatti, StaffGo, Printless NFC, Societify, 1Quotation, BluePearl Luxury, MachineMandi.
+
+---
+
+### 🚀 Running the Job Revenue Engine
+
+Run interactively or target specific modes:
 
 ```bash
-npm run jobs:setup
-npm run jobs:google
-npm run jobs:auth
-npm run jobs:profile
-npm run jobs:scan
-npm run jobs:run
-npm run jobs:status
+# Interactive mode selector (Choose Social vs Job Autopilot)
+./start-termux
+# or:
+npm start
+
+# Dedicated Job Autopilot launcher (Freelancer.com isolated)
+./start-job-automation
+# or:
+npm run start:job
+
+# Dedicated Social Autopilot launcher
+./start-automation
+# or:
+npm run start:social
+
+# Job Engine CLI commands
+npm run jobs:setup     # Setup candidate profile & skills
+npm run jobs:auth      # Verify marketplace session
+npm run jobs:profile   # Audit profile & portfolio status
+npm run jobs:scan      # Scan open projects matching skills
+npm run jobs:run       # Autonomous bid generation & submission
+npm run jobs:status    # Check live revenue engine metrics
 ```
 
 See [JOB_REVENUE_ENGINE.md](JOB_REVENUE_ENGINE.md).

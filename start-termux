@@ -29,6 +29,8 @@ if command -v termux-x11 >/dev/null 2>&1; then
     else
         echo "[1/5] Initializing Termux:X11 server on display $DISPLAY..."
         pkill -9 -f "termux-x11.*$DISPLAY" >/dev/null 2>&1 || true
+        am broadcast -a com.termux.x11.ACTION_STOP >/dev/null 2>&1 || true
+        rm -f "/data/data/com.termux/files/usr/tmp/.X${DISPLAY#:}-lock" "/tmp/.X${DISPLAY#:}-lock" >/dev/null 2>&1 || true
         rm -f "/data/data/com.termux/files/usr/tmp/.X11-unix/X${DISPLAY#:}" "/tmp/.X11-unix/X${DISPLAY#:}" >/dev/null 2>&1 || true
         am start -n com.termux.x11/.MainActivity >/dev/null 2>&1 || true
         sleep 1
