@@ -112,6 +112,15 @@ class BrowserManager {
 
           const version = await this.browser.version();
           logger.info(`Connected to browser: ${version}`, { action: "CDP_CONNECT" });
+
+          // Maximize all open windows on connect to guarantee full-screen view in Termux:X11
+          try {
+            const pages = await this.browser.pages();
+            for (const p of pages) {
+              await this.maximizeWindowForPage(p).catch(() => {});
+            }
+          } catch (_) {}
+
           return this.browser;
         } catch (err) {
           lastError = err;
@@ -133,6 +142,32 @@ class BrowserManager {
       return await this._connectingPromise;
     } finally {
       this._connectingPromise = null;
+    }
+  }
+
+  /**
+   * Resizes and maximizes the browser window for a specific page via CDP.
+   * Guarantees full width and height in Termux:X11 (1440x2708).
+   */
+  async maximizeWindowForPage(page) {
+    if (!page || !this.isPageAlive(page)) return;
+    try {
+      const client = await page.target().createCDPSession();
+      const { windowId } = await client.send("Browser.getWindowForTarget").catch(() => ({}));
+      if (windowId) {
+        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
+        await client.send("Browser.setWindowBounds", {
+          windowId,
+          bounds: { left: 0, top: 0, width: 1440, height: 2708, windowState: "normal" }
+        }).catch(() => {});
+        await client.send("Browser.setWindowBounds", {
+          windowId,
+          bounds: { windowState: "maximized" }
+        }).catch(() => {});
+      }
+      await client.detach().catch(() => {});
+    } catch (e) {
+      logger.debug(`Could not maximize window via CDP: ${e.message}`);
     }
   }
 
@@ -184,10 +219,7 @@ class BrowserManager {
         await new Promise(r => setTimeout(r, 2000));
       }
 
-      try {
-        const client = await selectedPage.target().createCDPSession();
-        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
-      } catch (e) {}
+      await this.maximizeWindowForPage(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
@@ -250,10 +282,7 @@ class BrowserManager {
         await new Promise(r => setTimeout(r, 2000));
       }
 
-      try {
-        const client = await selectedPage.target().createCDPSession();
-        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
-      } catch (e) {}
+      await this.maximizeWindowForPage(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
@@ -319,10 +348,7 @@ class BrowserManager {
         await new Promise(r => setTimeout(r, 2000));
       }
 
-      try {
-        const client = await selectedPage.target().createCDPSession();
-        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
-      } catch (e) {}
+      await this.maximizeWindowForPage(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
@@ -388,10 +414,7 @@ class BrowserManager {
         await new Promise(r => setTimeout(r, 2000));
       }
 
-      try {
-        const client = await selectedPage.target().createCDPSession();
-        await client.send("Emulation.clearDeviceMetricsOverride").catch(() => {});
-      } catch (e) {}
+      await this.maximizeWindowForPage(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {

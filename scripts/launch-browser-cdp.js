@@ -460,6 +460,20 @@ async function launchBrowser(preference = null) {
     }
   }
 
+  // Detect screen dimensions for Termux / Linux
+  let screenWidth = 1440;
+  let screenHeight = 2708;
+  if (OS === "linux" || IS_TERMUX) {
+    try {
+      const xdpy = execSync(`xdpyinfo -display "${browser.display || process.env.DISPLAY || ":1"}" 2>/dev/null`, { encoding: "utf8" });
+      const m = xdpy.match(/dimensions:\s+(\d+)x(\d+)\s+pixels/i);
+      if (m) {
+        screenWidth = parseInt(m[1], 10);
+        screenHeight = parseInt(m[2], 10);
+      }
+    } catch (e) {}
+  }
+
   const args = [
     `--remote-debugging-port=${CDP_PORT}`,
     "--remote-debugging-address=127.0.0.1",
@@ -467,6 +481,10 @@ async function launchBrowser(preference = null) {
     "--no-first-run",
     "--no-default-browser-check",
     "--restore-last-session",
+    "--start-maximized",
+    "--window-position=0,0",
+    `--window-size=${screenWidth},${screenHeight}`,
+    "--force-device-scale-factor=1",
     ...(browser.flags || [])
   ];
 
@@ -481,7 +499,7 @@ async function launchBrowser(preference = null) {
   } catch (e) {}
   const out = fs.openSync(logFile, "a");
 
-  console.log(`🌐 Starting ${browser.name} with CDP remote port ${CDP_PORT}...`);
+  console.log(`🌐 Starting ${browser.name} with CDP remote port ${CDP_PORT} (fullscreen: ${screenWidth}x${screenHeight})...`);
   const child = spawn(browser.binary, args, {
     detached: true,
     stdio: ["ignore", out, out],
@@ -496,6 +514,32 @@ async function launchBrowser(preference = null) {
     const ready = await isCdpActive(CDP_PORT);
     if (ready) {
       console.log(`✅ ${browser.name} CDP successfully verified on http://127.0.0.1:${CDP_PORT}!`);
+      // Maximize browser windows via CDP
+      try {
+        const puppeteer = require("puppeteer-core");
+        const conn = await puppeteer.connect({ browserURL: `http://127.0.0.1:${CDP_PORT}`, defaultViewport: null });
+        const targets = await conn.targets();
+        for (const t of targets) {
+          if (t.type() === "page") {
+            try {
+              const c = await t.createCDPSession();
+              const { windowId } = await c.send("Browser.getWindowForTarget");
+              if (windowId) {
+                await c.send("Browser.setWindowBounds", {
+                  windowId,
+                  bounds: { left: 0, top: 0, width: screenWidth, height: screenHeight, windowState: "normal" }
+                }).catch(() => {});
+                await c.send("Browser.setWindowBounds", {
+                  windowId,
+                  bounds: { windowState: "maximized" }
+                }).catch(() => {});
+              }
+              await c.detach().catch(() => {});
+            } catch (_) {}
+          }
+        }
+        await conn.disconnect().catch(() => {});
+      } catch (e) {}
       return true;
     }
     process.stdout.write(`...connecting to CDP (${i}s)\r`);

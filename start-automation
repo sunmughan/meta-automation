@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/env bash
 # Standalone Meta Automation launcher.
 # Starts Social Automation + Job Revenue Engine in two browser windows:
 #   LEFT 50%  -> social browser / CDP :9222

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/env bash
 # start-termux
 # Master launcher for Meta Automation on Android (Termux + Termux:X11)
 
@@ -15,49 +15,46 @@ echo "=================================================="
 
 export DISPLAY="${DISPLAY:-:1}"
 
+if [ "$1" == "--restart" ] || [ "$1" == "-r" ]; then
+    echo "🔄 Stopping existing automation daemon before restart..."
+    "$SCRIPT_DIR/stop-automation" >/dev/null 2>&1 || true
+    sleep 1
+    shift
+fi
+
 # 1. Ensure Termux:X11 server is alive
 if command -v termux-x11 >/dev/null 2>&1; then
-    if ! pgrep -f "termux-x11" >/dev/null; then
-        echo "[1/5] Starting Termux:X11 server on display $DISPLAY..."
-        if pgrep -f "termux-x11.*$DISPLAY" >/dev/null 2>&1; then
-            echo "ℹ️  Termux:X11 is already running on $DISPLAY; reusing it."
-        else
-            termux-x11 "$DISPLAY" -xstartup "sleep 1" &
-            sleep 2
-        fi
-    else
+    if (DISPLAY="$DISPLAY" xdpyinfo >/dev/null 2>&1); then
         echo "[1/5] Termux:X11 server active on $DISPLAY."
+    else
+        echo "[1/5] Initializing Termux:X11 server on display $DISPLAY..."
+        pkill -9 -f "termux-x11.*$DISPLAY" >/dev/null 2>&1 || true
+        rm -f "/data/data/com.termux/files/usr/tmp/.X11-unix/X${DISPLAY#:}" "/tmp/.X11-unix/X${DISPLAY#:}" >/dev/null 2>&1 || true
+        am start -n com.termux.x11/.MainActivity >/dev/null 2>&1 || true
+        sleep 1
+        nohup termux-x11 "$DISPLAY" -ac >/dev/null 2>&1 &
+        sleep 2
+        if (DISPLAY="$DISPLAY" xdpyinfo >/dev/null 2>&1); then
+            echo "✅ Termux:X11 server active on $DISPLAY."
+        else
+            echo "⚠️  Could not confirm Termux:X11 server on $DISPLAY."
+        fi
     fi
 else
     echo "⚠️  [1/5] termux-x11 binary not found. Ensure 'termux-x11-nightly' is installed and companion app is installed."
 fi
 
-# 2. Ensure Chromium CDP is active on port 9222
+# 2. Ensure chromium CDP is active on port 9222
 echo "[2/5] Verifying Chromium CDP on port 9222..."
 if ! curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
     echo "🌐 Launching Termux Chromium with remote debugging :9222..."
-    mkdir -p "$HOME/.config/chromium"
-    CHROMIUM_BIN="$(command -v chromium-browser 2>/dev/null || command -v chromium 2>/dev/null || true)"
-    if [ -z "$CHROMIUM_BIN" ]; then
-        echo "❌ Termux Chromium executable not found. Expected chromium-browser or chromium."
-        exit 1
-    fi
-    nohup "$CHROMIUM_BIN" \
-        --remote-debugging-port=9222 \
-        --user-data-dir="$HOME/.config/chromium" \
-        --no-sandbox \
-        --disable-gpu \
-        --disable-dev-shm-usage \
-        --restore-last-session \
-        >> "$SCRIPT_DIR/logs/chromium.log" 2>&1 &
-    sleep 3
+    DISPLAY="$DISPLAY" node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
 fi
 
 if curl -s http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
     echo "✅ Chromium CDP is active and ready on http://127.0.0.1:9222."
 else
-    echo "⚠️  Chromium CDP could not be verified on :9222. Checking with launch-browser-cdp.js..."
-    node "$SCRIPT_DIR/scripts/launch-browser-cdp.js"
+    echo "⚠️  Chromium CDP could not be verified on :9222."
 fi
 
 # 3. Check primary Antigravity AI runtime
