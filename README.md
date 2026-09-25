@@ -3,6 +3,7 @@
 [![Agentic](https://img.shields.io/badge/Architecture-End--to--End%20Agentic-blue.svg)](https://github.com/sunmughan/meta-automation)
 [![Platforms](https://img.shields.io/badge/Social-Threads%20%7C%20Facebook%20%7C%20LinkedIn-success.svg)](https://github.com/sunmughan/meta-automation)
 [![Browser](https://img.shields.io/badge/Browser-CDP%20%2B%20Live%20DOM-critical.svg)](https://github.com/sunmughan/meta-automation)
+[![Release](https://img.shields.io/badge/Release-v1.7.0-blueviolet.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v1.7.0)
 [![Node](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -464,33 +465,80 @@ The automation does not need your platform password.
 
 ---
 
-# 📱 Android / Termux
+# 📱 Android / Termux + Termux:X11
 
-The project can run through Termux + Termux:X11 on Android.
+The project provides first-class support for **Android 24/7 background autonomous execution** via Termux and Termux:X11.
 
-Install dependencies:
+### 1. Install Android dependencies
 
 ```bash
 pkg update -y
-pkg install -y git nodejs-lts x11-repo chromium
+pkg install -y git nodejs-lts x11-repo chromium termux-x11-nightly zip
 ```
 
-Then:
+### 2. Clone and install
 
 ```bash
 git clone https://github.com/sunmughan/meta-automation.git
 cd meta-automation
 npm install
-./start-termux
 ```
 
-The repository slug remains `meta-automation` for compatibility.
+### 3. Master Runner (`./start-termux`)
+
+The runner automatically manages the entire execution stack:
+
+```bash
+# Start continuous daemon in background
+./start-termux
+
+# Inspect live status and PID
+./status-automation
+
+# Stream live activity logs
+tail -f logs/daemon.log
+
+# Gracefully stop the automation
+./stop-automation
+
+# Restart or run interactively in foreground
+./start-termux --restart
+./start-termux --foreground
+```
+
+**What `./start-termux` handles automatically:**
+- **Termux:X11 Display Management**: Validates and initializes display `:1` with companion app activation.
+- **Fullscreen Chromium Geometry**: Detects Android display resolution (e.g., `1080x2400`), configures precise window position (`--window-position=0,0`) and size flags to prevent off-screen modal rendering.
+- **CDP Bridge**: Launches Chromium with `--remote-debugging-port=9222` while preserving your logged-in cookies and sessions.
+- **Antigravity-First AI Runtime**: Automatically validates the local Antigravity Language Server environment before starting.
+
+> [!TIP]
+> **Android 12+ Optimization:** Disable Phantom Process Killer via ADB (`adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"`) and set Termux battery usage to **Unrestricted** to prevent OS background suspension.
+
+---
+
+# 🤖 Multi-Tier AI Decision Engine
+
+The automation features a resilient **3-tier semantic decision pipeline**:
+
+1. **Tier 1: Antigravity Language Server (Local / Primary)** — High-precision local reasoning without third-party API dependencies or subscription token limits.
+2. **Tier 2: Cloud AI Fallback (MiniMax M3 / OpenAI)** — Seamless failover if local language server is busy or unavailable.
+3. **Tier 3: Grounded Local Semantic Classifier** — Zero premature discards; strictly classifies leads into:
+   - `BUYER` (Project buyers needing custom apps, portals, SaaS, mobile, AI)
+   - `FOUNDER_NETWORKING` (Builder community, indie hackers, technical co-founder outreach)
+   - `TECH_DISCUSSION` (Framework architectures, technical consultation)
+   - `FEEDBACK_REQUEST` (Product launch roasts, MVP critiques)
+   - `AUTOMATION` (Workflow optimization, scrapers, bot integrations)
+   - Strict exclusions: `RECRUITMENT`, `JOB_SEEKER`, `SERVICE_PROVIDER` (promotional spam), `OUT_OF_SCOPE` (graphic design, logos, accounting), and `IRRELEVANT` (community opinion polls).
+
+### Universal Clean Handle Sanitization
+Eliminates brittle `@user`, `@buyer`, `@facebook_buyer`, or `@linkedin_user` placeholder tags across all platforms, ensuring every generated comment reads naturally and seamlessly.
 
 ---
 
 # ⚙️ Main commands
 
-### First-time setup
+### First-time onboarding & profile configuration
 
 ```bash
 npm run onboard
@@ -499,10 +547,17 @@ npm run onboard
 ### Agentic social runtime
 
 ```bash
+# Run one cycle across configured platforms
 npm run agentic:social -- --once
+
+# Single platform single cycle
 npm run agentic:social -- --platform=threads --once
 npm run agentic:social -- --platform=facebook --once
 npm run agentic:social -- --platform=linkedin --once
+
+# Continuous autonomous daemon (infinite loop with adaptive backoff)
+npm run agentic:social -- --daemon
+npm run agentic:social -- --platform=threads --daemon
 ```
 
 Custom objective:
@@ -517,15 +572,29 @@ Resume after a manual safety pause:
 npm run agentic:social -- --resume
 ```
 
-### V2 architecture audit
+### Distribution release packaging
 
 ```bash
-npm run test:agentic
+# Builds npm package, cross-platform tarballs & zip archives with SHA256 checksums
+npm run build:release
 ```
 
-### Browser / legacy diagnostics
+Generated packages in `release/`:
+- `meta-automation-1.7.0.tgz` (npm distribution package)
+- `meta-automation-android-termux.tar.gz` (Android Termux optimized bundle)
+- `meta-automation-linux-x64.tar.gz` (Linux distribution archive)
+- `meta-automation-macos-universal.tar.gz` (macOS distribution archive)
+- `meta-automation-windows-x64.zip` (Windows distribution archive)
+- `meta-automation-universal-v1.7.0.zip` (Universal platform release archive)
+- `SHA256SUMS.txt` (Cryptographic verification checksums)
+
+### Verification & audits
 
 ```bash
+# Deterministic Agentic V2 architecture & onboarding audit
+npm run test:agentic
+
+# Legacy test suite & browser e2e
 npm run e2e:browser
 npm test
 ```

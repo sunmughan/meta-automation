@@ -27,7 +27,8 @@ mv meta-automation-*.tgz "$RELEASE_DIR/meta-automation-${VERSION}.tgz"
 
 # 3. Build tar.gz bundles
 echo "==> Packaging tar.gz distributions..."
-TEMP_TAR="/tmp/meta-automation-bundle.tar.gz"
+TMP_BASE="${TMPDIR:-/tmp}"
+TEMP_TAR="$TMP_BASE/meta-automation-bundle.tar.gz"
 tar --exclude='./.git' \
     --exclude='./node_modules' \
     --exclude='./logs' \
@@ -45,7 +46,7 @@ rm -f "$TEMP_TAR"
 
 # 4. Build zip bundles
 echo "==> Packaging zip distributions..."
-TEMP_ZIP="/tmp/meta-automation-bundle.zip"
+TEMP_ZIP="$TMP_BASE/meta-automation-bundle.zip"
 rm -f "$TEMP_ZIP"
 zip -r "$TEMP_ZIP" . \
     -x ".git/*" \
@@ -61,7 +62,10 @@ cp "$TEMP_ZIP" "$RELEASE_DIR/meta-automation-windows-x64.zip"
 cp "$TEMP_ZIP" "$RELEASE_DIR/meta-automation-universal-v${VERSION}.zip"
 rm -f "$TEMP_ZIP"
 
-# 5. Generate fresh SHA256 checksums
+# 5. Copy README.md to release directory
+cp "$ROOT_DIR/README.md" "$RELEASE_DIR/README.md"
+
+# 6. Generate fresh SHA256 checksums
 echo "==> Generating SHA256SUMS.txt..."
 cd "$RELEASE_DIR"
 sha256sum meta-automation-*.tgz meta-automation-*.tar.gz meta-automation-*.zip > SHA256SUMS.txt

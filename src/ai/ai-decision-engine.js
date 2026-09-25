@@ -188,20 +188,96 @@ class AiDecisionEngine {
     const rawText = String(post?.text || "").trim();
     const lower = rawText.toLowerCase();
 
-    // 1. Exclude self-promotional sellers, marketing pitches, or job seekers
-    const isJobSeeker = /\b(open\s+to\s+work|looking\s+for\s+(a\s+)?job|seeking\s+(employment|opportunities|roles)|entry\s+level|fresher|internship|hire\s+me|resume)\b/i.test(lower);
-    const isSellerPromo = /\b(i\s+build\s+websites|who\s+needs?\s+(a\s+)?(website|developer|app)|available\s+for\s+(freelance|hire)|hire\s+my\s+agency|offering\s+(my|our)\s+services|contact\s+us\s+for\s+best\s+rates|dm\s+for\s+cheap)\b/i.test(lower);
-    const isSpamOrMeme = /\b(crypto|airdrop|giveaway|forex|casinos?|slots?|telegram\s+group|whatsapp\s+group)\b/i.test(lower);
-
-    if (isJobSeeker || isSellerPromo || isSpamOrMeme) {
+    // 1. Exclude corporate recruitment, out-of-scope requests, community polls, sellers, or job seekers
+    const isRecruitment = /\b(hiring\s+(a\s+)?(full-time|part-time|senior|junior|lead|developer|engineer|designer)|salary\s+\$|401k|healthcare|send\s+resume|careers@)\b/i.test(lower);
+    if (isRecruitment) {
       return {
-        intent: isJobSeeker ? "JOB_SEEKER" : (isSellerPromo ? "SELLER_PROMO" : "SPAM"),
+        intent: "RECRUITMENT",
         decision: "IGNORED",
         is_genuine_buyer: false,
         service_match: false,
         representation: "IGNORE",
         should_reply: false,
-        reason: `Filtered via grounded semantic classifier: identified as ${isJobSeeker ? "job seeker" : (isSellerPromo ? "seller promotion" : "spam")}.`
+        reason: "Corporate salaried employee recruitment is strictly ignored."
+      };
+    }
+
+    const isOutOfScope = /\b(logo\s+design(er)?|graphic\s+design(er)?|accounting|tax\s+filing|video\s+editor|bookkeeping)\b/i.test(lower);
+    if (isOutOfScope) {
+      return {
+        qualified: false,
+        intent: "OUT_OF_SCOPE",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Grounded semantic filter: request is out of approved scope (design/accounting/media)."
+      };
+    }
+
+    const isCommunityPoll = /\b(what\s+(tech\s+)?stack\s+are\s+you|what\s+is\s+your\s+go-to|what\s+is\s+the\s+most\s+important\s+thing|saving\s+you\s+the\s+most\s+time|what\s+outreach\s+strategy\s+is\s+working\s+best)\b/i.test(lower);
+    if (isCommunityPoll) {
+      return {
+        qualified: false,
+        intent: "IRRELEVANT",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Non-buyer community discussion/opinion poll is strictly ignored."
+      };
+    }
+
+    const isSellerPromo = /\b(i\s+build\s+websites|who\s+needs?\s+(a\s+)?(website|developer|app)|available\s+for\s+(freelance|hire)|hire\s+my\s+agency|offering\s+(my|our)\s+services|contact\s+us\s+for\s+best\s+rates|dm\s+for\s+cheap|accepting\s+new\s+clients|dm\s+(me\s+)?for\s+rates|check\s+out\s+my\s+latest\s+client\s+website|we\s+design\s+and\s+build|duo\s+is\s+here)\b/i.test(lower);
+    if (isSellerPromo) {
+      return {
+        intent: "SERVICE_PROVIDER",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Filtered via grounded semantic classifier: identified as service provider/promotional."
+      };
+    }
+
+    const isJobSeeker = /\b(open\s+to\s+work|looking\s+for\s+(a\s+)?job|seeking\s+(employment|opportunities|roles)|entry\s+level|fresher|internship|hire\s+me|my\s+resume|resume\s+attached)\b/i.test(lower);
+    const isSpamOrMeme = /\b(crypto|airdrop|giveaway|forex|casinos?|slots?|telegram\s+group|whatsapp\s+group)\b/i.test(lower);
+
+    if (isJobSeeker || isSpamOrMeme) {
+      return {
+        intent: isJobSeeker ? "JOB_SEEKER" : "SPAM",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: `Filtered via grounded semantic classifier: identified as ${isJobSeeker ? "job seeker" : "spam"}.`
+      };
+    }
+
+    // Direct Founder / Brand inquiries
+    const isFounderInquiry = /\b(who\s+is\s+behind\s+codeair|founder\s+of\s+codeair|sunmughan\s+swamy)\b/i.test(lower);
+    if (isFounderInquiry) {
+      return {
+        qualified: true,
+        intent: "FOUNDER_INQUIRY",
+        lead_type: "FOUNDER_INQUIRY",
+        requirement: "Direct inquiry about founder Sunmughan Swamy and CodeAir",
+        target_entity: "INDIVIDUAL",
+        service_match: true,
+        matched_capability: "Fractional CTO & Systems Architecture",
+        matched_services: ["Fractional CTO", "Systems Architecture"],
+        matched_categories: ["Technical Leadership"],
+        representation: "FOUNDER",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: direct founder inquiry."
       };
     }
 
@@ -210,7 +286,7 @@ class AiDecisionEngine {
     const matchesMobile = /\b(flutter|react\s+native|ios|android|mobile\s+app|app\s+development)\b/i.test(lower);
     const matchesCTO = /\b(cto|co-founder|technical\s+lead|architect|architecture|systems?\s+design)\b/i.test(lower);
     const matchesMVP = /\b(mvp|saas|founder|startup|prototype|product\s+development)\b/i.test(lower);
-    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developer|portal|next\.?js|react|node|landing\s+page|ui\/ux|designer)\b/i.test(lower);
+    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developer|portal|next\.?js|react|node|landing\s+page|ui\/ux|designer|application|crm|erp|dashboard|software)\b/i.test(lower);
     const hasServiceMatch = matchesAI || matchesMobile || matchesCTO || matchesMVP || matchesWeb;
 
     // 3. TIER 1: Genuine Commercial Inquiries / Client Buyer Signals (HOT)

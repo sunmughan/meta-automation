@@ -18,7 +18,7 @@
     "analyze": "node threads-agent.js analyze",
     "approve": "node threads-agent.js approve",
     "status": "node threads-agent.js status",
-    "build:release": "./scripts/package-release.sh",
+    "build:release": "bash ./scripts/package-release.sh",
     "jobs:setup": "node scripts/setup-job-engine.js",
     "jobs:auth": "node job-agent.js auth",
     "jobs:profile": "node job-agent.js profile",
