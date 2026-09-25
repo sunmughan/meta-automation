@@ -3,7 +3,7 @@
 [![Agentic](https://img.shields.io/badge/Architecture-End--to--End%20Agentic-blue.svg)](https://github.com/sunmughan/meta-automation)
 [![Platforms](https://img.shields.io/badge/Social-Threads%20%7C%20Facebook%20%7C%20LinkedIn-success.svg)](https://github.com/sunmughan/meta-automation)
 [![Browser](https://img.shields.io/badge/Browser-CDP%20%2B%20Live%20DOM-critical.svg)](https://github.com/sunmughan/meta-automation)
-[![Release](https://img.shields.io/badge/Release-v1.7.0-blueviolet.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v1.7.0)
+[![Release](https://img.shields.io/badge/Release-v2.0-blueviolet.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v2.0)
 [![Node](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -580,12 +580,12 @@ npm run build:release
 ```
 
 Generated packages in `release/`:
-- `meta-automation-1.7.0.tgz` (npm distribution package)
+- `meta-automation-2.0.0.tgz` (npm distribution package)
 - `meta-automation-android-termux.tar.gz` (Android Termux optimized bundle)
 - `meta-automation-linux-x64.tar.gz` (Linux distribution archive)
 - `meta-automation-macos-universal.tar.gz` (macOS distribution archive)
 - `meta-automation-windows-x64.zip` (Windows distribution archive)
-- `meta-automation-universal-v1.7.0.zip` (Universal platform release archive)
+- `meta-automation-universal-v2.0.0.zip` (Universal platform release archive)
 - `SHA256SUMS.txt` (Cryptographic verification checksums)
 
 ### Verification & audits

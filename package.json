@@ -1,6 +1,6 @@
 {
   "name": "meta-automation",
-  "version": "1.7.0",
+  "version": "2.0.0",
   "description": "End-to-end agentic automation runtime that learns a user's identity and business context, reasons over live browser state, executes verified actions, and safely operates across social and work workflows.",
   "main": "threads-agent.js",
   "bin": {
