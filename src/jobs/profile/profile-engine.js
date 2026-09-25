@@ -4,27 +4,6 @@ const CONFIG = require("../../../config");
 const JobAgentRunner = require("../browser/job-runner");
 const { readBaseResume } = require("../documents/document-engine");
 
-function createCandidateProfile({ googleAccountEmail = "", baseResumePath = "", preferences = {} } = {}) {
-  return {
-    schemaVersion: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    identity: {
-      googleAccountEmail: String(googleAccountEmail || "").trim()
-    },
-    resume: {
-      basePath: String(baseResumePath || "").trim()
-    },
-    preferences: {
-      remoteOnly: preferences.remoteOnly !== false,
-      projectOnly: preferences.projectOnly !== false,
-      minMatchScore: Number.isFinite(Number(preferences.minMatchScore))
-        ? Number(preferences.minMatchScore)
-        : 75
-    }
-  };
-}
-
 function loadCandidateProfile() {
   if (!fs.existsSync(CONFIG.JOB_PROFILE_PATH)) return null;
   return JSON.parse(fs.readFileSync(CONFIG.JOB_PROFILE_PATH, "utf8"));
