@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "platforms": [
+    {
+      "id": "hubspot-academy",
+      "name": "HubSpot Academy",
+      "url": "https://academy.hubspot.com/",
+      "category": "MARKETING_SALES",
+      "credentialType": "CERTIFICATION",
+      "free": true,
+      "enabled": true
+    },
+    {
+      "id": "google-skillshop",
+      "name": "Google Skillshop",
+      "url": "https://skillshop.withgoogle.com/",
+      "category": "GOOGLE_PRODUCTS_MARKETING_ANALYTICS",
+      "credentialType": "CERTIFICATION",
+      "free": true,
+      "enabled": true
+    },
+    {
+      "id": "ibm-skillsbuild",
+      "name": "IBM SkillsBuild",
+      "url": "https://skillsbuild.org/",
+      "category": "AI_DATA_CYBERSECURITY_CLOUD",
+      "credentialType": "DIGITAL_CREDENTIAL",
+      "free": true,
+      "enabled": true
+    },
+    {
+      "id": "cisco-networking-academy",
+      "name": "Cisco Networking Academy",
+      "url": "https://www.netacad.com/",
+      "category": "CYBERSECURITY_NETWORKING_AI_PROGRAMMING",
+      "credentialType": "COURSE_BADGE_OR_CERTIFICATION",
+      "free": true,
+      "enabled": true
+    },
+    {
+      "id": "freecodecamp",
+      "name": "freeCodeCamp",
+      "url": "https://www.freecodecamp.org/",
+      "category": "WEB_DEVELOPMENT_JAVASCRIPT_PYTHON_BACKEND",
+      "credentialType": "CERTIFICATION",
+      "free": true,
+      "enabled": true
+    },
+    {
+      "id": "microsoft-learn",
+      "name": "Microsoft Learn",
+      "url": "https://learn.microsoft.com/",
+      "category": "AI_CLOUD_SECURITY_BUSINESS",
+      "credentialType": "CREDENTIAL",
+      "free": false,
+      "enabled": false,
+      "notes": "Learning is free; many certification exams are paid. Use only genuinely free Applied Skills/credential paths."
+    }
+  ]
+}
