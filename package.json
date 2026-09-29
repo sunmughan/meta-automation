@@ -3,11 +3,9 @@
   "version": "2.0.0",
   "description": "End-to-end agentic automation runtime that learns a user's identity and business context, reasons over live browser state, executes verified actions, and safely operates across social and work workflows.",
   "main": "threads-agent.js",
-  "bin": {
-    "meta-automation": "./threads-agent.js"
-  },
+  "bin": {"meta-automation": "./threads-agent.js"},
   "scripts": {
-    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js && node tests/desktop-runner.test.js && node tests/autopilot-modes.test.js",
+    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js && node tests/desktop-runner.test.js && node tests/autopilot-modes.test.js && node tests/professional-growth.test.js && node tests/portfolio-architecture.test.js",
     "e2e:browser": "node tests/browser-e2e.js",
     "onboard": "node threads-agent.js onboard",
     "configure": "node threads-agent.js onboard",
@@ -29,40 +27,26 @@
     "jobs:google": "node job-agent.js google",
     "desktop:layout": "node scripts/layout-cdp-windows.js",
     "agentic:social": "node agentic-social.js",
-    "test:agentic": "node tests/agentic-v2.test.js && node tests/onboarding-v2.test.js"
+    "test:agentic": "node tests/agentic-v2.test.js && node tests/onboarding-v2.test.js",
+    "jobs:certifications": "node job-agent.js certifications",
+    "jobs:cert-status": "node job-agent.js cert-status",
+    "growth:profile": "node job-agent.js growth-profile",
+    "growth:skill": "node job-agent.js growth-skill",
+    "growth:discover": "node job-agent.js growth-discover",
+    "growth:run": "node job-agent.js growth-run",
+    "growth:status": "node job-agent.js growth-status",
+    "test:growth": "node tests/professional-growth.test.js",
+    "portfolio:generate": "node scripts/generate-portfolio-cards.js",
+    "portfolio:publish": "node scripts/upload-freelancer-portfolio.js",
+    "test:portfolio": "node tests/portfolio-architecture.test.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sunmughan/meta-automation.git"
-  },
-  "keywords": [
-    "agentic-automation",
-    "browser-agent",
-    "browser-automation",
-    "ai-agent",
-    "autonomous-agents",
-    "cdp",
-    "live-dom",
-    "semantic-browser",
-    "social-agent",
-    "lead-generation",
-    "workflow-automation",
-    "relationship-intelligence",
-    "job-automation",
-    "codeair"
-  ],
+  "repository": {"type": "git", "url": "git+https://github.com/sunmughan/meta-automation.git"},
+  "keywords": ["agentic-automation","browser-agent","browser-automation","ai-agent","autonomous-agents","cdp","live-dom","semantic-browser","social-agent","lead-generation","workflow-automation","relationship-intelligence","job-automation","codeair"],
   "author": "Sunmughan Swamy <contact@codeair.tech> (https://www.codeair.tech)",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/sunmughan/meta-automation/issues"
-  },
+  "bugs": {"url": "https://github.com/sunmughan/meta-automation/issues"},
   "homepage": "https://github.com/sunmughan/meta-automation#readme",
   "type": "commonjs",
-  "dependencies": {
-    "puppeteer-core": "^25.11.0",
-    "pdf-parse": "^1.1.1"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "dependencies": {"puppeteer-core": "^25.11.0", "pdf-parse": "^1.1.1"},
+  "engines": {"node": ">=18.0.0"}
 }

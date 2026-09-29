@@ -84,6 +84,29 @@ function runJobEngineAudit() {
     assert(String(CONFIG.JOB_BROWSER_USER_DATA_DIR).length > 0);
   });
 
+  test("Free certification platform catalog is declarative and free-only", () => {
+    const catalogPath = path.join(root, "config", "job-certification-platforms.json");
+    const parsed = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
+    assert(Array.isArray(parsed.platforms) && parsed.platforms.length >= 5);
+    assert(parsed.platforms.every(p => p.url.startsWith("https://")));
+    assert(parsed.platforms.filter(p => p.enabled !== false).every(p => p.free === true));
+  });
+
+  test("Certification catalog contains documented free-learning targets", () => {
+    const catalog = JSON.parse(fs.readFileSync(path.join(root, "config", "job-certification-catalog.json"), "utf8"));
+    for (const id of ["hubspot-academy","google-skillshop","ibm-skillsbuild","cisco-networking-academy","freecodecamp"]) {
+      assert(Array.isArray(catalog.credentials[id]) && catalog.credentials[id].length > 0, `Missing credential entries for ${id}`);
+    }
+  });
+
+  test("Certification engine exists and persists completion state separately", () => {
+    assert(fs.existsSync(path.join(root, "src/jobs/certification/certification-engine.js")));
+    assert(fs.existsSync(path.join(root, "src/jobs/certification/certification-state-store.js")));
+    assert(fs.existsSync(path.join(root, "src/jobs/certification/certification-platform-registry.js")));
+    assert(String(CONFIG.JOB_CERTIFICATION_STATE_FILE).includes("job-state"));
+    assert(String(CONFIG.JOB_CERTIFICATION_CATALOG_PATH).includes("job-certification-catalog.json"));
+  });
+
   console.log(`\nJob Engine Audit: ${passed} Passed, ${failed} Failed\n`);
   if (failed) throw new Error(`${failed} job engine audit test(s) failed`);
 }

@@ -92,6 +92,20 @@ const CONFIG = {
   JOB_PROFILE_PATH: process.env.JOB_PROFILE_PATH || path.resolve(ROOT_DIR, "private", "candidate-profile.json"),
   JOB_STATE_FILE: process.env.JOB_STATE_FILE || path.resolve(ROOT_DIR, "job-state", "opportunities.json"),
   JOB_GENERATED_DIR: process.env.JOB_GENERATED_DIR || path.resolve(ROOT_DIR, "applications"),
+  JOB_CERTIFICATION_STATE_FILE: process.env.JOB_CERTIFICATION_STATE_FILE || path.resolve(ROOT_DIR, "job-state", "certifications.json"),
+  JOB_CERTIFICATION_CATALOG_PATH: process.env.JOB_CERTIFICATION_CATALOG_PATH || path.resolve(ROOT_DIR, "config", "job-certification-catalog.json"),
+  JOB_CERTIFICATION_ENABLED: process.env.JOB_CERTIFICATION_ENABLED !== "false",
+  JOB_CERTIFICATION_MAX_CREDENTIALS_PER_RUN: Math.max(1, Number(process.env.JOB_CERTIFICATION_MAX_CREDENTIALS_PER_RUN) || 5),
+
+  // Professional Growth Engine
+  PROFESSIONAL_GROWTH_ENABLED: process.env.PROFESSIONAL_GROWTH_ENABLED !== "false",
+  PROFESSIONAL_GROWTH_STATE_FILE: process.env.PROFESSIONAL_GROWTH_STATE_FILE || path.resolve(ROOT_DIR, "job-state", "professional-growth.json"),
+  PROFESSIONAL_GROWTH_BROWSER_CDP_URL: process.env.PROFESSIONAL_GROWTH_BROWSER_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222",
+  PROFESSIONAL_GROWTH_MAX_ITERATIONS: Math.max(1, Number(process.env.PROFESSIONAL_GROWTH_MAX_ITERATIONS) || 12),
+  PROFESSIONAL_GROWTH_MAX_DISCOVERY_CANDIDATES: Math.max(1, Number(process.env.PROFESSIONAL_GROWTH_MAX_DISCOVERY_CANDIDATES) || 8),
+  PROFESSIONAL_GROWTH_MAX_CREDENTIALS_PER_RUN: Math.max(1, Number(process.env.PROFESSIONAL_GROWTH_MAX_CREDENTIALS_PER_RUN) || 5),
+  PROFESSIONAL_GROWTH_NAVIGATION_TIMEOUT_MS: Math.max(10000, Number(process.env.PROFESSIONAL_GROWTH_NAVIGATION_TIMEOUT_MS) || 60000),
+  PROFESSIONAL_GROWTH_SETTLE_MS: Math.max(0, Number(process.env.PROFESSIONAL_GROWTH_SETTLE_MS) || 2000),
   GOOGLE_ACCOUNT_EMAIL: process.env.GOOGLE_ACCOUNT_EMAIL || "",
   GOOGLE_AUTH_ORIGIN: process.env.GOOGLE_AUTH_ORIGIN || "https://accounts.google.com",
   JOB_DISCOVERY_INTERVAL_SECONDS: Math.max(60, Number(process.env.JOB_DISCOVERY_INTERVAL_SECONDS) || 900),
@@ -115,6 +129,12 @@ const CONFIG = {
   BRAVE_USER_DATA_DIR: process.env.BRAVE_USER_DATA_DIR || path.join(process.env.HOME || process.env.USERPROFILE || "", ".config/BraveSoftware/Brave-Browser"),
   VIEWPORT_WIDTH: 1440,
   VIEWPORT_HEIGHT: 1080,
+
+  PORTFOLIO_CDP_URL: process.env.PORTFOLIO_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222/json",
+  PORTFOLIO_RENDER_PLATFORM_ORIGIN: process.env.PORTFOLIO_RENDER_PLATFORM_ORIGIN || "https://www.freelancer.com",
+  PORTFOLIO_GENERATED_DIR: process.env.PORTFOLIO_GENERATED_DIR || path.resolve(ROOT_DIR, "portfolio_generated"),
+  PORTFOLIO_CARD_WIDTH: Math.max(100, Number(process.env.PORTFOLIO_CARD_WIDTH) || 1000),
+  PORTFOLIO_CARD_HEIGHT: Math.max(100, Number(process.env.PORTFOLIO_CARD_HEIGHT) || 1000),
 
   // URLs
   THREADS_HOME: "https://www.threads.com/",

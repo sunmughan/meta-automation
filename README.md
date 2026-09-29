@@ -428,7 +428,7 @@ To prevent cross-contamination between social networking and high-focus client p
 The runtime includes a built-in high-DPI portfolio generator and automated publisher:
 - **1000x1000 Canvas Renderer** ([scripts/generate-portfolio-cards.js](file:///data/data/com.termux/files/home/meta-automation/scripts/generate-portfolio-cards.js)): Generates publication-ready showcase cards with gradient branding, tech badges, impact metrics, and typography using Chromium's native HTML5 canvas over CDP.
 - **Automated Publisher** ([scripts/upload-freelancer-portfolio.js](file:///data/data/com.termux/files/home/meta-automation/scripts/upload-freelancer-portfolio.js)): Automates the multi-step Freelancer.com `/discover/publish` workflow over CDP, uploading cards via `DOM.setFileInputFiles`, populating compliant descriptions (>=140 chars), injecting skill tags, and publishing live.
-- **Showcase Projects**: Nita Kitchenware B2B E-Commerce, Zynero Games, OpenPatti, StaffGo, Printless NFC, Societify, 1Quotation, BluePearl Luxury, MachineMandi.
+- **Portfolio source of truth**: `knowledge/portfolio/projects.json`. Portfolio cards are generated artifacts, and publishing is AI-planned from live semantic browser evidence.
 
 ---
 
@@ -760,3 +760,36 @@ MIT.
 Built by [Sunmughan Swamy](https://github.com/sunmughan) and [CodeAir Software Solutions](https://www.codeair.tech).
 
 **Repository slug:** `sunmughan/meta-automation` — intentionally retained for URL compatibility.
+
+
+---
+
+# Professional Growth Engine
+
+The Job Engine now includes a Professional Growth Engine for user-selected skill development and credential discovery.
+
+## Onboarding
+
+`npm run onboard` now includes a Professional Growth section where the user can choose skills to improve and skill areas for credential discovery. Existing GitHub and LinkedIn profile URLs are used as profile evidence.
+
+## Commands
+
+```bash
+npm run growth:profile
+npm run growth:skill -- DSA
+npm run growth:discover -- Python
+npm run growth:run
+npm run growth:status
+```
+
+## Runtime model
+
+```text
+Onboarding -> GitHub + LinkedIn evidence -> Gemini / Antigravity reasoning
+          -> skill goal or credential goal -> live browser observation
+          -> semantic browser action -> fresh page evidence -> next decision
+```
+
+The browser implementation is an internal execution detail; the product workflow is expressed as skill development, credential discovery, enrollment, execution, progress and verification.
+
+No new npm dependency is required. The engine reuses the existing Node.js + Puppeteer CDP stack.

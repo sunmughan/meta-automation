@@ -10,6 +10,10 @@ const { bootstrapPlatformSession, completeProfile } = require("./src/jobs/platfo
 const { discoverOnPlatform } = require("./src/jobs/discovery/opportunity-engine");
 const { applyToOpportunity } = require("./src/jobs/application/application-engine");
 const jobState = require("./src/jobs/storage/job-state-store");
+const certificationEngine = require("./src/jobs/certification/certification-engine");
+const professionalGrowth = require("./src/jobs/growth/professional-growth-engine");
+const growthState = require("./src/jobs/growth/growth-state-store");
+const CONFIG_FILE = require("fs");
 const logger = require("./src/logging/logger");
 
 async function ensureJobBrowser() {
@@ -22,6 +26,72 @@ async function ensureJobBrowser() {
 
 async function getPlatformPage(platform) {
   return jobBrowserManager.open(platform.url);
+}
+
+function loadCertificationCatalog() {
+  const catalogPath = CONFIG.JOB_CERTIFICATION_CATALOG_PATH;
+  if (!CONFIG_FILE.existsSync(catalogPath)) return { credentials: {} };
+  return JSON.parse(CONFIG_FILE.readFileSync(catalogPath, "utf8"));
+}
+
+async function runCertifications() {
+  if (!CONFIG.JOB_CERTIFICATION_ENABLED) throw new Error("JOB_CERTIFICATION_ENABLED is false");
+  const profile = loadCandidateProfile();
+  if (!profile) throw new Error("Candidate profile missing. Run npm run jobs:setup first.");
+  await ensureJobBrowser();
+
+  const catalog = loadCertificationCatalog();
+  const credentialsByPlatform = catalog.credentials || {};
+  let count = 0;
+  const limited = {};
+  for (const [platformId, credentials] of Object.entries(credentialsByPlatform)) {
+    if (count >= CONFIG.JOB_CERTIFICATION_MAX_CREDENTIALS_PER_RUN) break;
+    const list = Array.isArray(credentials) ? credentials.filter(c => c && c.enabled !== false) : [];
+    const remaining = CONFIG.JOB_CERTIFICATION_MAX_CREDENTIALS_PER_RUN - count;
+    if (list.length) {
+      limited[platformId] = list.slice(0, remaining);
+      count += limited[platformId].length;
+    }
+  }
+
+  const result = await certificationEngine.runCatalog({
+    browserManager: jobBrowserManager,
+    browserAgentFactory: (page, platformId) => new JobBrowserAgent(page, platformId),
+    aiRuntime,
+    candidateProfile: profile,
+    credentialsByPlatform: limited
+  });
+  return result;
+}
+
+async function runGrowthProfile() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  console.log(JSON.stringify(await professionalGrowth.runProfileSync(), null, 2));
+}
+
+async function runGrowthSkill() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  const skill = process.argv.slice(3).join(" ").trim();
+  if (!skill) throw new Error("Usage: npm run growth:skill -- <skill>");
+  console.log(JSON.stringify(await professionalGrowth.runSkill(skill), null, 2));
+}
+
+async function runGrowthDiscover() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  const skill = process.argv.slice(3).join(" ").trim();
+  if (!skill) throw new Error("Usage: npm run growth:discover -- <skill>");
+  console.log(JSON.stringify(await professionalGrowth.discoverCredentials(skill), null, 2));
+}
+
+async function runGrowth() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  const profile = professionalGrowth.readConfiguredProfile();
+  const skills = profile?.growth?.skills || [];
+  const certificationSkills = profile?.growth?.certificationSkills || [];
+  if (!skills.length && !certificationSkills.length) {
+    throw new Error("No professional growth goals configured. Run npm run onboard and select skills/certification areas.");
+  }
+  console.log(JSON.stringify(await professionalGrowth.runSelectedGoals({ skills, certificationSkills }), null, 2));
 }
 
 async function openGoogleAccount() {
@@ -184,7 +254,9 @@ function printStatus() {
 async function main() {
   const command = process.argv[2] || "run";
 
-  if (command !== "status" && !CONFIG.JOB_AUTOMATION_ENABLED) {
+  const growthCommands = new Set(["growth-profile","growth-skill","growth-discover","growth-run","growth-status"]);
+  const certificationCommands = new Set(["certifications","cert-status"]);
+  if (command !== "status" && !growthCommands.has(command) && !certificationCommands.has(command) && !CONFIG.JOB_AUTOMATION_ENABLED) {
     throw new Error("JOB_AUTOMATION_ENABLED is false");
   }
 
@@ -223,6 +295,42 @@ async function main() {
         CONFIG.JOB_DISCOVERY_INTERVAL_SECONDS * 1000
       ));
     }
+  }
+
+  if (command === "certifications") {
+    console.log(JSON.stringify(await runCertifications(), null, 2));
+    return;
+  }
+
+  if (command === "growth-profile") {
+    await runGrowthProfile();
+    return;
+  }
+
+  if (command === "growth-skill") {
+    await runGrowthSkill();
+    return;
+  }
+
+  if (command === "growth-discover") {
+    await runGrowthDiscover();
+    return;
+  }
+
+  if (command === "growth-run") {
+    await runGrowth();
+    return;
+  }
+
+  if (command === "growth-status") {
+    console.log(JSON.stringify(growthState.state, null, 2));
+    return;
+  }
+
+  if (command === "cert-status") {
+    const certState = require("./src/jobs/certification/certification-state-store");
+    console.log(JSON.stringify(certState.state, null, 2));
+    return;
   }
 
   if (command === "status") {

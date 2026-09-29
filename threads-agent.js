@@ -1003,6 +1003,10 @@ async function commandOnboard(options = {}) {
     publishes: Number(saved.safety?.publishes || 2),
     scanSeconds: Number(saved.safety?.scanSeconds || 300)
   };
+  let growth = {
+    skills: saved.growth?.skills || [],
+    certificationSkills: saved.growth?.certificationSkills || []
+  };
 
   const parseList = value => Array.isArray(value) ? value.map(item => String(item).trim()).filter(Boolean) : String(value || "").split(",").map(item => item.trim()).filter(Boolean);
   const askChoice = (value, allowed, fallback) => allowed.includes(String(value || "").toLowerCase()) ? String(value).toLowerCase() : fallback;
@@ -1064,13 +1068,13 @@ async function commandOnboard(options = {}) {
       behavior.autoConnect = await yesNo("Allow autonomous connection requests?", behavior.autoConnect);
       behavior.autoPublish = await yesNo("Allow autonomous publishing?", behavior.autoPublish);
 
-      console.log("\n--- 5/6 · BROWSER & PLATFORMS ---");
+      console.log("\n--- 5/7 · BROWSER & PLATFORMS ---");
       browser.type = askChoice(await ask("Browser (auto/chrome/edge/brave/chromium)", browser.type), ["auto","chrome","edge","brave","chromium"], "auto");
       browser.cdpUrl = await ask("Browser CDP URL", browser.cdpUrl);
       browser.platforms = parseList(await ask("Enabled platforms (threads, facebook, linkedin)", browser.platforms.join(", ")));
       browser.mode = askChoice(await ask("Execution mode (round-robin/concurrent)", browser.mode), ["round-robin","concurrent"], "round-robin");
 
-      console.log("\n--- 6/6 · SAFETY & AI ---");
+      console.log("\n--- 6/7 · SAFETY & AI ---");
       safety.dryRun = await yesNo("Start in DRY RUN mode?", safety.dryRun);
       safety.approval = await yesNo("Require approval before side effects?", safety.approval);
       safety.likes = Number(await ask("Max likes/hour", String(safety.likes)));
@@ -1089,6 +1093,10 @@ async function commandOnboard(options = {}) {
         options.openaiApiKey = await ask("OpenAI-compatible API key (blank keeps existing)", "");
         options.openaiBaseUrl = await ask("OpenAI-compatible base URL", CONFIG.OPENAI_BASE_URL);
       }
+
+      console.log("\n--- 7/7 · PROFESSIONAL GROWTH ---");
+      growth.skills = parseList(await ask("Skills to improve with the Growth Engine (comma-separated)", growth.skills.join(", ")));
+      growth.certificationSkills = parseList(await ask("Skill areas for certification discovery (comma-separated)", growth.certificationSkills.join(", ")));
     } finally {
       rl.close();
     }
@@ -1096,6 +1104,8 @@ async function commandOnboard(options = {}) {
     company.approved = parseList(company.approved);
     company.excluded = parseList(company.excluded);
     browser.platforms = parseList(browser.platforms);
+    growth.skills = parseList(growth.skills);
+    growth.certificationSkills = parseList(growth.certificationSkills);
   }
 
   profiles.linkedin = validUrl(profiles.linkedin, "LinkedIn URL");
@@ -1118,7 +1128,16 @@ async function commandOnboard(options = {}) {
   if (!Number.isFinite(safety.publishes) || safety.publishes < 0) safety.publishes = 2;
   if (!Number.isFinite(safety.scanSeconds) || safety.scanSeconds < 60) safety.scanSeconds = 300;
 
-  const profile = { identity, profiles, company, behavior, browser, safety, ai: { provider: options.aiProvider || CONFIG.AI_PROVIDER, model: options.aiModel || CONFIG.MODEL } };
+  const profile = {
+    identity,
+    profiles,
+    company,
+    behavior,
+    browser,
+    safety,
+    growth,
+    ai: { provider: options.aiProvider || CONFIG.AI_PROVIDER, model: options.aiModel || CONFIG.MODEL }
+  };
   fs.mkdirSync(privateDir, { recursive: true });
   fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2) + "\n", "utf8");
 
@@ -1163,6 +1182,8 @@ async function commandOnboard(options = {}) {
   envContent = upsertEnv(envContent, "AI_PROVIDER", profile.ai.provider);
   envContent = upsertEnv(envContent, "AI_RUNTIME", profile.ai.provider);
   envContent = upsertEnv(envContent, "AI_MODEL", profile.ai.model);
+  envContent = upsertEnv(envContent, "PROFESSIONAL_GROWTH_ENABLED", "true");
+  envContent = upsertEnv(envContent, "PROFESSIONAL_GROWTH_BROWSER_CDP_URL", browser.cdpUrl);
   if (options.antigravityModel !== undefined) envContent = upsertEnv(envContent, "ANTIGRAVITY_MODEL", options.antigravityModel);
   if (options.minimaxApiKey) envContent = upsertEnv(envContent, "MINIMAX_API_KEY", options.minimaxApiKey);
   if (options.openaiApiKey) envContent = upsertEnv(envContent, "OPENAI_API_KEY", options.openaiApiKey);
@@ -1187,6 +1208,8 @@ async function commandOnboard(options = {}) {
   console.log("Auto Follow: " + (behavior.autoFollow ? "ON" : "OFF"));
   console.log("Auto Connect: " + (behavior.autoConnect ? "ON" : "OFF"));
   console.log("Auto Publish: " + (behavior.autoPublish ? "ON" : "OFF"));
+  console.log("Growth Skills: " + (growth.skills.length ? growth.skills.join(", ") : "none"));
+  console.log("Growth Credentials: " + (growth.certificationSkills.length ? growth.certificationSkills.join(", ") : "none"));
   console.log("AI         : " + profile.ai.provider + " · " + profile.ai.model);
   console.log("Profile    : ./private/user-profile.json");
   console.log("Knowledge  : ./knowledge/");

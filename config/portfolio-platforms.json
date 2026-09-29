@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "platforms": [
+    {
+      "id": "freelancer",
+      "name": "Freelancer",
+      "origin": "https://www.freelancer.com",
+      "enabled": true,
+      "portfolio": {
+        "manageUrl": "https://www.freelancer.com/discover/manage",
+        "publishUrl": "https://www.freelancer.com/discover/publish",
+        "requiresAuthenticatedBrowser": true,
+        "maxAgentIterations": 12
+      }
+    }
+  ]
+}

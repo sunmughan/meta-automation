@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "selectionPolicy": {
+    "freeOnly": true,
+    "credentialMustBeIssued": true,
+    "neverPurchase": true
+  },
+  "credentials": {
+    "hubspot-academy": [
+      {"id":"digital-marketing","title":"Digital Marketing Certification","searchHints":["Digital Marketing Certification","digital marketing"],"enabled":true},
+      {"id":"social-media","title":"Social Media Marketing Certification","searchHints":["Social Media Marketing Certification","social media"],"enabled":true},
+      {"id":"content-marketing","title":"Content Marketing Certification","searchHints":["Content Marketing Certification","content marketing"],"enabled":true},
+      {"id":"inbound","title":"Inbound Certification","searchHints":["Inbound Certification","inbound"],"enabled":true},
+      {"id":"inbound-sales","title":"Inbound Sales Certification","searchHints":["Inbound Sales Certification","inbound sales"],"enabled":true}
+    ],
+    "google-skillshop": [
+      {"id":"google-ads","title":"Google Ads Certification","searchHints":["Google Ads","certification"],"enabled":true},
+      {"id":"google-analytics","title":"Google Analytics Certification","searchHints":["Google Analytics","certification"],"enabled":true}
+    ],
+    "ibm-skillsbuild": [
+      {"id":"generative-ai","title":"Generative AI digital credential","searchHints":["Generative AI","credential"],"enabled":true},
+      {"id":"cybersecurity","title":"Cybersecurity digital credential","searchHints":["Cybersecurity","credential"],"enabled":true},
+      {"id":"data","title":"Data digital credential","searchHints":["Data","credential"],"enabled":true}
+    ],
+    "cisco-networking-academy": [
+      {"id":"intro-cybersecurity","title":"Introduction to Cybersecurity","searchHints":["Introduction to Cybersecurity"],"enabled":true},
+      {"id":"python","title":"Python course / credential","searchHints":["Python"],"enabled":true},
+      {"id":"networking","title":"Networking course / credential","searchHints":["Networking"],"enabled":true}
+    ],
+    "freecodecamp": [
+      {"id":"responsive-web-design","title":"Responsive Web Design Certification","searchHints":["Responsive Web Design"],"enabled":true},
+      {"id":"javascript","title":"JavaScript Certification","searchHints":["JavaScript"],"enabled":true},
+      {"id":"python","title":"Python Certification","searchHints":["Python"],"enabled":true},
+      {"id":"backend-apis","title":"Back End Development and APIs Certification","searchHints":["Back End Development and APIs","Backend"],"enabled":true},
+      {"id":"relational-databases","title":"Relational Databases Certification","searchHints":["Relational Databases"],"enabled":true}
+    ]
+  }
+}

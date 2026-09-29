@@ -2,7 +2,7 @@ name: Meta Automation Tests
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "professional-growth-engine"]
   pull_request:
 
 jobs:
@@ -31,7 +31,20 @@ jobs:
           node --check src/content/omnichannel-content.js
           node --check src/ai/ai-runtime.js
           node --check src/ai/antigravity-cli-runtime.js
+          node --check src/jobs/growth/growth-ai.js
+          node --check src/jobs/growth/growth-runner.js
+          node --check src/jobs/growth/professional-growth-engine.js
+          node --check src/jobs/growth/professional-growth-platform-registry.js
+          node --check src/jobs/growth/skill-development-engine.js
+          node --check src/jobs/portfolio/portfolio-repository.js
+          node --check src/jobs/portfolio/portfolio-ai.js
+          node --check src/jobs/portfolio/portfolio-publisher.js
+          node --check src/jobs/portfolio/portfolio-generator.js
           node --check scripts/launch-browser-cdp.js
           node --check scripts/android-chrome-cdp.js
+      - name: Professional growth architecture tests
+        run: npm run test:growth
+      - name: Portfolio architecture tests
+        run: npm run test:portfolio
       - name: Dependency audit
         run: npm audit --audit-level=high
