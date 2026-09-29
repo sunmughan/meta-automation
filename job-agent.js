@@ -11,6 +11,8 @@ const { discoverOnPlatform } = require("./src/jobs/discovery/opportunity-engine"
 const { applyToOpportunity } = require("./src/jobs/application/application-engine");
 const jobState = require("./src/jobs/storage/job-state-store");
 const certificationEngine = require("./src/jobs/certification/certification-engine");
+const professionalGrowth = require("./src/jobs/growth/professional-growth-engine");
+const growthState = require("./src/jobs/growth/growth-state-store");
 const CONFIG_FILE = require("fs");
 const logger = require("./src/logging/logger");
 
@@ -60,6 +62,36 @@ async function runCertifications() {
     credentialsByPlatform: limited
   });
   return result;
+}
+
+async function runGrowthProfile() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  console.log(JSON.stringify(await professionalGrowth.runProfileSync(), null, 2));
+}
+
+async function runGrowthSkill() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  const skill = process.argv.slice(3).join(" ").trim();
+  if (!skill) throw new Error("Usage: npm run growth:skill -- <skill>");
+  console.log(JSON.stringify(await professionalGrowth.runSkill(skill, "leetcode"), null, 2));
+}
+
+async function runGrowthDiscover() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  const skill = process.argv.slice(3).join(" ").trim();
+  if (!skill) throw new Error("Usage: npm run growth:discover -- <skill>");
+  console.log(JSON.stringify(await professionalGrowth.discoverCredentials(skill), null, 2));
+}
+
+async function runGrowth() {
+  if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
+  const profile = professionalGrowth.readConfiguredProfile();
+  const skills = profile?.growth?.skills || [];
+  const certificationSkills = profile?.growth?.certificationSkills || [];
+  if (!skills.length && !certificationSkills.length) {
+    throw new Error("No professional growth goals configured. Run npm run onboard and select skills/certification areas.");
+  }
+  console.log(JSON.stringify(await professionalGrowth.runSelectedGoals({ skills, certificationSkills }), null, 2));
 }
 
 async function openGoogleAccount() {
@@ -222,7 +254,9 @@ function printStatus() {
 async function main() {
   const command = process.argv[2] || "run";
 
-  if (command !== "status" && !CONFIG.JOB_AUTOMATION_ENABLED) {
+  const growthCommands = new Set(["growth-profile","growth-skill","growth-discover","growth-run","growth-status"]);
+  const certificationCommands = new Set(["certifications","cert-status"]);
+  if (command !== "status" && !growthCommands.has(command) && !certificationCommands.has(command) && !CONFIG.JOB_AUTOMATION_ENABLED) {
     throw new Error("JOB_AUTOMATION_ENABLED is false");
   }
 
@@ -265,6 +299,31 @@ async function main() {
 
   if (command === "certifications") {
     console.log(JSON.stringify(await runCertifications(), null, 2));
+    return;
+  }
+
+  if (command === "growth-profile") {
+    await runGrowthProfile();
+    return;
+  }
+
+  if (command === "growth-skill") {
+    await runGrowthSkill();
+    return;
+  }
+
+  if (command === "growth-discover") {
+    await runGrowthDiscover();
+    return;
+  }
+
+  if (command === "growth-run") {
+    await runGrowth();
+    return;
+  }
+
+  if (command === "growth-status") {
+    console.log(JSON.stringify(growthState.state, null, 2));
     return;
   }
 
