@@ -3,6 +3,7 @@ const aiRuntime = require("../../ai/ai-runtime");
 const browserManager = require("./growth-browser-manager");
 const growthState = require("./growth-state-store");
 const { syncProfileEvidence, readConfiguredProfile } = require("./profile-intelligence");
+const { buildSkillPlan } = require("./growth-ai");
 const { discoverForSkill } = require("./credential-discovery");
 const { runLeetCode } = require("./leetcode-engine");
 
@@ -13,8 +14,28 @@ async function runProfileSync() {
 async function runSkill(skill, platform = "leetcode") {
   const profile = readConfiguredProfile();
   if (!profile) throw new Error("Onboarding profile missing. Run npm run onboard first.");
-  const evidence = growthState.state.profileEvidence.combined || {};
-  if (platform === "leetcode") return runLeetCode({ browserManager, aiRuntime, profile, skill });
+
+  // Always refresh GitHub + LinkedIn evidence before selecting the learning path.
+  const synced = await runProfileSync();
+  const plan = await buildSkillPlan({
+    profile,
+    skill,
+    evidence: synced.analysis || growthState.state.profileEvidence.combined,
+    aiRuntime
+  });
+
+  growthState.setGoal({
+    id: "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    type: "SKILL_DEVELOPMENT",
+    skill,
+    status: "PLANNED",
+    plan,
+    sourceEvidence: ["github", "linkedin"].filter(source => Boolean(growthState.state.profileEvidence[source]))
+  });
+
+  if (platform === "leetcode") {
+    return runLeetCode({ browserManager, aiRuntime, profile, skill, plan });
+  }
   throw new Error("Unsupported skill platform: " + platform);
 }
 
