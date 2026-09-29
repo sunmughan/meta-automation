@@ -85,7 +85,7 @@ async function generatePortfolioCards({projects=listProjects()}={}) {
     for(const project of projects){
       const result=await cdp.call("Runtime.evaluate",{expression:buildExpression(project,founder,company,CONFIG.PORTFOLIO_CARD_WIDTH,CONFIG.PORTFOLIO_CARD_HEIGHT),returnByValue:true});
       const data=result?.result?.value;if(!data)throw new Error("Portfolio renderer returned no image for "+project.id);
-      fs.writeFileSync(resolveAssetPath(project),data.replace(/^data:image\\/png;base64,/,""),"base64");
+      fs.writeFileSync(resolveAssetPath(project),data.replace(/^data:image\/png;base64,/,""),"base64");
     }
   } finally { cdp.close(); }
   return projects.map(p=>({id:p.id,path:resolveAssetPath(p)}));
