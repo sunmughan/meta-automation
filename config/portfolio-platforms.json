@@ -9,7 +9,8 @@
       "portfolio": {
         "manageUrl": "https://www.freelancer.com/discover/manage",
         "publishUrl": "https://www.freelancer.com/discover/publish",
-        "requiresAuthenticatedBrowser": true
+        "requiresAuthenticatedBrowser": true,
+        "maxAgentIterations": 12
       }
     }
   ]
