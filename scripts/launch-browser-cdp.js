@@ -309,6 +309,42 @@ function detectRunningBrowser() {
 }
 
 /**
+ * Detects an active, responsive X11 display using xdpyinfo.
+ * Checks candidate displays (:0, :1, :2) or $DISPLAY.
+ */
+function detectActiveDisplay() {
+  if (OS !== "linux" && !IS_TERMUX) return null;
+  const candidates = [process.env.DISPLAY, ":0", ":1", ":2"].filter(Boolean);
+  for (const disp of candidates) {
+    try {
+      const out = execSync(`xdpyinfo -display "${disp}" 2>/dev/null`, { encoding: "utf8" });
+      if (out && out.includes("dimensions:")) {
+        return disp;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+/**
+ * Checks whether headless browser mode is requested or required.
+ */
+function isHeadlessMode(activeDisplay = null) {
+  const forceHeadless = process.argv.includes("--headless") ||
+                        process.argv.includes("-h") ||
+                        process.env.BROWSER_HEADLESS === "1" ||
+                        process.env.BROWSER_HEADLESS === "true";
+  if (forceHeadless) return true;
+
+  // On Linux/Termux, if no active X11 display is connected, headless is mandatory
+  if ((OS === "linux" || IS_TERMUX) && !activeDisplay) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Resolves the selected browser configuration.
  * Preference hierarchy:
  *  1. Explicit CLI argument (--browser=chrome|edge|brave|chromium)
@@ -319,6 +355,8 @@ function detectRunningBrowser() {
  */
 function resolveBrowser(preference = null) {
   const catalog = getBrowserCatalog();
+  const activeDisplay = detectActiveDisplay();
+  const headless = isHeadlessMode(activeDisplay);
 
   // Parse command line flag if preference not passed
   let chosenType = preference;
@@ -337,13 +375,13 @@ function resolveBrowser(preference = null) {
   if (chosenType && chosenType !== "auto" && catalog[chosenType]) {
     const item = catalog[chosenType];
     const bin = item.binaries.find(b => fs.existsSync(b));
-    if (bin) {
-      return {
-        ...item,
-        binary: bin,
-        display: (OS === "linux" || IS_TERMUX) ? (process.env.DISPLAY || ":1") : null
-      };
-    }
+    return {
+      ...item,
+      binary: bin || item.binaries[0],
+      display: activeDisplay,
+      headless,
+      installed: !!bin
+    };
   }
 
   // 2. Running browser on system
@@ -355,7 +393,9 @@ function resolveBrowser(preference = null) {
       return {
         ...item,
         binary: bin,
-        display: (OS === "linux" || IS_TERMUX) ? (process.env.DISPLAY || ":1") : null
+        display: activeDisplay,
+        headless,
+        installed: true
       };
     }
   }
@@ -369,7 +409,9 @@ function resolveBrowser(preference = null) {
       return {
         ...item,
         binary: bin,
-        display: (OS === "linux" || IS_TERMUX) ? (process.env.DISPLAY || ":1") : null
+        display: activeDisplay,
+        headless,
+        installed: true
       };
     }
   }
@@ -384,7 +426,9 @@ function resolveBrowser(preference = null) {
       return {
         ...item,
         binary: bin,
-        display: (OS === "linux" || IS_TERMUX) ? (process.env.DISPLAY || ":1") : null
+        display: activeDisplay,
+        headless,
+        installed: true
       };
     }
   }
@@ -400,7 +444,9 @@ function resolveBrowser(preference = null) {
           return {
             ...item,
             binary: found,
-            display: (OS === "linux" || IS_TERMUX) ? (process.env.DISPLAY || ":1") : null
+            display: activeDisplay,
+            headless,
+            installed: true
           };
         }
       } catch (e) {}
@@ -463,15 +509,22 @@ async function launchBrowser(preference = null) {
   // Detect screen dimensions for Termux / Linux
   let screenWidth = 1440;
   let screenHeight = 2708;
-  if (OS === "linux" || IS_TERMUX) {
+  if (!browser.headless && (OS === "linux" || IS_TERMUX) && browser.display) {
     try {
-      const xdpy = execSync(`xdpyinfo -display "${browser.display || process.env.DISPLAY || ":1"}" 2>/dev/null`, { encoding: "utf8" });
+      const xdpy = execSync(`xdpyinfo -display "${browser.display}" 2>/dev/null`, { encoding: "utf8" });
       const m = xdpy.match(/dimensions:\s+(\d+)x(\d+)\s+pixels/i);
       if (m) {
         screenWidth = parseInt(m[1], 10);
         screenHeight = parseInt(m[2], 10);
       }
     } catch (e) {}
+  }
+
+  const isHeadless = browser.headless;
+  if (isHeadless) {
+    console.log("👻 Running in resilient Headless Mode (--headless=new, zero display dependency).");
+  } else {
+    console.log(`🖥️ Running in GUI Mode (Display: ${browser.display || ":0"}).`);
   }
 
   const args = [
@@ -481,15 +534,32 @@ async function launchBrowser(preference = null) {
     "--no-first-run",
     "--no-default-browser-check",
     "--restore-last-session",
-    "--start-maximized",
-    "--window-position=0,0",
-    `--window-size=${screenWidth},${screenHeight}`,
     "--force-device-scale-factor=1",
     ...(browser.flags || [])
   ];
 
+  if (isHeadless) {
+    args.push(
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      `--window-size=${screenWidth},${screenHeight}`
+    );
+  } else {
+    args.push(
+      "--start-maximized",
+      "--window-position=0,0",
+      `--window-size=${screenWidth},${screenHeight}`
+    );
+  }
+
   const env = { ...process.env };
-  env.DISPLAY = browser.display || process.env.DISPLAY || ":1";
+  if (!isHeadless && browser.display) {
+    env.DISPLAY = browser.display;
+  } else if (isHeadless) {
+    delete env.DISPLAY;
+  }
 
   const logFile = path.resolve(__dirname, "../logs/browser.log");
   try {
@@ -497,8 +567,8 @@ async function launchBrowser(preference = null) {
   } catch (e) {}
   const out = fs.openSync(logFile, "a");
 
-  console.log(`🌐 Starting ${browser.name} with CDP remote port ${CDP_PORT} (fullscreen: ${screenWidth}x${screenHeight})...`);
-  const child = spawn(browser.binary, args, {
+  console.log(`🌐 Starting ${browser.name} with CDP remote port ${CDP_PORT} (${isHeadless ? "Headless" : `fullscreen ${screenWidth}x${screenHeight}`})...`);
+  let child = spawn(browser.binary, args, {
     detached: true,
     stdio: ["ignore", out, out],
     env
@@ -507,12 +577,67 @@ async function launchBrowser(preference = null) {
   child.unref();
 
   // Poll port 9222
-  for (let i = 1; i <= 15; i++) {
+  let cdpConnected = false;
+  const pollLimit = isHeadless ? 15 : 7;
+  for (let i = 1; i <= pollLimit; i++) {
     await new Promise(r => setTimeout(r, 1000));
     const ready = await isCdpActive(CDP_PORT);
     if (ready) {
-      console.log(`✅ ${browser.name} CDP successfully verified on http://127.0.0.1:${CDP_PORT}!`);
-      // Maximize browser windows via CDP
+      cdpConnected = true;
+      break;
+    }
+    process.stdout.write(`...connecting to CDP (${i}s)\r`);
+  }
+
+  // Automatic GUI-to-Headless recovery on Android/Linux
+  if (!cdpConnected && !isHeadless && (IS_TERMUX || OS === "linux")) {
+    console.warn(`\n⚠️ Display (${browser.display || "GUI"}) could not connect CDP within ${pollLimit}s (Termux:X11 may have disconnected).`);
+    console.log("🛡️ Automatically recovering into Headless Mode (--headless=new) for guaranteed uptime...");
+    try {
+      execSync(`pkill -TERM -f "${browser.binary}" 2>/dev/null || true`, { stdio: "ignore" });
+    } catch (_) {}
+    await new Promise(r => setTimeout(r, 1000));
+
+    const fallbackArgs = [
+      `--remote-debugging-port=${CDP_PORT}`,
+      "--remote-debugging-address=127.0.0.1",
+      `--user-data-dir=${browser.userDataDir}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--restore-last-session",
+      "--force-device-scale-factor=1",
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      `--window-size=${screenWidth},${screenHeight}`,
+      ...(browser.flags || [])
+    ];
+    const fallbackEnv = { ...process.env };
+    delete fallbackEnv.DISPLAY;
+
+    child = spawn(browser.binary, fallbackArgs, {
+      detached: true,
+      stdio: ["ignore", out, out],
+      env: fallbackEnv
+    });
+    child.unref();
+
+    for (let i = 1; i <= 12; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const ready = await isCdpActive(CDP_PORT);
+      if (ready) {
+        cdpConnected = true;
+        break;
+      }
+      process.stdout.write(`...headless recovery (${i}s)\r`);
+    }
+  }
+
+  if (cdpConnected) {
+    console.log(`\n✅ ${browser.name} CDP successfully verified on http://127.0.0.1:${CDP_PORT}!`);
+    // Maximize browser windows via CDP only in GUI mode
+    if (!isHeadless) {
       try {
         const puppeteer = require("puppeteer-core");
         const conn = await puppeteer.connect({ browserURL: `http://127.0.0.1:${CDP_PORT}`, defaultViewport: null });
@@ -538,9 +663,8 @@ async function launchBrowser(preference = null) {
         }
         await conn.disconnect().catch(() => {});
       } catch (e) {}
-      return true;
     }
-    process.stdout.write(`...connecting to CDP (${i}s)\r`);
+    return true;
   }
 
   console.error(`\n❌ Could not verify CDP port ${CDP_PORT}. Please check ${logFile} for details.`);
@@ -562,5 +686,8 @@ module.exports = {
   resolveBrowser,
   detectSystemDefaultBrowser,
   detectRunningBrowser,
+  detectActiveDisplay,
+  isHeadlessMode,
   launchBrowser
 };
+
