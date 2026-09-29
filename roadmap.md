@@ -132,4 +132,17 @@ Live social execution still requires a user's authenticated browser/CDP environm
 - [x] Credential-page verification
 - [x] Generic browser-based enrollment/completion runner
 - [x] Credential progress state persistence
+- [x] AI learning-platform selection from declarative registry
+- [x] Per-iteration decision/evidence persistence and recovery
+- [x] Registry-driven credential discovery policy
 - [ ] Live authenticated end-to-end validation on each discovered provider
+
+## Portfolio Architecture
+
+- [x] Single catalog source of truth for portfolio projects
+- [x] Generic catalog-driven card renderer
+- [x] Brand identity sourced from knowledge engine
+- [x] AI semantic portfolio publishing planner
+- [x] Declarative publishing-platform registry
+- [x] Architecture tests preventing duplicate project arrays and legacy image-source references
+- [ ] Live authenticated Freelancer portfolio publishing validation
