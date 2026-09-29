@@ -75,6 +75,7 @@ RULES:
 - Do not invent employment, client names, dates, certifications, technologies, metrics, salary history or outcomes.
 - Tailor emphasis and wording without changing factual claims.
 - Generate a concise project-specific cover letter.
+- For bid opportunities, determine a realistic and competitive bidStrategy: bidAmount (numeric value calibrated within the project budget), deliveryDays (reasonable integer days to deliver), milestoneAmount (numeric amount for initial milestone), and milestoneDescription (clear deliverable title).
 - Generate application answers only when their answers are explicitly supported by source facts.
 - For each generated answer provide its source basis.
 - Unknown mandatory fields must remain unanswered so the browser agent can stop for USER_ACTION_REQUIRED.
@@ -82,6 +83,7 @@ RULES:
 OUTPUT:
 {
   "resumeStrategy":{"useBase":true,"emphasis":[]},
+  "bidStrategy":{"bidAmount":0,"deliveryDays":7,"milestoneAmount":0,"milestoneDescription":""},
   "coverLetter":"",
   "applicationAnswers":{},
   "answerSources":{}
@@ -108,6 +110,7 @@ OUTPUT:
     opportunityKey: opportunity.key,
     baseResumePath: resume.path,
     resumeStrategy: generated.resumeStrategy || generated.resume_strategy || {},
+    bidStrategy: generated.bidStrategy || generated.bid_strategy || null,
     applicationAnswers: generated.applicationAnswers || generated.application_answers || {},
     answerSources: generated.answerSources || generated.answer_sources || {},
     generatedAt: new Date().toISOString()
@@ -123,6 +126,7 @@ OUTPUT:
     coverLetterPath: coverPath,
     coverLetter,
     resumeStrategy: metadata.resumeStrategy,
+    bidStrategy: metadata.bidStrategy,
     applicationAnswers: metadata.applicationAnswers,
     answerSources: metadata.answerSources
   };

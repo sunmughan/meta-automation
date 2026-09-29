@@ -118,21 +118,22 @@ async function runCrossPlatformAudit() {
     });
   }
 
-  // 5. MiniMax M3 & OpenAI-compatible runtime configuration
-  test("AI Runtime: MiniMax M3 or supported provider configured", () => {
-    assert(["antigravity", "minimax", "freebuff", "openai"].includes(CONFIG.AI_PROVIDER), "AI_PROVIDER must be a supported provider");
-    assert(CONFIG.MINIMAX_MODEL === "MiniMax-M3", "MINIMAX_MODEL must be MiniMax-M3");
-    assert(CONFIG.MINIMAX_BASE_URL, "MINIMAX_BASE_URL must be configured");
-    assert(CONFIG.MINIMAX_ENDPOINT, "MINIMAX_ENDPOINT must be configured");
+  // 5. Antigravity & OpenAI-compatible runtime configuration
+  test("AI Runtime: Antigravity or supported provider configured", () => {
+    assert(["antigravity", "freebuff", "openai"].includes(CONFIG.AI_PROVIDER), "AI_PROVIDER must be a supported provider");
+    assert(CONFIG.ANTIGRAVITY_MODEL === "Gemini 3.8 Flash", "ANTIGRAVITY_MODEL must be Gemini 3.8 Flash");
+    assert(CONFIG.ANTIGRAVITY_TIMEOUT_MS, "ANTIGRAVITY_TIMEOUT_MS must be configured");
+    assert(CONFIG.ANTIGRAVITY_CLI_PATH, "ANTIGRAVITY_CLI_PATH must be configured");
   });
 
-  // 6. Runtime must not require a legacy external AI CLI
-  test("AI Runtime: no legacy external AI CLI dependency", () => {
+  // 6. Runtime must use Antigravity and not require MiniMax
+  test("AI Runtime: Antigravity primary execution without MiniMax dependency", () => {
     const runtimeCode = fs.readFileSync(path.join(ROOT, "src/ai/ai-runtime.js"), "utf8");
     assert(!runtimeCode.includes("resolveAgyBinary"), "Runtime must not depend on obsolete CLI resolution");
     assert(runtimeCode.includes("callAntigravityCli"), "Runtime must include the primary Antigravity CLI adapter");
     assert(!runtimeCode.includes("spawn("), "Runtime must not spawn an external AI CLI");
-    assert(runtimeCode.includes("callMiniMax"), "Runtime must include MiniMax execution");
+    assert(!runtimeCode.includes("callMiniMax"), "Runtime must not include MiniMax execution");
+    assert(runtimeCode.includes("callAntigravity"), "Runtime must include Antigravity execution");
   });
 
   // 7. Termux installer must not install Antigravity
@@ -147,8 +148,8 @@ async function runCrossPlatformAudit() {
   // 8. Onboarding Wizard WhatsApp Integration
   test("Onboarding Wizard: includes WhatsApp booking link prompt and profile output", () => {
     const agentCode = fs.readFileSync(path.join(ROOT, "threads-agent.js"), "utf8");
-    assert(agentCode.includes("WhatsApp Booking URL"), "Onboarding wizard must prompt for WhatsApp Booking URL");
-    assert(agentCode.includes("WhatsApp: ${founderWhatsApp"), "Must save WhatsApp to knowledge base files");
+    assert(/whatsapp booking url/i.test(agentCode), "Onboarding wizard must prompt for WhatsApp Booking URL");
+    assert(agentCode.includes("WhatsApp: \" + profiles.whatsapp") || agentCode.includes("WhatsApp: ${founderWhatsApp"), "Must save WhatsApp to knowledge base files");
   });
 
   console.log("\n--------------------------------------------------");

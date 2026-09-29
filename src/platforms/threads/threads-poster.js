@@ -91,7 +91,7 @@ class ThreadsPoster {
 
   /**
    * Generates dynamic post content, discussion captions, and visual specs
-   * using the configured MiniMax M3 AI runtime.
+   * using the Antigravity Gemini AI runtime.
    * Eliminates all hardcoded static caption dictionaries.
    */
   async generateDynamicPostContent(pillar, format = "TEXT_ONLY") {
@@ -248,7 +248,7 @@ OUTPUT STRICT JSON:
     const pillar = options.pillar || this.selectNextPillar();
     const format = options.format || this.determinePostFormat(pillar);
 
-    // Dynamically generate fresh post content & visual specs via MiniMax M3 AI
+    // Dynamically generate fresh post content & visual specs via Antigravity Gemini AI
     const dynamicContent = await this.generateDynamicPostContent(pillar, format);
 
     let postText = (options.text || dynamicContent.caption || "").trim();

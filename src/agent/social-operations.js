@@ -22,7 +22,7 @@ const logger = require("../logging/logger");
 class AgenticSocialOps {
   /**
    * @param {Object} options
-   * @param {Object} options.aiRuntime — MiniMax M3 AI runtime
+   * @param {Object} options.aiRuntime — Antigravity Gemini AI runtime
    * @param {Object} options.browserAgent — BrowserAgent with live page
    * @param {string} [options.platform="threads"] — Platform name
    */

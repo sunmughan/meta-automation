@@ -552,7 +552,7 @@ tail -f logs/daemon.log
 The automation features a resilient **3-tier semantic decision pipeline**:
 
 1. **Tier 1: Antigravity Language Server (Local / Primary)** — High-precision local reasoning without third-party API dependencies or subscription token limits.
-2. **Tier 2: Cloud AI Fallback (MiniMax M3 / OpenAI)** — Seamless failover if local language server is busy or unavailable.
+2. **Tier 2: Cloud AI Fallback (OpenAI-Compatible)** — Seamless failover to configured OpenAI-compatible endpoints.
 3. **Tier 3: Grounded Local Semantic Classifier** — Zero premature discards; strictly classifies leads into:
    - `BUYER` (Project buyers needing custom apps, portals, SaaS, mobile, AI)
    - `FOUNDER_NETWORKING` (Builder community, indie hackers, technical co-founder outreach)

@@ -27,7 +27,7 @@ pkg update -y || apt update -y
 echo "[2/8] Enabling x11-repo and tur-repo..."
 pkg install -y x11-repo tur-repo || true
 
-# 4. Install Node.js, Chromium, Termux:X11, Git, ADB, and browser tooling
+# 4. Install Node.js, Chromium, Termux:X11, Git, ADB, termux-api and browser tooling
 echo "[3/8] Installing Node.js LTS, Chromium, X11, and terminal utilities..."
 pkg install -y \
     nodejs-lts \
@@ -39,6 +39,7 @@ pkg install -y \
     bash \
     findutils \
     procps \
+    termux-api \
     termux-x11-nightly \
     chromium \
     android-tools \
@@ -54,20 +55,19 @@ echo "✅ Chromium: $(chromium-browser --version 2>/dev/null || chromium --versi
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
-# Antigravity is primary. MiniMax is optional and is never required by this installer.
+# Antigravity with active Gemini session is primary.
 
-# 6. Configure Termux:X11 Display & Preferences
-echo "[5/8] Configuring Termux:X11 display (:1) and preferences..."
+# 6. Configure Termux Preferences & Display Support
+echo "[5/8] Configuring Termux preferences and display settings..."
 mkdir -p "$HOME/.termux"
 if [ ! -f "$HOME/.termux/termux.properties" ] || ! grep -q "allow-external-apps" "$HOME/.termux/termux.properties"; then
     echo "allow-external-apps = true" >> "$HOME/.termux/termux.properties"
 fi
 
-# Export DISPLAY=:1 to user shell profile if missing
-if ! grep -q "DISPLAY=:1" "$HOME/.bashrc" 2>/dev/null; then
-    echo 'export DISPLAY=:1' >> "$HOME/.bashrc"
+if ! grep -q "DISPLAY=" "$HOME/.bashrc" 2>/dev/null; then
+    echo 'export DISPLAY="${DISPLAY:-:1}"' >> "$HOME/.bashrc"
 fi
-export DISPLAY=:1
+export DISPLAY="${DISPLAY:-:1}"
 
 # 7. Install Project Dependencies
 echo "[6/8] Installing Node.js dependencies..."
@@ -79,8 +79,6 @@ if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
 
-# Ensure DISPLAY=:1 and localhost CDP in .env
-sed -i 's/^DISPLAY=.*/DISPLAY=:1/' "$SCRIPT_DIR/.env" 2>/dev/null || true
 sed -i 's|^THREADS_CDP_URL=.*|THREADS_CDP_URL=http://127.0.0.1:9222|' "$SCRIPT_DIR/.env" 2>/dev/null || true
 sed -i 's|^AI_PROVIDER=.*|AI_PROVIDER=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
 sed -i 's|^AI_RUNTIME=.*|AI_RUNTIME=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
@@ -121,14 +119,6 @@ cat << 'EOF' > "$HOME/start-meta.sh"
 #!/usr/bin/env bash
 # 1-Tap Launcher for Meta Automation on Android (Termux)
 
-# 1. Start Termux:X11 app if not already running
-if ! pgrep -f "termux-x11" >/dev/null; then
-    echo "Starting Termux:X11 server..."
-    termux-x11 :1 -xstartup "sleep 1" &
-    sleep 2
-fi
-
-# 2. Launch Android automation runner
 PROJECT_DIR="$HOME/meta-automation"
 [ ! -d "$PROJECT_DIR" ] && PROJECT_DIR="$(find "$HOME" -name "meta-automation" -o -name "threads-agent" 2>/dev/null | head -n 1)"
 
@@ -154,11 +144,19 @@ echo "=================================================="
 echo "  🎉 ANDROID TERMUX SETUP COMPLETE!"
 echo "=================================================="
 echo "How to run on Android:"
-echo "1. Install the 'Termux:X11' companion app APK on your phone."
-echo "2. Open Termux and run:"
-echo "      ~/start-meta.sh"
-echo "   (or cd $(pwd) && ./start-termux)"
+echo "Option 1 (Resilient 24/7 Headless - Recommended):"
+echo "   ./start-job-automation --headless"
+echo "   (Runs continuously in background without needing Termux:X11 display)"
 echo ""
-echo "3. Termux:X11 will automatically open, Chromium will attach with CDP :9222,"
-echo "   and Meta Automation will begin running in the background 24/7!"
+echo "Option 2 (GUI Mode with Termux:X11):"
+echo "   Open Termux:X11 companion app, then run:"
+echo "   ~/start-meta.sh"
+echo "   (If Termux:X11 closes, automation auto-recovers to Headless without crashing)"
+echo ""
+echo "To check system health and live stats:"
+echo "   ./status-automation"
+echo ""
+echo "To stop the automation daemon:"
+echo "   ./stop-automation"
 echo "=================================================="
+

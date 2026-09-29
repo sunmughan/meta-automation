@@ -9,20 +9,53 @@ function loadCandidateProfile() {
   return JSON.parse(fs.readFileSync(CONFIG.JOB_PROFILE_PATH, "utf8"));
 }
 
-function createCandidateProfile({ googleAccountEmail = "", baseResumePath = "", preferences = {} } = {}) {
+function createCandidateProfile(data = {}) {
+  const preferences = data.preferences || {};
   return {
     version: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    googleAccountEmail: String(googleAccountEmail || "").trim(),
-    baseResumePath: String(baseResumePath || "").trim(),
+    googleAccountEmail: String(data.googleAccountEmail || "").trim(),
+    baseResumePath: String(data.baseResumePath || "").trim(),
     preferences: {
       remoteOnly: preferences.remoteOnly !== false,
       projectOnly: preferences.projectOnly !== false,
       minMatchScore: Number.isFinite(Number(preferences.minMatchScore))
         ? Number(preferences.minMatchScore)
-        : 75
-    }
+        : 75,
+      aiPortfolioSync: preferences.aiPortfolioSync !== false
+    },
+    portfolioUrl: data.portfolioUrl || "",
+    portfolioItemsCount: Number(data.portfolioItemsCount || 0),
+    name: data.name || "Sunmughan Swamy",
+    title: data.title || "CTO & Founder",
+    company: data.company || "CodeAir Software Solutions",
+    email: data.email || data.googleAccountEmail || "sunmughan@gmail.com",
+    phone: data.phone || "+919584215603",
+    location: data.location || "Durg, Chhattisgarh, India",
+    website: data.website || "https://www.codeair.tech",
+    linkedin: data.linkedin || "https://linkedin.com/in/sunmughan",
+    skills: Array.isArray(data.skills) ? data.skills : [
+      "Web Development",
+      "Full Stack Development",
+      "Mobile Application Development",
+      "AI Systems & Automation",
+      "JavaScript",
+      "TypeScript",
+      "Node.js",
+      "React",
+      "Next.js",
+      "Python",
+      "FastAPI",
+      "PHP",
+      "CodeIgniter",
+      "Flutter",
+      "Android",
+      "Docker",
+      "Redis",
+      "AWS",
+      "WebSockets"
+    ]
   };
 }
 

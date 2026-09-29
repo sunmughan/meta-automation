@@ -8,66 +8,25 @@ const path = require("path");
 const http = require("http");
 const WebSocket = require("ws");
 
-const IMAGES_DIR = path.resolve(__dirname, "../portfolio_images");
+const CONFIG = require("../config");
+const { loadPortfolioItems } = require("../src/jobs/profile/portfolio-syncer");
+const { loadCandidateProfile } = require("../src/jobs/profile/profile-engine");
 
-const ITEMS = [
-  {
-    id: "zynero_games",
-    title: "Zynero Games Real-Time Platform",
-    description: "High-throughput real-time WebSocket card gaming engine and mobile platform. Features sub-50ms latency state synchronization, CodeIgniter PHP backend, Redis Pub/Sub distributed events, native Android client, and provably fair cryptographic RNG system.",
-    tag: "gaming",
-    image: path.join(IMAGES_DIR, "zynero_games.png")
-  },
-  {
-    id: "openpatti",
-    title: "OpenPatti Live Results Platform",
-    description: "High-concurrency gaming odds and real-time live results publishing platform built with Turborepo monorepo, Next.js 14, Fastify Node.js microservices, Docker containerization, and Redis worker queues handling 100K+ concurrent daily users with sub-second feed latency.",
-    tag: "nextjs",
-    image: path.join(IMAGES_DIR, "openpatti.png")
-  },
-  {
-    id: "staffease",
-    title: "StaffGo Hospitality Staffing SaaS",
-    description: "Enterprise gig-economy on-demand shift hiring SaaS platform tailored for hotels, restaurants, cafes, and event organizers. Features instant candidate-shift matching algorithms, automated KYC verification, real-time attendance tracking, and Stripe Connect payouts.",
-    tag: "saas",
-    image: path.join(IMAGES_DIR, "staffease.png")
-  },
-  {
-    id: "printless",
-    title: "Printless Smart NFC Business Card",
-    description: "Contactless smart networking and digital identity platform utilizing dynamic NFC and QR protocols. Features real-time contact card sharing, profile engagement analytics, automated CRM lead routing, and highly scalable AWS serverless cloud infrastructure.",
-    tag: "iot",
-    image: path.join(IMAGES_DIR, "printless.png")
-  },
-  {
-    id: "vasera",
-    title: "Societify Smart Society SaaS",
-    description: "Smart community operations and gated society management SaaS platform. Provides seamless visitor entry management, biometric guard authorization, resident Flutter mobile app, automated maintenance billing, and integrated online payment processing.",
-    tag: "flutter",
-    image: path.join(IMAGES_DIR, "vasera.png")
-  },
-  {
-    id: "onequotation",
-    title: "1Quotation Enterprise Catalog",
-    description: "Enterprise sales automation and quotation management suite for B2B manufacturers and distributors. Features dynamic multi-tier catalog management, automated PDF quotation generation, custom margin and discount calculations, and dedicated customer approval portals.",
-    tag: "saas",
-    image: path.join(IMAGES_DIR, "onequotation.png")
-  },
-  {
-    id: "maviinci",
-    title: "BluePearl Luxury E-Commerce",
-    description: "High-end luxury jewelry and boutique retail e-commerce platform. Features real-time Firebase stock synchronization, smooth Framer Motion 60FPS UI animations, dynamic multi-currency conversion, secure checkout flows, and cloud-based inventory tracking.",
-    tag: "ecommerce",
-    image: path.join(IMAGES_DIR, "maviinci.png")
-  },
-  {
-    id: "machine_mandi",
-    title: "MachineMandi B2B Marketplace",
-    description: "Industrial heavy equipment and machinery B2B trading marketplace. Features comprehensive verified equipment catalogs, intelligent Request For Quote (RFQ) negotiation engine, buyer-seller direct messaging, and end-to-end machinery inspection workflows.",
-    tag: "b2b",
-    image: path.join(IMAGES_DIR, "machine_mandi.png")
+const IMAGES_DIR = path.resolve(CONFIG.ROOT_DIR, "portfolio_images");
+const rawItems = loadPortfolioItems();
+const defaultImages = fs.existsSync(IMAGES_DIR) ? fs.readdirSync(IMAGES_DIR).filter(f => f.endsWith(".png")) : [];
+const fallbackImage = defaultImages.length ? path.join(IMAGES_DIR, defaultImages[0]) : null;
+
+const ITEMS = rawItems.map(item => {
+  let img = item.image;
+  if (!img || !fs.existsSync(img)) {
+    img = fallbackImage;
   }
-];
+  return {
+    ...item,
+    image: img
+  };
+});
 
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
@@ -301,6 +260,12 @@ async function publishItem(cdp, item) {
 }
 
 async function main() {
+  const profile = loadCandidateProfile();
+  if (profile && profile.preferences?.aiPortfolioSync === false) {
+    console.log("⏩ AI Portfolio Sync is disabled by user preference (manual portfolio management). Skipping Freelancer portfolio upload.");
+    return;
+  }
+
   console.log("Connecting to Freelancer CDP session...");
   const tab = await getFreelancerTab();
   const cdp = new CDPClient(tab.webSocketDebuggerUrl);

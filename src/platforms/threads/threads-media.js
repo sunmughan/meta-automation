@@ -237,7 +237,7 @@ class ThreadsMedia {
           role: authorRole,
           footerTag: `GITHUB: ${metaHandle.toUpperCase()}`,
           takeaways: [
-            { num: "01", title: "Open Source + MiniMax M3", desc: "AI reasoning powered by the configured MiniMax M3 API runtime." },
+            { num: "01", title: "Open Source + Antigravity Gemini", desc: "AI reasoning powered by the Antigravity Gemini 3.8 Flash session." },
             { num: "02", title: "Cross-Platform Everywhere", desc: "Runs 24/7 on Android (Termux:X11), Linux, Windows & macOS." },
             { num: "03", title: "Community Star & Fork", desc: `Full code and setup guide at ${metaHandle}.` }
           ]
@@ -784,13 +784,13 @@ class ThreadsMedia {
             badge: "META AUTOMATION • OPEN SOURCE",
             accentColor: "#00F0FF",
             glowColor: "rgba(0, 240, 255, 0.14)",
-            title: "24/7 AI Growth Engine: Open Source + MiniMax M3",
+            title: "24/7 AI Growth Engine: Open Source + Antigravity Gemini",
             subtitle: `How we engineered an autonomous Meta & Threads agent running on Linux, macOS, Windows & Android Termux.`,
             cards: [
               {
                 num: "01",
-                title: "MiniMax M3 AI Reasoning",
-                desc: "Uses the configured MiniMax M3 API runtime for semantic reasoning."
+                title: "Antigravity Gemini AI Reasoning",
+                desc: "Uses the local Antigravity Gemini 3.8 Flash session for semantic reasoning."
               },
               {
                 num: "02",
@@ -847,7 +847,7 @@ class ThreadsMedia {
               },
               {
                 num: "03",
-                title: "Native MiniMax M3 CLI",
+                title: "Native Antigravity CLI",
                 desc: "Run real-time reasoning and agentic pipelines right from your Termux terminal."
               }
             ]

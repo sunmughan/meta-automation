@@ -1012,7 +1012,9 @@ async function commandOnboard(options = {}) {
     try {
       const url = new URL(text);
       if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error();
-      return url.toString();
+      let res = url.toString();
+      if (!text.endsWith("/") && res.endsWith("/")) res = res.slice(0, -1);
+      return res;
     } catch (_) {
       throw new Error(label + " must be a valid http(s) URL");
     }
@@ -1081,10 +1083,9 @@ async function commandOnboard(options = {}) {
       safety.connects = Number(await ask("Max connections/hour", String(safety.connects)));
       safety.publishes = Number(await ask("Max publishes/hour", String(safety.publishes)));
       safety.scanSeconds = Number(await ask("Scan interval seconds", String(safety.scanSeconds)));
-      options.aiProvider = askChoice(await ask("Primary AI provider (antigravity/minimax/openai)", CONFIG.AI_PROVIDER), ["antigravity","minimax","openai"], "antigravity");
+      options.aiProvider = askChoice(await ask("Primary AI provider (antigravity/openai)", CONFIG.AI_PROVIDER), ["antigravity","openai"], "antigravity");
       options.aiModel = await ask("AI model (Antigravity uses your authenticated account)", CONFIG.MODEL);
       if (options.aiProvider === "antigravity") options.antigravityModel = await ask("Antigravity model (blank = provider default)", process.env.ANTIGRAVITY_MODEL || "");
-      if (options.aiProvider === "minimax") options.minimaxApiKey = await ask("MiniMax API key (blank keeps existing)", "");
       if (options.aiProvider === "openai") {
         options.openaiApiKey = await ask("OpenAI-compatible API key (blank keeps existing)", "");
         options.openaiBaseUrl = await ask("OpenAI-compatible base URL", CONFIG.OPENAI_BASE_URL);
@@ -1164,7 +1165,6 @@ async function commandOnboard(options = {}) {
   envContent = upsertEnv(envContent, "AI_RUNTIME", profile.ai.provider);
   envContent = upsertEnv(envContent, "AI_MODEL", profile.ai.model);
   if (options.antigravityModel !== undefined) envContent = upsertEnv(envContent, "ANTIGRAVITY_MODEL", options.antigravityModel);
-  if (options.minimaxApiKey) envContent = upsertEnv(envContent, "MINIMAX_API_KEY", options.minimaxApiKey);
   if (options.openaiApiKey) envContent = upsertEnv(envContent, "OPENAI_API_KEY", options.openaiApiKey);
   if (options.openaiBaseUrl) envContent = upsertEnv(envContent, "OPENAI_BASE_URL", options.openaiBaseUrl);
   fs.writeFileSync(envPath, envContent, { encoding: "utf8", mode: 0o600 });

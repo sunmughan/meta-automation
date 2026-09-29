@@ -124,16 +124,42 @@ class BrowserAgent {
           snippet: cleanText(d.innerText || "").slice(0, 250)
         }));
 
-      // 4. Visible feed/article cards
-      const articles = Array.from(document.querySelectorAll("article, [data-pressable-container='true'], .feed-shared-update-v2, [data-pagelet*='SearchResult'], [role='article']"))
+      // 4. Visible feed/article/job cards
+      const cardSelectors = "article, [data-pressable-container='true'], .feed-shared-update-v2, [data-pagelet*='SearchResult'], [role='article'], a[href*='/projects/'], [data-project-id]";
+      const rawMatches = Array.from(document.querySelectorAll(cardSelectors))
         .filter(isVisible)
-        .slice(0, 15)
-        .map((a, idx) => {
-          const authorEl = a.querySelector("a[href*='/@'], a[href*='/in/'], h4, strong, a span");
-          const author = cleanText(authorEl?.innerText || authorEl?.textContent || "").slice(0, 60);
-          const content = cleanText(a.innerText || "").slice(0, 400);
-          return { cardIndex: idx + 1, author, contentSnippet: content };
+        .filter(a => {
+          if (a.tagName.toLowerCase() === "a" && cleanText(a.innerText || "").length < 25) return false;
+          return true;
         });
+
+      const seenUrls = new Set();
+      const articles = [];
+      for (const a of rawMatches) {
+        const rawHref = a.getAttribute("href") || a.querySelector("a[href*='/projects/'], a[href]")?.getAttribute("href") || "";
+        let itemUrl = "";
+        if (rawHref) {
+          try { itemUrl = new URL(rawHref, url).href; } catch (_) { itemUrl = rawHref; }
+        }
+        if (itemUrl && seenUrls.has(itemUrl)) continue;
+        if (itemUrl) seenUrls.add(itemUrl);
+
+        const authorEl = a.querySelector("a[href*='/@'], a[href*='/in/'], h4, strong, a span");
+        const author = cleanText(authorEl?.innerText || authorEl?.textContent || "").slice(0, 60);
+        const titleEl = a.querySelector("h1, h2, h3, h4, [data-heading='true'], [role='heading']");
+        const title = cleanText(titleEl?.innerText || "").slice(0, 120);
+        const content = cleanText(a.innerText || "").slice(0, 600);
+
+        articles.push({
+          cardIndex: articles.length + 1,
+          title: title || undefined,
+          author: author || undefined,
+          contentSnippet: content,
+          url: itemUrl || undefined
+        });
+
+        if (articles.length >= 25) break;
+      }
 
       // 5. Forms and visible page text for agentic workflows.
       const forms = Array.from(document.querySelectorAll("form"))

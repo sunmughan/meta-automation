@@ -8,6 +8,11 @@ function normalizeOpportunity(raw, platform) {
   const externalId = String(raw.externalId || raw.id || raw.url || "").trim();
   if (!externalId) return null;
 
+  const isMarketplace = platform?.mode === "BID_MARKETPLACE" || platform?.id === "freelancer";
+  const defaultWorkMode = isMarketplace ? "REMOTE" : "UNKNOWN";
+  const defaultEngagement = isMarketplace ? "PROJECT" : "UNKNOWN";
+  const defaultEvidence = isMarketplace ? "Online freelance bid marketplace project" : "";
+
   const opportunity = {
     key: `${platform.id}:${externalId}`,
     platform: platform.id,
@@ -16,9 +21,9 @@ function normalizeOpportunity(raw, platform) {
     url: raw.url || null,
     title: raw.title || "",
     description: raw.description || "",
-    workMode: raw.workMode || "UNKNOWN",
-    remoteEvidence: raw.remoteEvidence || "",
-    engagementType: raw.engagementType || "UNKNOWN",
+    workMode: (raw.workMode && raw.workMode !== "UNKNOWN") ? raw.workMode : defaultWorkMode,
+    remoteEvidence: raw.remoteEvidence || defaultEvidence,
+    engagementType: (raw.engagementType && raw.engagementType !== "UNKNOWN") ? raw.engagementType : defaultEngagement,
     skills: Array.isArray(raw.skills) ? raw.skills : [],
     budget: raw.budget || null,
     experience: raw.experience || "",
@@ -45,6 +50,16 @@ function mergeUnique(items) {
 }
 
 async function discoverOnPlatform({ platform, page, browserAgent, aiRuntime, candidateProfile }) {
+  if (platform.discoveryUrl && !page.url().includes("search") && !page.url().includes("projects")) {
+    try {
+      await page.goto(platform.discoveryUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: CONFIG.JOB_NAVIGATION_TIMEOUT_MS
+      });
+      await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
+    } catch (_) {}
+  }
+
   const runner = new JobAgentRunner({ aiRuntime, browserAgent });
   const result = await runner.run({
     goal: "Discover current remote PROJECT opportunities using only this platform's live UI. Navigate to its project/work discovery area, use its visible search/filter controls, inspect result cards and continue iterating until the current page visibly contains useful project opportunities. Do not apply.",

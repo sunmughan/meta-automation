@@ -18,7 +18,7 @@ const logger = require("../../logging/logger");
 class MeetingEngine {
   /**
    * @param {Object} options
-   * @param {Object} options.aiRuntime — MiniMax M3 AI runtime
+   * @param {Object} options.aiRuntime — Antigravity Gemini AI runtime
    * @param {Object} options.browserAgent — BrowserAgent with page
    */
   constructor({ aiRuntime, browserAgent }) {

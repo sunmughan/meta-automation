@@ -1,7 +1,7 @@
 /**
  * src/ai/ai-runtime.js
- * Primary AI runtime for CodeAir social automation.
- * Native MiniMax M3 API runtime with queue-based concurrency governance,
+ * Primary AI runtime for CodeAir social and job automation.
+ * Native Antigravity Gemini 3.8 Flash runtime with queue-based concurrency governance,
  * structured JSON parsing, retries, and resilient execution.
  */
 
@@ -10,7 +10,7 @@ const logger = require("../logging/logger");
 const { callAntigravityCli } = require("./antigravity-cli-runtime");
 
 /**
- * In-memory asynchronous queue and concurrency worker for MiniMax reasoning calls.
+ * In-memory asynchronous queue and concurrency worker for AI reasoning calls.
  * Prevents process thrashing, enforces priority scheduling, and caches results.
  */
 class AiQueue {
@@ -88,7 +88,7 @@ class AiQueue {
       task.reject(err);
     } finally {
       this.activeCount--;
-      const throttleMs = Number(process.env.AI_THROTTLE_MS) || (CONFIG.AI_PROVIDER === "minimax" ? 1200 : 100);
+      const throttleMs = Number(process.env.AI_THROTTLE_MS) || 100;
       setTimeout(() => this.processNext(), throttleMs);
     }
   }
@@ -111,7 +111,7 @@ class AiQueue {
 class AiRuntime {
   constructor() {
     this.model = CONFIG.MODEL || "Gemini 3.8 Flash";
-    const defaultConcurrency = CONFIG.AI_PROVIDER === "antigravity" ? 1 : (CONFIG.AI_PROVIDER === "minimax" ? 1 : 3);
+    const defaultConcurrency = 1;
     const maxConcurrency = Math.max(1, Number(process.env.AI_MAX_CONCURRENCY) || defaultConcurrency);
     this.queue = new AiQueue(maxConcurrency);
   }
@@ -142,78 +142,6 @@ class AiRuntime {
     throw new Error("JSON parsing failed. Raw: " + cleaned.slice(0, 150));
   }
 
-  /**
-   * Invokes MiniMax  /**
-   * Invokes MiniMax M3 through the official HTTP API.
-   * Uses native fetch (Node >=18), so no additional SDK dependency is required.
-   */
-  async callMiniMax(prompt, timeoutMs = CONFIG.MINIMAX_TIMEOUT_MS) {
-    if (!CONFIG.MINIMAX_API_KEY) {
-      throw new Error("MINIMAX_API_KEY is not configured. Add it to .env before running with AI_PROVIDER=minimax.");
-    }
-
-    let baseUrl = String(CONFIG.MINIMAX_BASE_URL || "https://api.minimax.io/v1");
-    while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    const endpoint = CONFIG.MINIMAX_ENDPOINT || "/text/chatcompletion_v2";
-    const url = endpoint.startsWith("http") ? endpoint : baseUrl + (endpoint.startsWith("/") ? "" : "/") + endpoint;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${CONFIG.MINIMAX_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: CONFIG.MINIMAX_MODEL || "MiniMax-M3",
-          messages: [{ role: "user", content: prompt }],
-          temperature: CONFIG.MINIMAX_TEMPERATURE,
-          max_tokens: CONFIG.MINIMAX_MAX_TOKENS,
-          ...(CONFIG.MINIMAX_THINKING === "true" ? { thinking: { type: "adaptive" } } : {})
-        }),
-        signal: controller.signal
-      });
-
-      const raw = await response.text();
-      let data;
-      try {
-        data = JSON.parse(raw);
-      } catch (err) {
-        throw new Error(`MiniMax returned non-JSON response (HTTP ${response.status}): ${raw.slice(0, 500)}`);
-      }
-
-      if (!response.ok) {
-        const message = data?.base_resp?.status_msg || data?.error?.message || data?.message || raw.slice(0, 500);
-        const error = new Error(`MiniMax API HTTP ${response.status}: ${message}`);
-        error.status = response.status;
-        throw error;
-      }
-
-      // MiniMax may return HTTP 200 with base_resp.status_code != 0 for parameter errors
-      if (data?.base_resp?.status_code && data.base_resp.status_code !== 0) {
-        throw new Error(`MiniMax API error (${data.base_resp.status_code}): ${data.base_resp.status_msg || "Unknown error"}`);
-      }
-
-      const content = data?.choices?.[0]?.message?.content
-        ?? data?.choices?.[0]?.message?.reasoning_content
-        ?? data?.reply
-        ?? data?.response;
-
-      if (typeof content === "string" && content.trim()) {
-        return this.cleanAndParseJson(content);
-      }
-      if (content && typeof content === "object") return content;
-      throw new Error("MiniMax API returned no usable message content");
-    } catch (err) {
-      if (err.name === "AbortError") throw new Error(`MiniMax API timed out after ${timeoutMs}ms`);
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
 
   /**
    * Invokes an OpenAI-compatible API endpoint (Freebuff, DeepSeek, OpenAI, Groq, Ollama, etc.)
@@ -489,15 +417,14 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
     const provider = (CONFIG.AI_PROVIDER || "antigravity").toLowerCase();
     const baseRetries = options.retries !== undefined
       ? options.retries
-      : (provider === "minimax" ? (CONFIG.MINIMAX_MAX_RETRIES ?? 2) : (provider === "antigravity" || provider === "gemini" ? 1 : (CONFIG.OPENAI_MAX_RETRIES ?? 2)));
-    const timeoutMs = options.timeoutMs || (provider === "minimax" ? CONFIG.MINIMAX_TIMEOUT_MS : (provider === "antigravity" || provider === "gemini" ? CONFIG.ANTIGRAVITY_TIMEOUT_MS : CONFIG.OPENAI_TIMEOUT_MS)) || 90000;
+      : (provider === "antigravity" || provider === "gemini" ? 1 : (CONFIG.OPENAI_MAX_RETRIES ?? 2));
+    const timeoutMs = options.timeoutMs || (provider === "antigravity" || provider === "gemini" ? CONFIG.ANTIGRAVITY_TIMEOUT_MS : CONFIG.OPENAI_TIMEOUT_MS) || 90000;
     const maxRetries = baseRetries + 1;
     const isRetryable = (err) => {
       const status = Number(err?.status || 0);
       const msg = String(err?.message || "").toLowerCase();
       return status === 408 || status === 409 || status === 429 || status >= 500 ||
-        msg.includes("timeout") || msg.includes("temporarily") || msg.includes("rate limit") ||
-        msg.includes("2062");
+        msg.includes("timeout") || msg.includes("temporarily") || msg.includes("rate limit");
     };
 
     let lastError = null;
@@ -505,7 +432,6 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
       try {
         const now = Date.now();
         const isOpenAiUsable = !this._openAiDisabledUntil || now >= this._openAiDisabledUntil;
-        const isMiniMaxUsable = !this._minimaxDisabledUntil || now >= this._minimaxDisabledUntil;
 
         if (provider === "antigravity" || provider === "gemini") {
           return await this.callAntigravity(prompt, timeoutMs);
@@ -514,39 +440,7 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
             return await this.callOpenAiCompatible(prompt, timeoutMs);
           } catch (openAiErr) {
             this._openAiDisabledUntil = now + 15 * 60 * 1000;
-            if (CONFIG.MINIMAX_API_KEY && isMiniMaxUsable) {
-              try {
-                logger.warn(`OpenAI provider call failed (${openAiErr.message}). Routing to MiniMax M3...`);
-                return await this.callMiniMax(prompt, timeoutMs);
-              } catch (minimaxErr) {
-                if (String(minimaxErr.message).includes("2067") || String(minimaxErr.message).includes("limit")) {
-                  this._minimaxDisabledUntil = now + 15 * 60 * 1000;
-                }
-                logger.warn(`MiniMax also failed (${minimaxErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-                return await this.callAntigravity(prompt, timeoutMs);
-              }
-            }
-            logger.warn(`OpenAI provider call failed (${openAiErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-            return await this.callAntigravity(prompt, timeoutMs);
-          }
-        } else if (provider === "minimax" && isMiniMaxUsable) {
-          try {
-            return await this.callMiniMax(prompt, timeoutMs);
-          } catch (minimaxErr) {
-            if (String(minimaxErr.message).includes("2067") || String(minimaxErr.message).includes("limit")) {
-              this._minimaxDisabledUntil = now + 15 * 60 * 1000;
-            }
-            if (CONFIG.OPENAI_API_KEY && isOpenAiUsable) {
-              try {
-                logger.warn(`MiniMax quota limit encountered (${minimaxErr.message}). Routing to OpenAI-compatible provider (${CONFIG.OPENAI_MODEL})...`);
-                return await this.callOpenAiCompatible(prompt, timeoutMs);
-              } catch (openAiErr) {
-                this._openAiDisabledUntil = now + 15 * 60 * 1000;
-                logger.warn(`OpenAI provider also unavailable (${openAiErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
-                return await this.callAntigravity(prompt, timeoutMs);
-              }
-            }
-            logger.warn(`MiniMax failed (${minimaxErr.message}). Routing to infallible local Gemini 3.8 Flash...`);
+            logger.warn(`OpenAI provider call failed (${openAiErr.message}). Routing to primary Antigravity Gemini 3.8 Flash...`);
             return await this.callAntigravity(prompt, timeoutMs);
           }
         }
@@ -555,7 +449,7 @@ You are acting as an autonomous text classifier and lead reasoning specialist. D
         lastError = err;
         if (!isRetryable(err) || attempt >= maxRetries) break;
         const msg = String(err?.message || "").toLowerCase();
-        const isRateLimit = msg.includes("2062") || msg.includes("rate limit") || Number(err?.status) === 429;
+        const isRateLimit = msg.includes("rate limit") || Number(err?.status) === 429;
         const delayMs = isRateLimit
           ? Math.min(5000 * attempt, 25000)
           : Math.min(2000 * Math.pow(2, attempt - 1), 15000);

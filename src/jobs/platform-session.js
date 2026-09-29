@@ -70,7 +70,7 @@ OUTPUT:
 
 async function completeProfile({ platform, page, browserAgent, aiRuntime, candidateProfile }) {
   const runner = new JobAgentRunner({ aiRuntime, browserAgent });
-  return runner.run({
+  const result = await runner.run({
     goal: "Find the profile/account editing area and complete every profile field that can be populated from verified candidate data or approved knowledge. Re-inspect after actions. Never guess; stop with USER_ACTION_REQUIRED when a required value is missing.",
     platform,
     candidateProfile,
@@ -78,6 +78,15 @@ async function completeProfile({ platform, page, browserAgent, aiRuntime, candid
     targetId: `profile:${platform.id}`,
     context: { workflow: "PROFILE_COMPLETION" }
   });
+
+  if (platform.id === "freelancer" && candidateProfile?.preferences?.aiPortfolioSync !== false) {
+    try {
+      const { syncPortfolioToFreelancer } = require("./profile/portfolio-syncer");
+      await syncPortfolioToFreelancer({ candidateProfile });
+    } catch (_) {}
+  }
+
+  return result;
 }
 
 async function bootstrapAllPlatforms({ browserManager, browserAgentFactory, aiRuntime, candidateProfile }) {

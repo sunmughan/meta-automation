@@ -259,8 +259,14 @@ async function enforceFreelancerOnlyBrowser(cdpPort = 9222) {
     if (flPages.length === 0) {
       console.log("   Navigating browser to https://www.freelancer.com/...");
       await new Promise(r => {
-        const req = http.get(`http://127.0.0.1:${cdpPort}/json/new?https://www.freelancer.com/`, () => r());
+        const req = http.request({
+          hostname: "127.0.0.1",
+          port: cdpPort,
+          path: "/json/new?https://www.freelancer.com/",
+          method: "PUT"
+        }, () => r());
         req.on("error", () => r());
+        req.end();
       });
     } else {
       const primaryId = flPages[0].id;

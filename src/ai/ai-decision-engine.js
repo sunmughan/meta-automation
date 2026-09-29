@@ -138,7 +138,7 @@ class AiDecisionEngine {
     }
 
     // All classification — including community polls, opinion surveys, and tech discussions —
-    // is handled by the MiniMax M3 AI reasoning engine. Zero regex pre-filters.
+    // is handled by the Antigravity Gemini AI reasoning engine. Zero regex pre-filters.
 
     try {
       if (options.forceAiFailure || options.simulateFailure) {
@@ -163,7 +163,7 @@ class AiDecisionEngine {
       throw new Error("AI returned empty classification response");
     } catch (err) {
       if (options.forceAiFailure || options.simulateFailure) {
-        logger.warn(`[AI Engine] MiniMax M3 AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
+        logger.warn(`[AI Engine] Antigravity Gemini AI reasoning failed on post ${post?.postId || "unknown"}: ${err.message}`);
         return {
           intent: "AI_ERROR",
           decision: "IGNORED",
@@ -173,7 +173,7 @@ class AiDecisionEngine {
           representation: "IGNORE",
           is_genuine_buyer: false,
           should_reply: false,
-          reason: `MiniMax M3 AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
+          reason: `Antigravity Gemini AI reasoning unavailable (${err.message}). Quarantined with zero heuristic guessing.`
         };
       }
       logger.warn(`[AI Engine] External AI unavailable (${err.message}). Routing to grounded local semantic analysis for post ${post?.postId || "unknown"}...`);
@@ -600,7 +600,7 @@ class AiDecisionEngine {
   }
 
   /**
-   * Generates conversational reply for comment replies or incoming DMs using MiniMax M3 AI.
+   * Generates conversational reply for comment replies or incoming DMs using Antigravity Gemini AI.
    * Dynamic context-aware reasoning replaces all static string fallbacks.
    */
   async generateConversationReply(context) {

@@ -51,23 +51,13 @@ const CONFIG = {
   // AI Provider Configuration
   AI_PROVIDER: (process.env.AI_PROVIDER || "antigravity").toLowerCase(),
   AI_RUNTIME: (process.env.AI_RUNTIME || "antigravity").toLowerCase(),
-  MODEL: process.env.AI_MODEL || process.env.MINIMAX_MODEL || process.env.ANTIGRAVITY_MODEL || "Gemini 3.8 Flash",
+  MODEL: process.env.AI_MODEL || process.env.ANTIGRAVITY_MODEL || "Gemini 3.8 Flash",
 
-  // MiniMax M3 API Configuration
-  MINIMAX_API_KEY: process.env.MINIMAX_API_KEY || "",
-  MINIMAX_BASE_URL: process.env.MINIMAX_BASE_URL || "https://api.minimax.io/v1",
-  MINIMAX_ENDPOINT: process.env.MINIMAX_ENDPOINT || "/text/chatcompletion_v2",
-  MINIMAX_MODEL: process.env.MINIMAX_MODEL || "MiniMax-M3",
-  MINIMAX_TIMEOUT_MS: Math.max(1000, Number(process.env.MINIMAX_TIMEOUT_MS) || 90000),
-  MINIMAX_MAX_RETRIES: Math.max(0, Number(process.env.MINIMAX_MAX_RETRIES) || 2),
-  MINIMAX_TEMPERATURE: Number.isFinite(Number(process.env.MINIMAX_TEMPERATURE)) ? Number(process.env.MINIMAX_TEMPERATURE) : 0.2,
-  MINIMAX_MAX_TOKENS: Math.max(256, Number(process.env.MINIMAX_MAX_TOKENS) || 4096),
-  MINIMAX_THINKING: String(process.env.MINIMAX_THINKING || "true").toLowerCase(),
-
-  // Local Antigravity CLI — primary/default agentic runtime
+  // Local Antigravity CLI — primary agentic runtime (Gemini 3.8 Flash via agy CLI)
   ANTIGRAVITY_CLI_BIN: process.env.ANTIGRAVITY_CLI_BIN || "agy",
-  ANTIGRAVITY_MODEL: process.env.ANTIGRAVITY_MODEL || "",
-  ANTIGRAVITY_EFFORT: process.env.ANTIGRAVITY_EFFORT || "",
+  ANTIGRAVITY_CLI_PATH: process.env.ANTIGRAVITY_CLI_PATH || "/data/data/com.termux/files/usr/bin/agy",
+  ANTIGRAVITY_MODEL: process.env.ANTIGRAVITY_MODEL || "Gemini 3.8 Flash",
+  ANTIGRAVITY_EFFORT: process.env.ANTIGRAVITY_EFFORT || "high",
   ANTIGRAVITY_TIMEOUT_MS: Math.max(1000, Number(process.env.ANTIGRAVITY_TIMEOUT_MS) || 120000),
 
   // OpenAI-Compatible / Freebuff / DeepSeek / Custom Provider Configuration
@@ -132,7 +122,7 @@ const CONFIG = {
   APPROVAL_MODE: process.env.APPROVAL_MODE !== "false",
   DRY_RUN: process.env.DRY_RUN !== "false",
   POSTING_ENABLED: process.env.POSTING_ENABLED === "true",
-  EXECUTION_MODE: (process.env.EXECUTION_MODE || "pipeline").toLowerCase(),
+  EXECUTION_MODE: (process.env.EXECUTION_MODE || "round-robin").toLowerCase(),
 
   // Rate Limits (per hour)
   MAX_NEW_POST_REPLIES_PER_HOUR: Number(process.env.MAX_NEW_POST_REPLIES_PER_HOUR) || 5,

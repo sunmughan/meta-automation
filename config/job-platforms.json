@@ -2,7 +2,7 @@
   "version": 1,
   "platforms": [
     {"id":"upwork","name":"Upwork","url":"https://www.upwork.com/","mode":"BID_MARKETPLACE","enabled":false},
-    {"id":"freelancer","name":"Freelancer","url":"https://www.freelancer.com/","mode":"BID_MARKETPLACE","enabled":true},
+    {"id":"freelancer","name":"Freelancer","url":"https://www.freelancer.com/","discoveryUrl":"https://www.freelancer.com/search/projects","mode":"BID_MARKETPLACE","enabled":true},
     {"id":"contra","name":"Contra","url":"https://contra.com/","mode":"APPLY_MARKETPLACE","enabled":false},
     {"id":"peopleperhour","name":"PeoplePerHour","url":"https://www.peopleperhour.com/","mode":"PROPOSAL_MARKETPLACE","enabled":false},
     {"id":"guru","name":"Guru","url":"https://www.guru.com/","mode":"QUOTE_MARKETPLACE","enabled":false},

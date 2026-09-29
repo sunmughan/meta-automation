@@ -604,18 +604,24 @@ async function runAllTests() {
     assert.strictEqual((neutralComment.match(/https?:\/\/[^\s]+/g) || []).length, 0, "NEUTRAL comment must contain ZERO links");
   });
 
-  // 39. Multi-Provider AI Runtime Architecture (MiniMax M3 + OpenAI / Freebuff)
-  await test("39. Multi-Provider AI Runtime Architecture (MiniMax M3 + OpenAI / Freebuff)", () => {
+  // 39. Multi-Provider AI Runtime Architecture (Antigravity Gemini + OpenAI / Freebuff)
+  await test("39. Multi-Provider AI Runtime Architecture (Antigravity Gemini + OpenAI / Freebuff)", () => {
     const aiRuntimeModule = require("../src/ai/ai-runtime");
     const configModule = require("../config");
 
-    assert(["minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_PROVIDER), "AI_PROVIDER must be supported");
-    assert(["minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_RUNTIME), "AI_RUNTIME must be supported");
+    assert(["antigravity", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_PROVIDER), "AI_PROVIDER must be supported");
+    assert(["antigravity", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_RUNTIME), "AI_RUNTIME must be supported");
     assert.strictEqual(typeof aiRuntimeModule.callAi, "function", "callAi must be exposed as primary entry point");
-    assert.strictEqual(typeof aiRuntimeModule.callMiniMax, "function", "callMiniMax must be available");
+    assert.strictEqual(typeof aiRuntimeModule.callAntigravity, "function", "callAntigravity must be available");
+    assert.strictEqual(typeof aiRuntimeModule.callMiniMax, "undefined", "callMiniMax must be completely removed");
     assert.strictEqual(typeof aiRuntimeModule.callOpenAiCompatible, "function", "callOpenAiCompatible must be available");
-    assert(configModule.OPENAI_API_KEY && configModule.OPENAI_API_KEY.length > 0, "OPENAI_API_KEY must be configured");
-    assert.strictEqual(configModule.OPENAI_MODEL, "deepseek 4.1 flash", "OPENAI_MODEL must match configured model");
+    if (configModule.AI_PROVIDER === "antigravity") {
+      assert(configModule.ANTIGRAVITY_CLI_PATH && configModule.ANTIGRAVITY_CLI_PATH.length > 0, "ANTIGRAVITY_CLI_PATH must be configured");
+      assert.strictEqual(configModule.ANTIGRAVITY_MODEL, "Gemini 3.8 Flash", "ANTIGRAVITY_MODEL must match configured model");
+    } else {
+      assert(configModule.OPENAI_API_KEY && configModule.OPENAI_API_KEY.length > 0, "OPENAI_API_KEY must be configured");
+      assert.strictEqual(configModule.OPENAI_MODEL, "deepseek 4.1 flash", "OPENAI_MODEL must match configured model");
+    }
   });
 
   // 40. Unified State Store Lifecycle Semantics

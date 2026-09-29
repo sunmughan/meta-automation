@@ -52,7 +52,7 @@ if ($browserFound) {
 Write-Host "[3/5] Installing Node.js dependencies..." -ForegroundColor Yellow
 & npm install
 
-# Job Revenue Engine setup: creates private profile directories and securely prompts for MiniMax API key.
+# Job Revenue Engine setup: creates private profile directories and configures Antigravity AI runtime.
 node scripts/setup-job-engine.js
 
 # 4. Configure Environment

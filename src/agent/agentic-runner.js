@@ -22,7 +22,7 @@ const { ACTION_STATES } = require("./browser-agent");
 class AgenticRunner {
   /**
    * @param {Object} options
-   * @param {Object} options.aiRuntime — MiniMax M3 AI runtime
+   * @param {Object} options.aiRuntime — Antigravity Gemini AI runtime
    * @param {Object} options.browserAgent — BrowserAgent instance with page
    * @param {number} [options.maxIterations=12] — Safety cap on loop iterations
    * @param {number} [options.snapshotMaxChars=12000] — Max body text in snapshot for AI prompt

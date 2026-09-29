@@ -252,6 +252,12 @@ Rules:
 - Never mark unknown work mode as REMOTE.
 - For profile editing, only fill known candidate facts.
 - For job application, use the supplied cover letter/resume paths only when the form requests them.
+- For bid marketplaces (e.g. Freelancer):
+  * Fill the bid amount / "Paid to you" field using the calibrated bidAmount from context.documents.bidStrategy.
+  * Fill the delivery duration (days) from context.documents.bidStrategy.deliveryDays.
+  * Fill the proposal description using the tailored cover letter from context.documents.coverLetter.
+  * If milestone fields are present, fill milestoneDescription and milestoneAmount.
+  * CRITICAL SAFETY RULE: NEVER select, check, or toggle optional paid upgrade checkboxes (such as "Sponsor", "Highlight", "Sealed", "NDA", or any feature with an extra fee/cost). All paid upgrades must remain unchecked.
 - Keep the plan within the action budget.
 - Return:
 {

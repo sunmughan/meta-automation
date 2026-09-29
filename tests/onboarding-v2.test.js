@@ -48,8 +48,8 @@ for (const prompt of requiredPrompts) {
   assert(onboarding.includes(prompt), "Onboarding missing: " + prompt);
 }
 
-assert(onboarding.includes("private/user-profile.json"), "Onboarding must persist structured user profile");
-assert(onboarding.includes("MINIMAX_API_KEY"), "Onboarding must support MiniMax credentials");
+assert(onboarding.includes("ANTIGRAVITY_MODEL"), "Onboarding must support Antigravity configuration");
+assert(!onboarding.includes("MINIMAX_API_KEY"), "Onboarding must not contain MiniMax credentials");
 assert(!onboarding.includes("fb_live_"), "Onboarding must not contain a hardcoded API credential");
 assert(!onboarding.includes("new RegExp("), "Onboarding must not use regex env mutation");
 assert(!onboarding.includes("replace(/^@/"), "Onboarding must not use regex identity normalization");
