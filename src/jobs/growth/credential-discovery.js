@@ -1,16 +1,26 @@
 const { BrowserAgent } = require("../../agent/browser-agent");
 const { discoverCredentials, verifyCredentialPage } = require("./growth-ai");
 const growthState = require("./growth-state-store");
+const { getDiscoveryConfig } = require("./professional-growth-platform-registry");
 const CONFIG = require("../../../config");
 
 async function discoverForSkill({ browserManager, aiRuntime, skill }) {
-  const query = encodeURIComponent(`free ${skill} certification certificate digital credential`);
-  const searchUrl = CONFIG.PROFESSIONAL_GROWTH_SEARCH_URL.replace("{query}", query);
+  const discovery = getDiscoveryConfig();
+  if (discovery.enabled === false) return [];
+
+  const queryTemplate = discovery.queryTemplate || "{skill} free certificate certification digital credential course";
+  const query = encodeURIComponent(queryTemplate.replace("{skill}", skill));
+  const searchUrl = (discovery.searchUrlTemplate || CONFIG.PROFESSIONAL_GROWTH_SEARCH_URL).replace("{query}", query);
   const page = await browserManager.pageFor(searchUrl);
   const agent = new BrowserAgent(page, "credential-discovery");
   const searchSnapshot = await agent.captureLiveSnapshot("credential-search");
   const discovered = await discoverCredentials({ skill, searchSnapshot, aiRuntime });
-  const candidates = Array.isArray(discovered?.candidates) ? discovered.candidates.slice(0, CONFIG.PROFESSIONAL_GROWTH_MAX_DISCOVERY_CANDIDATES) : [];
+
+  const limit = Math.min(
+    CONFIG.PROFESSIONAL_GROWTH_MAX_DISCOVERY_CANDIDATES,
+    Number(discovery.maxCandidatesPerQuery) || CONFIG.PROFESSIONAL_GROWTH_MAX_DISCOVERY_CANDIDATES
+  );
+  const candidates = Array.isArray(discovered?.candidates) ? discovered.candidates.slice(0, limit) : [];
   const verified = [];
 
   for (const candidate of candidates) {
@@ -31,7 +41,9 @@ async function discoverForSkill({ browserManager, aiRuntime, skill }) {
         growthState.metric("credentialsDiscovered");
         verified.push(item);
       }
-    } catch (_) {}
+    } catch (_) {
+      // Discovery is best-effort; the AI must re-verify each candidate on its own page.
+    }
   }
 
   return verified;
