@@ -119,3 +119,17 @@ npm run test:agentic
 This performs the static V2 browser architecture audit and the onboarding/control audit.
 
 Live social execution still requires a user's authenticated browser/CDP environment.
+
+
+## Professional Growth Engine
+
+- [x] Onboarding skill goals
+- [x] GitHub + LinkedIn live profile evidence capture
+- [x] Gemini/Antigravity skill analysis
+- [x] Personalized skill plan
+- [x] LeetCode skill-development runner
+- [x] Internet credential discovery
+- [x] Credential-page verification
+- [x] Generic browser-based enrollment/completion runner
+- [x] Credential progress state persistence
+- [ ] Live authenticated end-to-end validation on each discovered provider
