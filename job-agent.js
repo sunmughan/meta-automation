@@ -12,7 +12,6 @@ const { applyToOpportunity } = require("./src/jobs/application/application-engin
 const jobState = require("./src/jobs/storage/job-state-store");
 const certificationEngine = require("./src/jobs/certification/certification-engine");
 const CONFIG_FILE = require("fs");
-const path = require("path");
 const logger = require("./src/logging/logger");
 
 async function ensureJobBrowser() {
