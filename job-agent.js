@@ -73,7 +73,7 @@ async function runGrowthSkill() {
   if (!CONFIG.PROFESSIONAL_GROWTH_ENABLED) throw new Error("PROFESSIONAL_GROWTH_ENABLED is false");
   const skill = process.argv.slice(3).join(" ").trim();
   if (!skill) throw new Error("Usage: npm run growth:skill -- <skill>");
-  console.log(JSON.stringify(await professionalGrowth.runSkill(skill, "leetcode"), null, 2));
+  console.log(JSON.stringify(await professionalGrowth.runSkill(skill), null, 2));
 }
 
 async function runGrowthDiscover() {
