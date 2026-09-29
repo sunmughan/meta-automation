@@ -46,7 +46,7 @@ class PortfolioPublisher {
       throw new Error("Portfolio asset missing: " + assetPath);
     }
 
-    for (let iteration = 1; iteration <= 10; iteration++) {
+    for (let iteration = 1; iteration <= Number(platform.portfolio.maxAgentIterations || 12); iteration++) {
       const snapshot = await agent.captureLiveSnapshot("portfolio-" + project.id + "-" + iteration);
       const plan = await buildPortfolioPublishPlan({
         project, brand, platform, snapshot, aiRuntime: this.aiRuntime, assetPath
