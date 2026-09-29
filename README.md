@@ -428,7 +428,7 @@ To prevent cross-contamination between social networking and high-focus client p
 The runtime includes a built-in high-DPI portfolio generator and automated publisher:
 - **1000x1000 Canvas Renderer** ([scripts/generate-portfolio-cards.js](file:///data/data/com.termux/files/home/meta-automation/scripts/generate-portfolio-cards.js)): Generates publication-ready showcase cards with gradient branding, tech badges, impact metrics, and typography using Chromium's native HTML5 canvas over CDP.
 - **Automated Publisher** ([scripts/upload-freelancer-portfolio.js](file:///data/data/com.termux/files/home/meta-automation/scripts/upload-freelancer-portfolio.js)): Automates the multi-step Freelancer.com `/discover/publish` workflow over CDP, uploading cards via `DOM.setFileInputFiles`, populating compliant descriptions (>=140 chars), injecting skill tags, and publishing live.
-- **Showcase Projects**: Nita Kitchenware B2B E-Commerce, Zynero Games, OpenPatti, StaffGo, Printless NFC, Societify, 1Quotation, BluePearl Luxury, MachineMandi.
+- **Portfolio source of truth**: `knowledge/portfolio/projects.json`. Portfolio cards are generated artifacts, and publishing is AI-planned from live semantic browser evidence.
 
 ---
 
