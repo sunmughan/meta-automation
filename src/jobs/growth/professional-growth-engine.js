@@ -3,19 +3,19 @@ const aiRuntime = require("../../ai/ai-runtime");
 const browserManager = require("./growth-browser-manager");
 const growthState = require("./growth-state-store");
 const { syncProfileEvidence, readConfiguredProfile } = require("./profile-intelligence");
-const { buildSkillPlan } = require("./growth-ai");
+const { buildSkillPlan, selectSkillPlatform } = require("./growth-ai");
 const { discoverForSkill } = require("./credential-discovery");
-const { runLeetCode } = require("./leetcode-engine");
+const { runSkillDevelopment } = require("./skill-development-engine");
+const { getSkillPlatforms } = require("./professional-growth-platform-registry");
 
 async function runProfileSync() {
   return syncProfileEvidence({ browserManager, aiRuntime });
 }
 
-async function runSkill(skill, platform = "leetcode") {
+async function runSkill(skill, platformId = null) {
   const profile = readConfiguredProfile();
   if (!profile) throw new Error("Onboarding profile missing. Run npm run onboard first.");
 
-  // Always refresh GitHub + LinkedIn evidence before selecting the learning path.
   const synced = await runProfileSync();
   const plan = await buildSkillPlan({
     profile,
@@ -24,19 +24,36 @@ async function runSkill(skill, platform = "leetcode") {
     aiRuntime
   });
 
+  const platforms = getSkillPlatforms();
+  if (!platforms.length) throw new Error("No enabled professional growth learning platforms are configured.");
+
+  let selection = platformId
+    ? { platformId, reason: "Explicit platform supplied by caller", evidence: [], confidence: 1 }
+    : await selectSkillPlatform({ skill, profile, plan, platforms, aiRuntime });
+
+  const platform = platforms.find(item => item.id === selection.platformId);
+  if (!platform) throw new Error("AI selected an unavailable growth platform: " + selection.platformId);
+
+  const goalId = "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   growthState.setGoal({
-    id: "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    id: goalId,
     type: "SKILL_DEVELOPMENT",
     skill,
     status: "PLANNED",
     plan,
+    selectedPlatform: platform.id,
+    platformSelection: selection,
     sourceEvidence: ["github", "linkedin"].filter(source => Boolean(growthState.state.profileEvidence[source]))
   });
 
-  if (platform === "leetcode") {
-    return runLeetCode({ browserManager, aiRuntime, profile, skill, plan });
-  }
-  throw new Error("Unsupported skill platform: " + platform);
+  return runSkillDevelopment({
+    browserManager,
+    aiRuntime,
+    profile,
+    skill,
+    plan,
+    platformId: platform.id
+  });
 }
 
 async function discoverCredentials(skill) {
@@ -55,17 +72,23 @@ async function runCertificationCredential(credential) {
   const page = await browserManager.pageFor(credential.url);
   const runner = new GrowthRunner({ aiRuntime, page, platformId: platform.id });
   const goal = `Complete the selected credential shown on this website.
-Credential:
+
+CREDENTIAL:
 ${JSON.stringify(credential)}
-Use the logged-in browser session.
-Enroll/start the credential, complete the visible course activities and continue until the credential is visibly issued.
-Do not purchase anything. Payment requires the user.
-Never claim completion without visible credential evidence.`;
+
+OPERATING RULES:
+- Use the logged-in browser session.
+- Reason from visible current state and credential evidence.
+- Enroll/start the credential and continue through visible learning activities.
+- Continue until the credential is visibly issued.
+- Do not purchase anything; payment always requires the user.
+- Never claim completion without visible credential evidence.
+- Stop for CAPTCHA, MFA, identity verification, proctoring, payment or other user-only action.`;
   const result = await runner.run({
     goal,
     platform,
     profile,
-    context: { credential, mode: "CERTIFICATION" },
+    context: { credential, mode: "CERTIFICATION", resumeFromState: true },
     allowedOrigin: new URL(credential.url).origin
   });
   growthState.setCredential({
@@ -83,7 +106,7 @@ async function runSelectedGoals({ skills = [], certificationSkills = [] }) {
   report.profile = await runProfileSync();
 
   for (const skill of skills) {
-    report.skills.push({ skill, result: await runSkill(skill, "leetcode") });
+    report.skills.push({ skill, result: await runSkill(skill) });
   }
 
   for (const skill of certificationSkills) {
@@ -102,5 +125,6 @@ module.exports = {
   runSkill,
   discoverCredentials,
   runCertificationCredential,
-  runSelectedGoals
+  runSelectedGoals,
+  readConfiguredProfile
 };
