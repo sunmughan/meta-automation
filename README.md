@@ -760,3 +760,36 @@ MIT.
 Built by [Sunmughan Swamy](https://github.com/sunmughan) and [CodeAir Software Solutions](https://www.codeair.tech).
 
 **Repository slug:** `sunmughan/meta-automation` — intentionally retained for URL compatibility.
+
+
+---
+
+# Professional Growth Engine
+
+The Job Engine now includes a Professional Growth Engine for user-selected skill development and credential discovery.
+
+## Onboarding
+
+`npm run onboard` now includes a Professional Growth section where the user can choose skills to improve and skill areas for credential discovery. Existing GitHub and LinkedIn profile URLs are used as profile evidence.
+
+## Commands
+
+```bash
+npm run growth:profile
+npm run growth:skill -- DSA
+npm run growth:discover -- Python
+npm run growth:run
+npm run growth:status
+```
+
+## Runtime model
+
+```text
+Onboarding -> GitHub + LinkedIn evidence -> Gemini / Antigravity reasoning
+          -> skill goal or credential goal -> live browser observation
+          -> semantic browser action -> fresh page evidence -> next decision
+```
+
+The browser implementation is an internal execution detail; the product workflow is expressed as skill development, credential discovery, enrollment, execution, progress and verification.
+
+No new npm dependency is required. The engine reuses the existing Node.js + Puppeteer CDP stack.
