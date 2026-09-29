@@ -1,8 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
+  "selection": {
+    "aiSelectLearningPlatform": true,
+    "requireConfiguredPlatform": true
+  },
   "discovery": {
     "enabled": true,
     "searchEngines": ["google"],
+    "searchUrlTemplate": "https://www.google.com/search?q={query}",
+    "queryTemplate": "{skill} free certificate certification digital credential course",
     "maxCandidatesPerQuery": 8
   },
   "platforms": [
