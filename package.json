@@ -31,7 +31,12 @@
     "agentic:social": "node agentic-social.js",
     "test:agentic": "node tests/agentic-v2.test.js && node tests/onboarding-v2.test.js",
     "jobs:certifications": "node job-agent.js certifications",
-    "jobs:cert-status": "node job-agent.js cert-status"
+    "jobs:cert-status": "node job-agent.js cert-status",
+    "growth:profile": "node job-agent.js growth-profile",
+    "growth:skill": "node job-agent.js growth-skill",
+    "growth:discover": "node job-agent.js growth-discover",
+    "growth:run": "node job-agent.js growth-run",
+    "growth:status": "node job-agent.js growth-status"
   },
   "repository": {
     "type": "git",
