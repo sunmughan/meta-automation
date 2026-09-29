@@ -10,6 +10,9 @@ const { bootstrapPlatformSession, completeProfile } = require("./src/jobs/platfo
 const { discoverOnPlatform } = require("./src/jobs/discovery/opportunity-engine");
 const { applyToOpportunity } = require("./src/jobs/application/application-engine");
 const jobState = require("./src/jobs/storage/job-state-store");
+const certificationEngine = require("./src/jobs/certification/certification-engine");
+const CONFIG_FILE = require("fs");
+const path = require("path");
 const logger = require("./src/logging/logger");
 
 async function ensureJobBrowser() {
@@ -22,6 +25,42 @@ async function ensureJobBrowser() {
 
 async function getPlatformPage(platform) {
   return jobBrowserManager.open(platform.url);
+}
+
+function loadCertificationCatalog() {
+  const catalogPath = CONFIG.JOB_CERTIFICATION_CATALOG_PATH;
+  if (!CONFIG_FILE.existsSync(catalogPath)) return { credentials: {} };
+  return JSON.parse(CONFIG_FILE.readFileSync(catalogPath, "utf8"));
+}
+
+async function runCertifications() {
+  if (!CONFIG.JOB_CERTIFICATION_ENABLED) throw new Error("JOB_CERTIFICATION_ENABLED is false");
+  const profile = loadCandidateProfile();
+  if (!profile) throw new Error("Candidate profile missing. Run npm run jobs:setup first.");
+  await ensureJobBrowser();
+
+  const catalog = loadCertificationCatalog();
+  const credentialsByPlatform = catalog.credentials || {};
+  let count = 0;
+  const limited = {};
+  for (const [platformId, credentials] of Object.entries(credentialsByPlatform)) {
+    if (count >= CONFIG.JOB_CERTIFICATION_MAX_CREDENTIALS_PER_RUN) break;
+    const list = Array.isArray(credentials) ? credentials.filter(c => c && c.enabled !== false) : [];
+    const remaining = CONFIG.JOB_CERTIFICATION_MAX_CREDENTIALS_PER_RUN - count;
+    if (list.length) {
+      limited[platformId] = list.slice(0, remaining);
+      count += limited[platformId].length;
+    }
+  }
+
+  const result = await certificationEngine.runCatalog({
+    browserManager: jobBrowserManager,
+    browserAgentFactory: (page, platformId) => new JobBrowserAgent(page, platformId),
+    aiRuntime,
+    candidateProfile: profile,
+    credentialsByPlatform: limited
+  });
+  return result;
 }
 
 async function openGoogleAccount() {
@@ -223,6 +262,17 @@ async function main() {
         CONFIG.JOB_DISCOVERY_INTERVAL_SECONDS * 1000
       ));
     }
+  }
+
+  if (command === "certifications") {
+    console.log(JSON.stringify(await runCertifications(), null, 2));
+    return;
+  }
+
+  if (command === "cert-status") {
+    const certState = require("./src/jobs/certification/certification-state-store");
+    console.log(JSON.stringify(certState.state, null, 2));
+    return;
   }
 
   if (command === "status") {
