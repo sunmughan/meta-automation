@@ -1,58 +1,61 @@
 # Professional Growth Engine
 
-The Professional Growth Engine extends the Job Engine with two user-selected workflows:
+The Professional Growth Engine is an agentic execution plane for continuous professional development.
 
-1. Skill development
-2. Credential/certification discovery and completion
+## End-to-end flow
 
-## User flow
+ONBOARDING PROFILE
+  -> LIVE GITHUB / LINKEDIN EVIDENCE
+  -> AI SKILL MAP + CONFIDENCE
+  -> AI SKILL PLAN + SUCCESS EVIDENCE
+  -> AI LEARNING-PLATFORM SELECTION
+  -> LIVE PLATFORM OBSERVATION
+  -> AI NEXT-BEST-ACTION
+  -> ONE SEMANTIC BROWSER ACTION
+  -> FRESH SNAPSHOT + POST-CONDITION VERIFICATION
+  -> PERSIST DECISION / EVIDENCE / PROGRESS
+  -> REPLAN
 
-Run onboarding first:
+The engine does not encode a learning website workflow in JavaScript. Learning platforms are declared in config/professional-growth-platforms.json; the AI selects an enabled platform from the registry based on the selected skill, profile evidence and generated skill plan.
 
-```bash
-npm run onboard
-```
+## Skill development
 
-During onboarding the user can select skills to improve and certification skill areas. The configured GitHub and LinkedIn profiles are then used as profile evidence.
+Run:
 
-Run profile analysis:
+    npm run growth:skill -- DSA
 
-```bash
-npm run growth:profile
-```
+The command does not force a particular provider. It refreshes professional evidence, builds an evidence-grounded skill map, creates a practical plan and observable success criteria, asks the AI to select a configured learning platform, resumes from persisted progress, observes the live platform, reasons about the next useful action, executes one semantic action group, verifies the resulting state, persists the decision/page/action evidence, and repeats until completion or a user-only action is required.
 
-Run a selected LeetCode skill goal:
+## Credential discovery
 
-```bash
-npm run growth:skill -- DSA
-```
+Run:
 
-Discover free credentials for a skill:
+    npm run growth:discover -- Python
 
-```bash
-npm run growth:discover -- Python
-```
+Discovery policy is configuration-driven. The search URL and query template live in the platform registry. Search results are only candidates; every candidate is re-opened and independently verified from visible page evidence.
 
-Run the complete selected growth queue:
+The engine will not claim a credential is free or issuable unless the current page provides supporting evidence.
 
-```bash
-npm run growth:run
-```
+## Credential completion
 
-The browser layer is internal. The product workflow is expressed as profile analysis, skill planning, discovery, enrollment, execution and credential verification.
+A selected credential is executed through the same live-observe -> reason -> act -> verify loop.
 
-CAPTCHA, authentication/security challenges and payment remain user-intervention points.
+The engine stops for CAPTCHA, MFA/OTP, identity verification, proctoring, payment, security challenges, or ambiguous completion state.
 
-## Browser/AI architecture
+It never claims completion without visible credential evidence.
 
-```
-Onboarding
-  -> GitHub + LinkedIn profile evidence
-  -> Gemini via Antigravity
-  -> skill/credential planning
-  -> live browser observation
-  -> semantic action plan
-  -> browser execution
-  -> fresh evidence
-  -> next decision
-```
+## State and recovery
+
+Professional-growth state is persisted under the configured growth state file.
+
+For active goals, each iteration can record current iteration, AI decision/reason, current page URL, browser action state, goal status, and completion evidence.
+
+This allows a later run to resume from evidence rather than restarting a scripted workflow.
+
+## Configuration rule
+
+Business data and platform policy belong in configuration/knowledge sources.
+
+Runtime modules must not contain hardcoded project catalogs, hardcoded learning-platform URLs, hardcoded credential search URLs, duplicated project metadata, or CSS/XPath/coordinate automation recipes.
+
+Browser interaction must use semantic live-page evidence.
