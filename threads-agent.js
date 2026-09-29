@@ -1068,13 +1068,13 @@ async function commandOnboard(options = {}) {
       behavior.autoConnect = await yesNo("Allow autonomous connection requests?", behavior.autoConnect);
       behavior.autoPublish = await yesNo("Allow autonomous publishing?", behavior.autoPublish);
 
-      console.log("\n--- 5/6 · BROWSER & PLATFORMS ---");
+      console.log("\n--- 5/7 · BROWSER & PLATFORMS ---");
       browser.type = askChoice(await ask("Browser (auto/chrome/edge/brave/chromium)", browser.type), ["auto","chrome","edge","brave","chromium"], "auto");
       browser.cdpUrl = await ask("Browser CDP URL", browser.cdpUrl);
       browser.platforms = parseList(await ask("Enabled platforms (threads, facebook, linkedin)", browser.platforms.join(", ")));
       browser.mode = askChoice(await ask("Execution mode (round-robin/concurrent)", browser.mode), ["round-robin","concurrent"], "round-robin");
 
-      console.log("\n--- 6/6 · SAFETY & AI ---");
+      console.log("\n--- 6/7 · SAFETY & AI ---");
       safety.dryRun = await yesNo("Start in DRY RUN mode?", safety.dryRun);
       safety.approval = await yesNo("Require approval before side effects?", safety.approval);
       safety.likes = Number(await ask("Max likes/hour", String(safety.likes)));
