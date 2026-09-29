@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "sourceOfTruth": "PROJECT_CATALOG",
+  "selection": {
+    "enabledByDefault": true,
+    "allowAiRelevanceSelection": true,
+    "requireEvidenceForClaims": true
+  },
+  "projects": [
+    {
+      "id": "nita-kitchenware",
+      "legacyIds": ["store"],
+      "name": "Nita Kitchenware",
+      "title": "Enterprise B2B E-Commerce",
+      "category": "Full-Stack Web & Mobile",
+      "description": "High-Performance Multi-Vendor Wholesale Marketplace with Native Flutter Apps",
+      "technologies": ["Laravel 10", "Flutter Mobile", "MySQL 8.0", "REST APIs", "Shiprocket Logistics"],
+      "metrics": ["10K+ SKUs", "Real-Time Order Dispatch", "Multi-Tier Wholesale Pricing"],
+      "skills": ["e-commerce", "b2b", "laravel", "flutter", "api", "logistics"],
+      "industries": ["retail", "wholesale", "e-commerce"],
+      "enabled": true
+    },
+    {
+      "id": "zynero-games",
+      "legacyIds": ["zynero_games"],
+      "name": "Zynero Games",
+      "title": "Real-Time Casino & Gaming Platform",
+      "category": "Game Server & Mobile",
+      "description": "High-Throughput WebSocket Card Gaming Engine with Low-Latency Sync",
+      "technologies": ["Node.js Sockets", "CodeIgniter PHP", "Redis Pub/Sub", "Android Native", "MySQL"],
+      "metrics": ["Sub-50ms Latency", "Real-Time Multiplayer", "Provably Fair RNG"],
+      "skills": ["websocket", "node.js", "redis", "android", "real-time systems"],
+      "industries": ["gaming"],
+      "enabled": true
+    },
+    {
+      "id": "openpatti",
+      "legacyIds": ["openpatti"],
+      "name": "OpenPatti",
+      "title": "High-Traffic Live Results Publishing Platform",
+      "category": "High-Scale Web & API Architecture",
+      "description": "High-Concurrency Gaming Odds & Live Results Platform with Worker Queues",
+      "technologies": ["Turborepo", "Next.js 14", "Fastify Node.js", "Redis Queue", "Docker"],
+      "metrics": ["100K+ Concurrent Daily Users", "Sub-second Live Feed Updates"],
+      "skills": ["next.js", "node.js", "redis", "docker", "high-concurrency"],
+      "industries": ["gaming", "real-time data"],
+      "enabled": true
+    },
+    {
+      "id": "staffgo",
+      "legacyIds": ["staffease"],
+      "name": "StaffGo",
+      "title": "On-Demand Hospitality Staffing SaaS",
+      "category": "B2B Gig-Economy Platform",
+      "description": "Gig-Economy On-Demand Shift Hiring Platform for Hotels, Cafes & Events",
+      "technologies": ["Next.js 16", "TypeScript", "Prisma ORM", "Tailwind CSS", "Stripe Connect"],
+      "metrics": ["Instant Shift Matching", "Automated KYC", "Dispute Resolution Engine"],
+      "skills": ["saas", "next.js", "typescript", "prisma", "payments", "hospitality"],
+      "industries": ["hospitality", "staffing"],
+      "enabled": true
+    },
+    {
+      "id": "printless",
+      "legacyIds": [],
+      "name": "Printless",
+      "title": "Smart NFC & QR Digital Business Card",
+      "category": "IoT & Digital Product SaaS",
+      "description": "Contactless Smart Networking Platform with Real-Time Analytics & CRM Sync",
+      "technologies": ["React.js", "Node.js", "MongoDB", "NFC Dynamic Protocols", "AWS Lambda"],
+      "metrics": ["1-Tap Contact Save", "Dynamic QR Generation", "Enterprise Lead Routing"],
+      "skills": ["react", "node.js", "mongodb", "nfc", "qr", "aws", "saas"],
+      "industries": ["digital identity", "networking", "saas"],
+      "enabled": true
+    },
+    {
+      "id": "societify",
+      "legacyIds": ["vasera"],
+      "name": "Societify",
+      "title": "Smart Community & Society Management SaaS",
+      "category": "Community Operations & IoT",
+      "description": "Operating System for Modern Housing Societies: Visitor Entry, Guard Auth & Billing",
+      "technologies": ["Flutter App", "Laravel Backend", "MySQL", "Razorpay Gateway", "FCM Push"],
+      "metrics": ["Biometric Guard Auth", "1-Tap Bill Payments", "Resident Mobile App"],
+      "skills": ["flutter", "laravel", "mysql", "payments", "iot", "mobile"],
+      "industries": ["property management", "community operations"],
+      "enabled": true
+    },
+    {
+      "id": "onequotation",
+      "legacyIds": [],
+      "name": "1Quotation",
+      "title": "Enterprise Quotation & Catalog SaaS",
+      "category": "Enterprise Sales Automation",
+      "description": "Automated Quotation Generation, Dynamic Pricing & Product Catalog Management",
+      "technologies": ["React 18", "Material UI", "Vite", "Node.js", "Automated PDF Engine"],
+      "metrics": ["Instant PDF Generation", "Multi-Tier Margin Calculator", "Customer Portal"],
+      "skills": ["react", "node.js", "pdf", "sales automation", "catalog"],
+      "industries": ["b2b", "sales", "distribution"],
+      "enabled": true
+    },
+    {
+      "id": "bluepearl",
+      "legacyIds": ["maviinci"],
+      "name": "BluePearl",
+      "title": "Luxury E-Commerce & Inventory Management",
+      "category": "Luxury Retail & Commerce",
+      "description": "High-End Jewelry Boutique Commerce Suite with Real-Time Cloud Sync",
+      "technologies": ["React.js", "Firebase Realtime DB", "Tailwind CSS", "Framer Motion", "Cloud Storage"],
+      "metrics": ["Smooth 60FPS UI", "Real-time Stock Sync", "Dynamic Currency Conversion"],
+      "skills": ["react", "firebase", "e-commerce", "inventory", "real-time"],
+      "industries": ["luxury retail", "jewelry", "e-commerce"],
+      "enabled": true
+    },
+    {
+      "id": "machine-mandi",
+      "legacyIds": ["machine_mandi"],
+      "name": "MachineMandi",
+      "title": "Industrial Machinery B2B Marketplace",
+      "category": "Industrial B2B Marketplace",
+      "description": "Heavy Equipment & Industrial Machinery Trading Platform with RFQ Engine",
+      "technologies": ["Full-Stack Architecture", "B2B Trade Protocols", "RFQ Engine", "Cloud APIs"],
+      "metrics": ["Verified Machinery Catalog", "Direct Buyer-Seller RFQ", "Inspection Workflow"],
+      "skills": ["b2b", "marketplace", "rfq", "cloud", "api"],
+      "industries": ["industrial", "machinery", "b2b"],
+      "enabled": true
+    }
+  ]
+}
