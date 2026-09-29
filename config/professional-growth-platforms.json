@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "discovery": {
+    "enabled": true,
+    "searchEngines": ["google"],
+    "maxCandidatesPerQuery": 8
+  },
+  "platforms": [
+    {
+      "id": "leetcode",
+      "name": "LeetCode",
+      "url": "https://leetcode.com/",
+      "kind": "SKILL_DEVELOPMENT",
+      "enabled": true,
+      "requiresLoggedInSession": true,
+      "goalTypes": ["DSA", "ALGORITHMS", "SQL", "PROGRAMMING"]
+    },
+    {
+      "id": "browser-discovered",
+      "name": "Browser-discovered credential platform",
+      "url": "",
+      "kind": "CREDENTIAL",
+      "enabled": true,
+      "dynamic": true
+    }
+  ]
+}

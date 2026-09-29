@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "selection": {
+    "askUserFirst": true,
+    "allowMultiple": true
+  },
+  "goalTypes": [
+    "SKILL_DEVELOPMENT",
+    "CERTIFICATION",
+    "CREDENTIAL"
+  ],
+  "stateStatuses": [
+    "SELECTED",
+    "ANALYZING",
+    "PLANNED",
+    "IN_PROGRESS",
+    "HUMAN_ACTION_REQUIRED",
+    "COMPLETED",
+    "FAILED"
+  ]
+}
