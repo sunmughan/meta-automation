@@ -1,6 +1,6 @@
 const JobAgentRunner = require("../browser/job-runner");
 const state = require("./certification-state-store");
-const { getEnabled } = require("./certification-platform-registry");
+const { getEnabled, getById } = require("./certification-platform-registry");
 
 function itemKey(platformId, credentialId) {
   return `${platformId}:${credentialId}`;
