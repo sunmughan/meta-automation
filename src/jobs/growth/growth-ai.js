@@ -11,6 +11,7 @@ RULES:
 - Use only supplied evidence.
 - Do not invent skills, experience, projects, employers or credentials.
 - Separate explicit skills from inferred skill signals.
+- Include evidence and confidence for every inference.
 OUTPUT:
 {
   "skills":[{"name":"","level":"BEGINNER|INTERMEDIATE|ADVANCED|EXPERT|UNKNOWN","evidence":[],"confidence":0}],
@@ -37,13 +38,41 @@ OUTPUT:
   "targetLevel":"",
   "topics":[],
   "practiceStrategy":"",
-  "nextAction":""
+  "nextAction":"",
+  "successEvidence":[]
 }
 RULES:
-- Ground recommendations in the supplied evidence.
+- Ground recommendations in supplied evidence.
 - Do not invent experience.
-- Prefer the shortest useful path for the user's current level.`;
+- Prefer the shortest useful path for the user's current level.
+- Define observable evidence that would prove progress.`;
   return aiRuntime.callAi(prompt, { taskType: "SKILL_PLAN", priority: 2 });
+}
+
+async function selectSkillPlatform({ skill, profile, plan, platforms, aiRuntime }) {
+  const prompt = `Return JSON only.
+TASK: Select the most appropriate enabled learning platform for the selected professional skill.
+SKILL:
+${skill}
+PROFILE:
+${JSON.stringify(profile || {})}
+PLAN:
+${JSON.stringify(plan || {})}
+AVAILABLE PLATFORMS:
+${JSON.stringify(platforms || [])}
+RULES:
+- Choose only an enabled platform from the supplied list.
+- Match the platform's declared goalTypes/kind to the skill and plan.
+- Prefer an already authenticated/usable platform when evidence is supplied.
+- Do not invent a platform.
+OUTPUT:
+{
+  "platformId":"",
+  "reason":"",
+  "evidence":[],
+  "confidence":0
+}`;
+  return aiRuntime.callAi(prompt, { taskType: "SKILL_PLATFORM_SELECTION", priority: 1 });
 }
 
 async function buildBrowserPlan({ goal, platform, snapshot, profile, contextData, aiRuntime }) {
@@ -60,18 +89,22 @@ ${JSON.stringify(contextData || {})}
 LIVE SNAPSHOT:
 ${JSON.stringify(snapshot || {})}
 RULES:
-- Decide only from the visible current page.
-- Use semantic targets only: visible text, aria-label, role, placeholder, title or dialog context.
+- Decide only from the visible current page and supplied context.
+- Use semantic targets only: visible text, aria-label, role, placeholder, title, name, autocomplete or dialog context.
 - Do not invent selectors, XPath, CSS, coordinates, hidden APIs, cookies or session tokens.
 - NAVIGATE may only use URLs visible in the snapshot or the configured platform URL.
 - Re-observe after actions.
-- CAPTCHA, password, MFA/OTP, identity/security challenge, payment or other user-only action => USER_ACTION_REQUIRED.
+- CAPTCHA, password, MFA/OTP, identity/security challenge, payment, proctoring or other user-only action => USER_ACTION_REQUIRED.
 - Never claim completion without visible evidence.
 - Keep one logical action group per iteration.
+- Prefer progress that directly advances the current objective.
 OUTPUT:
 {
   "status":"READY|DONE|USER_ACTION_REQUIRED|BLOCKED",
   "reason":"",
+  "decision":"",
+  "evidenceUsed":[],
+  "risk":"LOW|MEDIUM|HIGH",
   "actions":[
     {"type":"CLICK|TYPE|PRESS|SCROLL|NAVIGATE|WAIT|EXTRACT|UPLOAD|STOP","target":{},"value":"","clear":false}
   ],
@@ -114,19 +147,21 @@ OUTPUT:
   "freeEvidence":"",
   "issueEvidence":"",
   "skillMatch":[],
-  "enrollmentAction":""
+  "enrollmentAction":"",
+  "confidence":0
 }
 RULES:
 - Use only visible evidence.
 - free=false/UNKNOWN when price or required paid access is visible or unclear.
 - issueEvidence must explicitly indicate that a credential is issued.
-`;
+- Never infer issuance from marketing copy alone.`;
   return aiRuntime.callAi(prompt, { taskType: "CREDENTIAL_VERIFY", priority: 2 });
 }
 
 module.exports = {
   analyzeProfessionalProfile,
   buildSkillPlan,
+  selectSkillPlatform,
   buildBrowserPlan,
   discoverCredentials,
   verifyCredentialPage
