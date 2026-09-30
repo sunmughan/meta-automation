@@ -32,9 +32,24 @@ OPERATING RULES:
 
   const id = "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const existingGoal = growthState.getGoal(id);
-  if (!existingGoal || (existingGoal.status !== "IN_PROGRESS" && existingGoal.status !== "STARTED")) {
-    growthState.metric("goalsStarted");
+  if (existingGoal && existingGoal.status === "DONE") {
+    return {
+      status: "DONE",
+      skipped: true,
+      reason: `Skill goal '${id}' is already completed.`,
+      goal: existingGoal
+    };
   }
+
+  if (!existingGoal || (existingGoal.status !== "IN_PROGRESS" && existingGoal.status !== "STARTED")) {
+    growthState.transitionGoal(id, "STARTED", {
+      type: "SKILL_DEVELOPMENT",
+      skill,
+      platform: platform.id,
+      plan: plan || {}
+    });
+  }
+
   const result = await runner.run({
     goal,
     platform,
@@ -47,12 +62,10 @@ OPERATING RULES:
     },
     allowedOrigin: new URL(platform.url).origin,
     onIteration: ({ iteration, snapshot, plan: iterationPlan, result: actionResult }) => {
-      growthState.setGoal({
-        id,
+      growthState.transitionGoal(id, "IN_PROGRESS", {
         type: "SKILL_DEVELOPMENT",
         skill,
         platform: platform.id,
-        status: "IN_PROGRESS",
         lastIteration: iteration,
         lastDecision: iterationPlan?.reason || "",
         lastPageUrl: snapshot?.url || "",
@@ -62,16 +75,15 @@ OPERATING RULES:
     }
   });
 
-  growthState.setGoal({
-    id,
+  const finalStatus = ["DONE", "FAILED", "BLOCKED"].includes(result.status) ? result.status : (result.success ? "DONE" : "FAILED");
+  growthState.transitionGoal(id, finalStatus, {
     type: "SKILL_DEVELOPMENT",
     platform: platform.id,
     skill,
-    status: result.status,
     reason: result.reason || "",
     updatedAt: new Date().toISOString()
   });
-  if (result.status === "DONE" && existingGoal?.status !== "DONE") growthState.metric("goalsCompleted");
+
   return result;
 }
 

@@ -35,16 +35,34 @@ async function runSkill(skill, platformId = null) {
   if (!platform) throw new Error("AI selected an unavailable growth platform: " + selection.platformId);
 
   const goalId = "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  growthState.setGoal({
-    id: goalId,
-    type: "SKILL_DEVELOPMENT",
-    skill,
-    status: "PLANNED",
-    plan,
-    selectedPlatform: platform.id,
-    platformSelection: selection,
-    sourceEvidence: ["github", "linkedin"].filter(source => Boolean(growthState.state.profileEvidence[source]))
-  });
+  const existingGoal = growthState.getGoal(goalId);
+  if (existingGoal && existingGoal.status === "DONE") {
+    return {
+      status: "DONE",
+      skipped: true,
+      reason: `Goal '${goalId}' is already completed.`,
+      goal: existingGoal
+    };
+  }
+
+  if (!existingGoal) {
+    growthState.transitionGoal(goalId, "PLANNED", {
+      type: "SKILL_DEVELOPMENT",
+      skill,
+      plan,
+      selectedPlatform: platform.id,
+      platformSelection: selection,
+      sourceEvidence: ["github", "linkedin"].filter(source => Boolean(growthState.state.profileEvidence[source]))
+    });
+  } else {
+    growthState.setGoal({
+      id: goalId,
+      plan,
+      selectedPlatform: platform.id,
+      platformSelection: selection,
+      sourceEvidence: ["github", "linkedin"].filter(source => Boolean(growthState.state.profileEvidence[source]))
+    });
+  }
 
   return runSkillDevelopment({
     browserManager,
@@ -63,6 +81,12 @@ async function discoverCredentials(skill) {
 async function runCertificationCredential(credential) {
   const profile = readConfiguredProfile();
   if (!profile) throw new Error("Onboarding profile missing. Run npm run onboard first.");
+  const credentialId = credential.id || ("cert:" + (credential.issuer || "unknown") + ":" + (credential.name || credential.title || "item").toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+  const existing = growthState.state.credentials[credentialId];
+  if (existing && existing.status === "DONE") {
+    return { status: "DONE", skipped: true, reason: `Credential '${credentialId}' is already completed.`, credential: existing };
+  }
+
   const platform = {
     id: credential.issuer || "discovered-credential",
     name: credential.issuer || "Discovered credential platform",
@@ -91,13 +115,11 @@ OPERATING RULES:
     context: { credential, mode: "CERTIFICATION", resumeFromState: true },
     allowedOrigin: new URL(credential.url).origin
   });
-  growthState.setCredential({
+  growthState.transitionCredential(credentialId, result.status, {
     ...credential,
-    status: result.status,
     completionEvidence: result.status === "DONE" ? result.snapshot?.bodyText?.slice(0, 2000) : "",
     lastRunAt: new Date().toISOString()
   });
-  if (result.status === "DONE") growthState.metric("credentialsCompleted");
   return result;
 }
 

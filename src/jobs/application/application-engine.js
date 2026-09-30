@@ -72,25 +72,28 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     generated.coverLetter = fallback.coverLetter || "";
   }
 
-  const application = {
-    key: applicationKey(opportunity),
+  const appKey = applicationKey(opportunity);
+  const application = jobState.transitionApplication(appKey, "APPLICATION_READY", {
     opportunityKey: opportunity.key,
     platform: opportunity.platform,
     url: opportunity.url,
-    status: "APPLICATION_READY",
     candidateProfileVersion: candidateProfile.version || null,
     documents: {
       coverLetterPath: generated.coverLetterPath,
       baseResumePath: generated.baseResumePath
-    },
-    createdAt: new Date().toISOString()
-  };
-  jobState.upsertApplication(application);
+    }
+  });
 
   if (CONFIG.JOB_APPLICATION_MODE !== "auto") {
-    jobState.updateMetric("manualAction");
-    return { status: "USER_ACTION_REQUIRED", application, decision, documents: generated };
+    jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+      reason: "Application generated in manual review mode"
+    });
+    return { status: "USER_ACTION_REQUIRED", application: jobState.state.applications[appKey], decision, documents: generated };
   }
+
+  jobState.transitionApplication(appKey, "FORM_STARTED", {
+    reason: "Navigating to live application form"
+  });
 
   await page.goto(opportunity.url, {
     waitUntil: "domcontentloaded",
@@ -115,15 +118,19 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   });
 
   if (["USER_ACTION_REQUIRED", "MANUAL_ACTION_REQUIRED", "BLOCKED"].includes(result.status)) {
-    jobState.upsertApplication({ ...application, status: result.status, reason: result.reason });
-    jobState.updateMetric("manualAction");
-    return { status: result.status, reason: result.reason, application, plan: result.plan };
+    jobState.transitionApplication(appKey, result.status, { reason: result.reason });
+    return { status: result.status, reason: result.reason, application: jobState.state.applications[appKey], plan: result.plan };
   }
   if (result.status !== "DONE") {
-    jobState.upsertApplication({ ...application, status: result.status || "FAILED", reason: result.reason });
-    jobState.updateMetric(result.status === "MAX_ITERATIONS" ? "manualAction" : "failed");
-    return { status: result.status || "FAILED", application, result };
+    const failState = result.status || "FAILED";
+    jobState.transitionApplication(appKey, failState, { reason: result.reason });
+    return { status: failState, application: jobState.state.applications[appKey], result };
   }
+
+  jobState.transitionApplication(appKey, "SUBMITTED", {
+    submittedAt: new Date().toISOString(),
+    correlationId: result.correlationId
+  });
 
   const verificationSnapshot = await browserAgent.captureLiveSnapshot("application-post-submit-verification");
   const verification = await verifyApplicationSubmission({
@@ -133,38 +140,30 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   }, aiRuntime);
 
   if (!verification.verified) {
-    jobState.upsertApplication({
-      ...application,
-      status: "UNVERIFIED",
+    jobState.transitionApplication(appKey, "UNVERIFIED", {
       reason: verification.evidence || "Submission was not visibly confirmed"
     });
-    jobState.updateMetric("manualAction");
     return {
       status: "UNVERIFIED",
-      application,
+      application: jobState.state.applications[appKey],
       verification,
       result
     };
   }
 
-  const submittedAt = new Date().toISOString();
-  jobState.upsertApplication({
-    ...application,
-    status: "VERIFIED",
-    submittedAt,
-    verifiedAt: submittedAt,
+  const verifiedAt = new Date().toISOString();
+  jobState.transitionApplication(appKey, "VERIFIED", {
+    verifiedAt,
     verificationEvidence: verification.evidence,
     correlationId: result.correlationId
   });
   jobState.upsertOpportunity({
     ...opportunity,
     status: "APPLIED_VERIFIED",
-    appliedAt: submittedAt
+    appliedAt: verifiedAt
   });
-  jobState.updateMetric("submitted");
-  jobState.updateMetric("verified");
 
-  return { status: "VERIFIED", application, result };
+  return { status: "VERIFIED", application: jobState.state.applications[appKey], result };
 }
 
 module.exports = { applyToOpportunity };

@@ -37,7 +37,7 @@ async function discoverForSkill({ browserManager, aiRuntime, skill }) {
           ...result,
           discoveredAt: new Date().toISOString()
         };
-        growthState.setCredential(item);
+        growthState.transitionCredential(item.id, "DISCOVERED", item);
         growthState.metric("credentialsDiscovered");
         verified.push(item);
       }

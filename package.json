@@ -5,7 +5,7 @@
   "main": "threads-agent.js",
   "bin": {"meta-automation": "./threads-agent.js"},
   "scripts": {
-    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js && node tests/desktop-runner.test.js && node tests/autopilot-modes.test.js && node tests/professional-growth.test.js && node tests/portfolio-architecture.test.js",
+    "test": "node tests/suite.js && node tests/cross-platform-audit.js && node tests/job-engine-audit.js && node tests/desktop-runner.test.js && node tests/autopilot-modes.test.js && node tests/professional-growth.test.js && node tests/portfolio-architecture.test.js && node tests/state-machine-idempotency.test.js",
     "e2e:browser": "node tests/browser-e2e.js",
     "onboard": "node threads-agent.js onboard",
     "configure": "node threads-agent.js onboard",
@@ -38,7 +38,8 @@
     "test:growth": "node tests/professional-growth.test.js",
     "portfolio:generate": "node scripts/generate-portfolio-cards.js",
     "portfolio:publish": "node scripts/upload-freelancer-portfolio.js",
-    "test:portfolio": "node tests/portfolio-architecture.test.js"
+    "test:portfolio": "node tests/portfolio-architecture.test.js",
+    "test:state-machine": "node tests/state-machine-idempotency.test.js"
   },
   "repository": {"type": "git", "url": "git+https://github.com/sunmughan/meta-automation.git"},
   "keywords": ["agentic-automation","browser-agent","browser-automation","ai-agent","autonomous-agents","cdp","live-dom","semantic-browser","social-agent","lead-generation","workflow-automation","relationship-intelligence","job-automation","codeair"],
