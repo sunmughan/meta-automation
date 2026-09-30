@@ -5,9 +5,42 @@ function readConfiguredProfile() {
   const fs = require("fs");
   const path = require("path");
   const CONFIG = require("../../../config");
-  const profilePath = path.join(CONFIG.ROOT_DIR, "private", "user-profile.json");
-  if (!fs.existsSync(profilePath)) return null;
-  try { return JSON.parse(fs.readFileSync(profilePath, "utf8")); } catch (_) { return null; }
+  const candidatePath = CONFIG.JOB_PROFILE_PATH || path.join(CONFIG.ROOT_DIR, "private", "candidate-profile.json");
+  const userPath = path.join(CONFIG.ROOT_DIR, "private", "user-profile.json");
+
+  let candidate = null;
+  let user = null;
+  if (fs.existsSync(candidatePath)) {
+    try { candidate = JSON.parse(fs.readFileSync(candidatePath, "utf8")); } catch (_) {}
+  }
+  if (fs.existsSync(userPath)) {
+    try { user = JSON.parse(fs.readFileSync(userPath, "utf8")); } catch (_) {}
+  }
+
+  if (!candidate && !user) return null;
+
+  const candidateGithub = candidate?.portfolioUrl?.includes("github.com")
+    ? candidate.portfolioUrl
+    : (candidate?.github || user?.profiles?.github || "");
+
+  const candidateLinkedin = candidate?.linkedin || user?.profiles?.linkedin || "";
+
+  return {
+    ...(user || {}),
+    ...(candidate || {}),
+    name: candidate?.name || user?.identity?.name || "",
+    title: candidate?.title || user?.identity?.role || "",
+    company: candidate?.company || user?.company?.name || "",
+    skills: Array.isArray(candidate?.skills) && candidate.skills.length > 0
+      ? candidate.skills
+      : (user?.company?.approved || []),
+    profiles: {
+      ...(user?.profiles || {}),
+      github: candidateGithub,
+      linkedin: candidateLinkedin,
+      website: candidate?.website || user?.profiles?.website || ""
+    }
+  };
 }
 
 async function captureSource({ browserManager, source, url }) {

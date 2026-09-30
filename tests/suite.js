@@ -609,13 +609,17 @@ async function runAllTests() {
     const aiRuntimeModule = require("../src/ai/ai-runtime");
     const configModule = require("../config");
 
-    assert(["minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_PROVIDER), "AI_PROVIDER must be supported");
-    assert(["minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_RUNTIME), "AI_RUNTIME must be supported");
+    assert(["antigravity", "minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_PROVIDER), "AI_PROVIDER must be supported");
+    assert(["antigravity", "minimax", "openai", "freebuff", "deepseek", "custom"].includes(configModule.AI_RUNTIME), "AI_RUNTIME must be supported");
     assert.strictEqual(typeof aiRuntimeModule.callAi, "function", "callAi must be exposed as primary entry point");
     assert.strictEqual(typeof aiRuntimeModule.callMiniMax, "function", "callMiniMax must be available");
     assert.strictEqual(typeof aiRuntimeModule.callOpenAiCompatible, "function", "callOpenAiCompatible must be available");
-    assert(configModule.OPENAI_API_KEY && configModule.OPENAI_API_KEY.length > 0, "OPENAI_API_KEY must be configured");
-    assert.strictEqual(configModule.OPENAI_MODEL, "deepseek 4.1 flash", "OPENAI_MODEL must match configured model");
+    if (configModule.AI_PROVIDER !== "antigravity") {
+      assert(configModule.OPENAI_API_KEY && configModule.OPENAI_API_KEY.length > 0, "OPENAI_API_KEY must be configured");
+      assert.strictEqual(configModule.OPENAI_MODEL, "deepseek 4.1 flash", "OPENAI_MODEL must match configured model");
+    } else {
+      assert.strictEqual(typeof aiRuntimeModule.callAntigravity, "function", "callAntigravity must be available");
+    }
   });
 
   // 40. Unified State Store Lifecycle Semantics
@@ -1528,7 +1532,9 @@ async function runAllTests() {
 }
 
 if (require.main === module) {
-  runAllTests().catch(err => {
+  runAllTests().then(() => {
+    process.exit(0);
+  }).catch(err => {
     console.error("Test runner crashed:", err);
     process.exit(1);
   });

@@ -29,7 +29,7 @@ console.log("==================================================\n");
 // 1. Config includes EXECUTION_MODE
 test("1. Config exposes EXECUTION_MODE with valid default or env setting", () => {
   assert(CONFIG.EXECUTION_MODE !== undefined, "EXECUTION_MODE must be defined in CONFIG");
-  assert(["concurrent", "round-robin", "sequential", "parallel"].includes(CONFIG.EXECUTION_MODE), `Invalid mode: ${CONFIG.EXECUTION_MODE}`);
+  assert(["concurrent", "round-robin", "sequential", "parallel", "pipeline"].includes(CONFIG.EXECUTION_MODE), `Invalid mode: ${CONFIG.EXECUTION_MODE}`);
 });
 
 // 2. Mode resolution recognizes CLI flags

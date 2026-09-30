@@ -131,7 +131,7 @@ const CONFIG = {
   VIEWPORT_HEIGHT: 1080,
 
   PORTFOLIO_CDP_URL: process.env.PORTFOLIO_CDP_URL || process.env.CDP_URL || "http://127.0.0.1:9222/json",
-  PORTFOLIO_RENDER_PLATFORM_ORIGIN: process.env.PORTFOLIO_RENDER_PLATFORM_ORIGIN || "https://www.freelancer.com",
+  PORTFOLIO_RENDER_PLATFORM_ORIGIN: process.env.PORTFOLIO_RENDER_PLATFORM_ORIGIN || "",
   PORTFOLIO_GENERATED_DIR: process.env.PORTFOLIO_GENERATED_DIR || path.resolve(ROOT_DIR, "portfolio_generated"),
   PORTFOLIO_CARD_WIDTH: Math.max(100, Number(process.env.PORTFOLIO_CARD_WIDTH) || 1000),
   PORTFOLIO_CARD_HEIGHT: Math.max(100, Number(process.env.PORTFOLIO_CARD_HEIGHT) || 1000),

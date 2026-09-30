@@ -61,14 +61,28 @@ class JobBrowserManager {
     return this.browser;
   }
 
-  async getPage() {
+  async getPage(targetUrl = null) {
     await this.connect();
-    if (this.page && !this.page.isClosed()) return this.page;
+    if (this.page && !this.page.isClosed()) {
+      if (!targetUrl) return this.page;
+      try {
+        if (new URL(this.page.url()).origin === new URL(targetUrl).origin) {
+          return this.page;
+        }
+      } catch (_) {}
+    }
     const pages = await this.browser.pages();
-    const flPage = pages.find(p => p.url().includes("freelancer.com"));
-    if (flPage) {
-      this.page = flPage;
-      return this.page;
+    if (targetUrl) {
+      try {
+        const targetOrigin = new URL(targetUrl).origin;
+        const matching = pages.find(p => {
+          try { return new URL(p.url()).origin === targetOrigin; } catch (_) { return false; }
+        });
+        if (matching) {
+          this.page = matching;
+          return this.page;
+        }
+      } catch (_) {}
     }
     const reusable = pages.find(p => p.url() === "about:blank" || p.url().includes("newtab"));
     this.page = reusable || await this.browser.newPage();
@@ -76,9 +90,11 @@ class JobBrowserManager {
   }
 
   async open(url) {
-    const page = await this.getPage();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.JOB_NAVIGATION_TIMEOUT_MS });
-    await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
+    const page = await this.getPage(url);
+    if (page.url() !== url) {
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.JOB_NAVIGATION_TIMEOUT_MS });
+      await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
+    }
     return page;
   }
 

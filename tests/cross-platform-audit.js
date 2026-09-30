@@ -148,7 +148,7 @@ async function runCrossPlatformAudit() {
   test("Onboarding Wizard: includes WhatsApp booking link prompt and profile output", () => {
     const agentCode = fs.readFileSync(path.join(ROOT, "threads-agent.js"), "utf8");
     assert(agentCode.includes("WhatsApp Booking URL"), "Onboarding wizard must prompt for WhatsApp Booking URL");
-    assert(agentCode.includes("WhatsApp: ${founderWhatsApp"), "Must save WhatsApp to knowledge base files");
+    assert(agentCode.includes("WhatsApp: \" + profiles.whatsapp") || agentCode.includes("WhatsApp: ${founderWhatsApp"), "Must save WhatsApp to knowledge base files");
   });
 
   console.log("\n--------------------------------------------------");

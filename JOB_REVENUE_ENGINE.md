@@ -1,13 +1,13 @@
 # Agentic Job Revenue Engine
 
-The job-revenue subsystem is a separate execution plane inside Meta Automation. It uses the existing MiniMax M3 runtime and the existing semantic browser/action infrastructure, but runs through a dedicated browser profile and CDP port so social automation and job applications cannot steal each other's browser state.
+The job-revenue subsystem is a separate execution plane inside Meta Automation. It uses the primary Antigravity AI runtime (with active session Gemini 3.8 Flash) and the existing semantic browser/action infrastructure, but runs through a dedicated browser profile and CDP port so social automation and job applications cannot steal each other's browser state.
 
 ## Design principles
 
 - **Agentic UI operation:** platform behavior is discovered from the live browser DOM and accessibility/text evidence. No platform-specific CSS/XPath selectors, click coordinates, or hardcoded search-query lists are used by the job engine.
 - **Data-driven platforms:** the target marketplaces and workflow modes live in `config/job-platforms.json`.
 - **Remote-only and project-only:** these are hard configuration gates. An opportunity with unknown, hybrid, on-site, employment, or recruitment status is not applied to.
-- **MiniMax only:** reasoning, qualification, document generation and browser planning route through the shared MiniMax M3 runtime.
+- **Antigravity only:** reasoning, qualification, document generation and browser planning route through the primary Antigravity AI runtime.
 - **Closed-loop execution:** snapshot -> plan -> act -> snapshot -> re-plan until the goal is done or human intervention is required.
 - **Google OAuth without credential storage:** the job browser may use the platform's visible Google sign-in control and select the configured Google account only when it is already present in the browser chooser. Google passwords, 2FA codes and session cookies are never requested or stored by the application.
 - **Challenge handoff:** CAPTCHA, bot challenges, identity verification, phone/security checks, payment/credit purchases or unknown mandatory fields stop the agent and return a user/manual action state.
@@ -39,7 +39,7 @@ This dedicated profile is where the Google account and marketplace sessions are 
 
 ```
 Setup
-  -> MiniMax key in local .env
+  -> Antigravity session (local Gemini 3.8 Flash via agy CLI)
   -> Google account configuration
   -> Base resume path
   -> Candidate profile
@@ -65,7 +65,7 @@ Continuous hunting
   -> search/filter through live UI
   -> inspect opportunities
   -> verify explicit remote evidence
-  -> qualify with MiniMax
+  -> qualify with Antigravity
 
 Application
   -> generate tailored cover letter
@@ -86,7 +86,7 @@ Report
 
 1. Install the project with the platform installer.
 2. The installer creates `.env` and launches the setup wizard.
-3. Provide the MiniMax API key when prompted. It is stored only in the local `.env` file and the file permissions are restricted on Unix-like systems.
+3. Confirm the Antigravity AI configuration. Antigravity uses the local authenticated Google account session via the `agy` CLI with Gemini 3.8 Flash.
 4. Provide the base resume path.
 5. Confirm the Google account email.
 6. Run `npm run jobs:google` once and sign into the configured Google account in the dedicated job browser when required.

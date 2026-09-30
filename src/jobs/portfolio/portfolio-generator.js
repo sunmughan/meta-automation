@@ -13,8 +13,14 @@ function getBrowserTab() {
       res.on("end", () => {
         try {
           const tabs = JSON.parse(data);
-          const tab = tabs.find(t => t.url && t.url.startsWith(CONFIG.PORTFOLIO_RENDER_PLATFORM_ORIGIN));
-          if (!tab) reject(new Error("Configured portfolio render platform tab not found"));
+          let tab = null;
+          if (CONFIG.PORTFOLIO_RENDER_PLATFORM_ORIGIN) {
+            tab = tabs.find(t => t.url && t.url.startsWith(CONFIG.PORTFOLIO_RENDER_PLATFORM_ORIGIN));
+          }
+          if (!tab) {
+            tab = tabs.find(t => t.type === "page" && !t.url?.startsWith("chrome-extension://")) || tabs.find(t => t.webSocketDebuggerUrl);
+          }
+          if (!tab) reject(new Error("No active browser tab found for portfolio rendering"));
           else resolve(tab);
         } catch (e) { reject(e); }
       });

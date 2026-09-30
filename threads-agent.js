@@ -1016,7 +1016,7 @@ async function commandOnboard(options = {}) {
     try {
       const url = new URL(text);
       if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error();
-      return url.toString();
+      return text.endsWith("/") ? url.toString() : url.toString().replace(/\/+$/, "");
     } catch (_) {
       throw new Error(label + " must be a valid http(s) URL");
     }
@@ -1044,7 +1044,7 @@ async function commandOnboard(options = {}) {
       profiles.threads = await ask("Threads username (without @)", profiles.threads);
       profiles.github = await ask("GitHub URL (optional)", profiles.github);
       profiles.website = await ask("Personal website / portfolio (optional)", profiles.website);
-      profiles.whatsapp = await ask("WhatsApp booking URL (optional)", profiles.whatsapp);
+      profiles.whatsapp = await ask("WhatsApp Booking URL (optional)", profiles.whatsapp);
 
       console.log("\n--- 3/6 · COMPANY / BRAND ---");
       company.name = await ask("Company / brand name", company.name);

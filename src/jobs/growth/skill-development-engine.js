@@ -30,7 +30,11 @@ OPERATING RULES:
 - Do not purchase anything.
 - Never bypass CAPTCHA, MFA, identity verification, proctoring or security controls.`;
 
-  growthState.metric("goalsStarted");
+  const id = "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const existingGoal = growthState.getGoal(id);
+  if (!existingGoal || (existingGoal.status !== "IN_PROGRESS" && existingGoal.status !== "STARTED")) {
+    growthState.metric("goalsStarted");
+  }
   const result = await runner.run({
     goal,
     platform,
@@ -44,7 +48,7 @@ OPERATING RULES:
     allowedOrigin: new URL(platform.url).origin,
     onIteration: ({ iteration, snapshot, plan: iterationPlan, result: actionResult }) => {
       growthState.setGoal({
-        id: "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        id,
         type: "SKILL_DEVELOPMENT",
         skill,
         platform: platform.id,
@@ -58,7 +62,6 @@ OPERATING RULES:
     }
   });
 
-  const id = "skill:" + skill.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   growthState.setGoal({
     id,
     type: "SKILL_DEVELOPMENT",
@@ -68,7 +71,7 @@ OPERATING RULES:
     reason: result.reason || "",
     updatedAt: new Date().toISOString()
   });
-  if (result.status === "DONE") growthState.metric("goalsCompleted");
+  if (result.status === "DONE" && existingGoal?.status !== "DONE") growthState.metric("goalsCompleted");
   return result;
 }
 

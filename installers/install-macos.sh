@@ -47,7 +47,7 @@ fi
 echo "[3/6] Installing Node.js dependencies..."
 npm install
 
-# Job Revenue Engine setup: creates private profile directories and securely prompts for MiniMax API key.
+# Job Revenue Engine setup: creates private profile directories and configures Antigravity AI runtime.
 node scripts/setup-job-engine.js
 
 # 4. Configure Environment
@@ -71,8 +71,11 @@ echo ""
 echo "=================================================="
 echo "  🎉 MACOS INSTALLATION COMPLETE!"
 echo "=================================================="
-echo "To start the background automation daemon:"
+echo "To start the background automation daemon (interactive mode selector):"
 echo "   ./start-automation"
+echo ""
+echo "To start the Autonomous Freelancer.com Job Engine directly:"
+echo "   ./start-job-automation"
 echo ""
 echo "To check system health and live stats:"
 echo "   ./status-automation"

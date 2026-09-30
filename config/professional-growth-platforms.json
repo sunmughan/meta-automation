@@ -22,6 +22,51 @@
       "goalTypes": ["DSA", "ALGORITHMS", "SQL", "PROGRAMMING"]
     },
     {
+      "id": "hackerrank",
+      "name": "HackerRank",
+      "url": "https://www.hackerrank.com/",
+      "kind": "SKILL_DEVELOPMENT",
+      "enabled": true,
+      "requiresLoggedInSession": true,
+      "goalTypes": ["DSA", "ALGORITHMS", "SQL", "PROBLEM_SOLVING", "PROGRAMMING"]
+    },
+    {
+      "id": "freecodecamp",
+      "name": "freeCodeCamp",
+      "url": "https://www.freecodecamp.org/",
+      "kind": "SKILL_DEVELOPMENT",
+      "enabled": true,
+      "requiresLoggedInSession": true,
+      "goalTypes": ["WEB_DEVELOPMENT", "JAVASCRIPT", "FRONTEND", "BACKEND", "PYTHON"]
+    },
+    {
+      "id": "exercism",
+      "name": "Exercism",
+      "url": "https://exercism.org/",
+      "kind": "SKILL_DEVELOPMENT",
+      "enabled": true,
+      "requiresLoggedInSession": true,
+      "goalTypes": ["CODING_PRACTICE", "LANGUAGES", "ALGORITHMS", "REFACTORING"]
+    },
+    {
+      "id": "kaggle",
+      "name": "Kaggle",
+      "url": "https://www.kaggle.com/",
+      "kind": "SKILL_DEVELOPMENT",
+      "enabled": true,
+      "requiresLoggedInSession": true,
+      "goalTypes": ["DATA_SCIENCE", "MACHINE_LEARNING", "PYTHON", "PANDAS", "SQL"]
+    },
+    {
+      "id": "coursera",
+      "name": "Coursera",
+      "url": "https://www.coursera.org/",
+      "kind": "CREDENTIAL",
+      "enabled": true,
+      "requiresLoggedInSession": true,
+      "goalTypes": ["CERTIFICATION", "COMPUTER_SCIENCE", "CLOUD", "AI", "SPECIALIZATION"]
+    },
+    {
       "id": "browser-discovered",
       "name": "Browser-discovered credential platform",
       "url": "",

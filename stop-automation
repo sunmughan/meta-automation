@@ -57,6 +57,10 @@ fi
 
 rm -f "$SCRIPT_DIR/autopilot-mode.json" 2>/dev/null || true
 
+if command -v termux-wake-unlock >/dev/null 2>&1; then
+  termux-wake-unlock 2>/dev/null || true
+fi
+
 if [ "$STOPPED" = true ]; then
   echo "✅ Active Autopilot worker stopped."
 else

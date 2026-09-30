@@ -44,7 +44,16 @@ class GrowthBrowserManager {
     const browser = await this.connect();
     if (!this.page || this.page.isClosed()) {
       const pages = await browser.pages();
-      this.page = pages.find(p => p.url() === "about:blank" || p.url().includes("leetcode.com")) || await browser.newPage();
+      let targetOrigin = null;
+      if (url) {
+        try { targetOrigin = new URL(url).origin; } catch (_) {}
+      }
+      this.page = pages.find(p => {
+        if (targetOrigin) {
+          try { if (new URL(p.url()).origin === targetOrigin) return true; } catch (_) {}
+        }
+        return p.url() === "about:blank" || p.url().includes("newtab");
+      }) || await browser.newPage();
     }
     if (url && this.page.url() !== url) {
       await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.PROFESSIONAL_GROWTH_NAVIGATION_TIMEOUT_MS });

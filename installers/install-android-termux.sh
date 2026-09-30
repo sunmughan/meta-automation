@@ -39,6 +39,7 @@ pkg install -y \
     bash \
     findutils \
     procps \
+    termux-api \
     termux-x11-nightly \
     chromium \
     android-tools \
@@ -154,11 +155,18 @@ echo "=================================================="
 echo "  🎉 ANDROID TERMUX SETUP COMPLETE!"
 echo "=================================================="
 echo "How to run on Android:"
-echo "1. Install the 'Termux:X11' companion app APK on your phone."
-echo "2. Open Termux and run:"
-echo "      ~/start-meta.sh"
-echo "   (or cd $(pwd) && ./start-termux)"
+echo "Option 1 (Resilient 24/7 Headless - Recommended):"
+echo "   ./start-job-automation --headless"
+echo "   (Runs continuously in background without needing Termux:X11 display)"
 echo ""
-echo "3. Termux:X11 will automatically open, Chromium will attach with CDP :9222,"
-echo "   and Meta Automation will begin running in the background 24/7!"
+echo "Option 2 (GUI Mode with Termux:X11):"
+echo "   Open Termux:X11 companion app, then run:"
+echo "   ~/start-meta.sh"
+echo "   (If Termux:X11 closes, automation auto-recovers to Headless without crashing)"
+echo ""
+echo "To check system health and live stats:"
+echo "   ./status-automation"
+echo ""
+echo "To stop the automation daemon:"
+echo "   ./stop-automation"
 echo "=================================================="
