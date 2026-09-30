@@ -284,16 +284,19 @@ class AiRuntime {
   /**
    * Primary entry point for AI reasoning.
    * Routes all calls through the AiQueue for concurrency control and deduplication.
+   * Redacts sensitive authentication tokens, passwords, cookies, and secrets.
    *
    * @param {string} prompt
    * @param {Object} [options] - { taskType, priority, timeoutMs, retries }
    * @returns {Promise<Object>}
    */
   async callAi(prompt, options = {}) {
+    const { redactSensitiveData } = require("../telemetry/action-telemetry");
+    const sanitizedPrompt = typeof prompt === "string" ? redactSensitiveData(prompt) : prompt;
     const taskType = options.taskType || "POST_ANALYSIS";
     return this.queue.enqueue(
       taskType,
-      prompt,
+      sanitizedPrompt,
       (p, opts) => this.executeAiCall(p, opts),
       options
     );

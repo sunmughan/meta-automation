@@ -6,9 +6,12 @@ const JobAgentRunner = require("../browser/job-runner");
 const { generateApplicationDocuments } = require("../documents/document-engine");
 const { getPlatform } = require("../platform-registry");
 const jobState = require("../storage/job-state-store");
+const { platformSafetyGuard } = require("../../safety/platform-safety-guard");
+const telemetry = require("../../telemetry/action-telemetry");
 
 function applicationKey(opportunity) {
-  return `${opportunity.platform}:${opportunity.externalId}`;
+  const externalId = opportunity.externalId || opportunity.id || opportunity.key?.split(":").slice(1).join(":") || "unknown";
+  return `${opportunity.platform}:${externalId}`;
 }
 
 function readCandidateProfile() {
@@ -26,10 +29,92 @@ function applicationsToday() {
   }).length;
 }
 
+/**
+ * Reconciles an existing application with live page evidence.
+ */
+async function reconcileApplicationOnPage({ application, opportunity, platform, page, browserAgent, aiRuntime }) {
+  if (!page || !browserAgent) {
+    return { reconciled: false, status: application.status, reason: "Browser page unavailable for reconciliation" };
+  }
+
+  const appKey = application.key;
+  let snapshot;
+  try {
+    snapshot = await browserAgent.captureLiveSnapshot("reconcile-application");
+  } catch (_) {
+    return { reconciled: false, status: application.status, reason: "Could not capture snapshot" };
+  }
+
+  // 1. Detect any live security challenge
+  const challenge = platformSafetyGuard.detectSecurityChallenge(snapshot);
+  if (challenge.detected) {
+    platformSafetyGuard.recordSecurityEvent(opportunity.platform, challenge.type, {
+      url: snapshot.url,
+      reason: challenge.evidence
+    });
+    jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+      reason: `Security challenge encountered during reconciliation: ${challenge.type}`
+    });
+    return { reconciled: true, status: "USER_ACTION_REQUIRED", reason: challenge.evidence };
+  }
+
+  // 2. Check if page visibly confirms submission
+  const verification = await verifyApplicationSubmission({
+    platform,
+    opportunity,
+    snapshot
+  }, aiRuntime);
+
+  if (verification.verified) {
+    const verifiedAt = new Date().toISOString();
+    jobState.transitionApplication(appKey, "VERIFIED", {
+      verifiedAt,
+      verificationEvidence: verification.evidence
+    });
+    jobState.upsertOpportunity({
+      ...opportunity,
+      status: "APPLIED_VERIFIED",
+      appliedAt: verifiedAt
+    });
+    return { reconciled: true, status: "VERIFIED", verification };
+  }
+
+  return { reconciled: false, status: application.status, verification };
+}
+
+/**
+ * Master application execution and resume engine.
+ * Fully implements Phase 6.5 True Application Resume & Reconciliation.
+ */
 async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }) {
+  // 1. Platform configuration gate
   const platform = getPlatform(opportunity.platform);
   if (!platform) return { status: "BLOCKED", reason: "Platform configuration missing" };
 
+  // 2. Fail-Closed Platform Policy Guard
+  const safetyEval = platformSafetyGuard.evaluateAction({
+    platform: opportunity.platform,
+    actionType: "APPLICATION",
+    workflow: "JOB_APPLICATION",
+    details: { opportunityKey: opportunity.key }
+  });
+
+  if (!safetyEval.allowed) {
+    if (safetyEval.status === "USER_ACTION_REQUIRED") {
+      const appKey = applicationKey(opportunity);
+      const existing = jobState.state.applications[appKey] || jobState.getApplicationForOpportunity(opportunity.key);
+      const appRecord = existing || jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+        opportunityKey: opportunity.key,
+        platform: opportunity.platform,
+        url: opportunity.url,
+        reason: safetyEval.reason
+      });
+      return { status: "USER_ACTION_REQUIRED", reason: safetyEval.reason, application: appRecord };
+    }
+    return { status: safetyEval.status, reason: safetyEval.reason };
+  }
+
+  // 3. Remote-only and Project-only hard filters
   if (CONFIG.JOB_REMOTE_ONLY && opportunity.workMode !== "REMOTE") {
     jobState.upsertOpportunity({ ...opportunity, status: "SKIPPED_NON_REMOTE" });
     jobState.updateMetric("skipped");
@@ -40,77 +125,228 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     jobState.updateMetric("skipped");
     return { status: "SKIPPED", reason: "Project-only gate rejected opportunity" };
   }
+
+  // 4. Daily budget check
   if (applicationsToday() >= CONFIG.JOB_MAX_APPLICATIONS_PER_DAY) {
     return { status: "RATE_LIMITED", reason: "Configured daily application limit reached" };
   }
-  if (jobState.hasApplicationForOpportunity(opportunity.key)) {
-    return { status: "SKIPPED", reason: "Application already recorded for opportunity" };
-  }
-
-  const candidateProfile = readCandidateProfile();
-  const decision = await qualifyOpportunity(opportunity, aiRuntime, candidateProfile);
-  jobState.upsertOpportunity({
-    ...opportunity,
-    qualification: decision,
-    status: decision.apply ? "QUALIFIED" : "SKIPPED"
-  });
-
-  if (!decision.apply || Number(decision.matchScore || 0) < CONFIG.JOB_MIN_MATCH_SCORE) {
-    jobState.updateMetric("skipped");
-    return { status: "SKIPPED", decision };
-  }
-  jobState.updateMetric("qualified");
-
-  const generated = await generateApplicationDocuments({
-    opportunity: { ...opportunity, application: decision.applicationRequirements || opportunity.application },
-    candidateProfile,
-    aiRuntime
-  });
-
-  if (!generated.coverLetter && decision.applicationRequirements?.coverLetter) {
-    const fallback = await generateCoverLetter(opportunity, candidateProfile, aiRuntime);
-    generated.coverLetter = fallback.coverLetter || "";
-  }
 
   const appKey = applicationKey(opportunity);
-  const application = jobState.transitionApplication(appKey, "APPLICATION_READY", {
-    opportunityKey: opportunity.key,
-    platform: opportunity.platform,
-    url: opportunity.url,
-    candidateProfileVersion: candidateProfile.version || null,
-    documents: {
-      coverLetterPath: generated.coverLetterPath,
-      baseResumePath: generated.baseResumePath
-    }
-  });
+  let existingApplication = jobState.state.applications[appKey] || jobState.getApplicationForOpportunity(opportunity.key);
 
+  // =========================================================================
+  // TRUE APPLICATION RESUME & RECONCILIATION DISPATCH
+  // =========================================================================
+
+  // CASE 7: Already VERIFIED -> Safe idempotent skip
+  if (existingApplication && existingApplication.status === "VERIFIED") {
+    return {
+      status: "SKIPPED",
+      reason: "Application already verified",
+      application: existingApplication
+    };
+  }
+
+  // CASE 6: Already SUBMITTED -> Do NOT submit again! Reconcile / verify.
+  if (existingApplication && existingApplication.status === "SUBMITTED") {
+    if (page && browserAgent) {
+      const recon = await reconcileApplicationOnPage({
+        application: existingApplication,
+        opportunity,
+        platform,
+        page,
+        browserAgent,
+        aiRuntime
+      });
+      if (recon.reconciled && recon.status === "VERIFIED") {
+        return { status: "VERIFIED", application: jobState.state.applications[appKey] };
+      }
+    }
+    // Cannot submit again; return submitted record awaiting verification
+    return {
+      status: "SUBMITTED",
+      reason: "Application already submitted; awaiting live verification evidence",
+      application: existingApplication
+    };
+  }
+
+  // CASE 8: UNVERIFIED -> Reconcile live page evidence
+  if (existingApplication && existingApplication.status === "UNVERIFIED") {
+    if (page && browserAgent) {
+      const recon = await reconcileApplicationOnPage({
+        application: existingApplication,
+        opportunity,
+        platform,
+        page,
+        browserAgent,
+        aiRuntime
+      });
+      if (recon.reconciled && recon.status === "VERIFIED") {
+        return { status: "VERIFIED", application: jobState.state.applications[appKey] };
+      }
+    }
+    return {
+      status: "UNVERIFIED",
+      reason: "Submission evidence unverified; human review required",
+      application: existingApplication
+    };
+  }
+
+  // CASE 5: SUBMITTING -> Interrupted during submission; reconcile rather than blindly resubmitting
+  if (existingApplication && existingApplication.status === "SUBMITTING") {
+    if (page && browserAgent) {
+      const recon = await reconcileApplicationOnPage({
+        application: existingApplication,
+        opportunity,
+        platform,
+        page,
+        browserAgent,
+        aiRuntime
+      });
+      if (recon.reconciled && recon.status === "VERIFIED") {
+        return { status: "VERIFIED", application: jobState.state.applications[appKey] };
+      }
+    }
+    jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+      reason: "Process restarted while SUBMITTING; manual inspection required to prevent duplicate bid"
+    });
+    return {
+      status: "USER_ACTION_REQUIRED",
+      reason: "Submission state ambiguous on restart; human inspection required",
+      application: jobState.state.applications[appKey]
+    };
+  }
+
+  // CASE 4: FORM_FILLED -> Resume: verify form still intact, do NOT recreate documents
+  if (existingApplication && existingApplication.status === "FORM_FILLED") {
+    if (page && browserAgent) {
+      let snap;
+      try {
+        snap = await browserAgent.captureLiveSnapshot("resume-form-filled");
+      } catch (_) {}
+
+      // If page already shows submission evidence:
+      if (snap) {
+        const recon = await verifyApplicationSubmission({ platform, opportunity, snapshot: snap }, aiRuntime);
+        if (recon.verified) {
+          jobState.transitionApplication(appKey, "SUBMITTED", { submittedAt: new Date().toISOString() });
+          jobState.transitionApplication(appKey, "VERIFIED", { verifiedAt: new Date().toISOString() });
+          return { status: "VERIFIED", application: jobState.state.applications[appKey] };
+        }
+      }
+    }
+  }
+
+  // CASE 9: FAILED -> Safe retry of existing application record without changing ID
+  if (existingApplication && existingApplication.status === "FAILED") {
+    jobState.transitionApplication(appKey, "APPLICATION_READY", {
+      reason: "Retrying previously failed application"
+    });
+    existingApplication = jobState.state.applications[appKey];
+  }
+
+  // CASE 2 & 3: APPLICATION_READY or FORM_STARTED -> Reuse existing documents if present
+  let documents = existingApplication?.documents;
+  const candidateProfile = readCandidateProfile();
+
+  if (!documents || !documents.coverLetterPath) {
+    const decision = await qualifyOpportunity(opportunity, aiRuntime, candidateProfile);
+    jobState.upsertOpportunity({
+      ...opportunity,
+      qualification: decision,
+      status: decision.apply ? "QUALIFIED" : "SKIPPED"
+    });
+
+    if (!decision.apply || Number(decision.matchScore || 0) < CONFIG.JOB_MIN_MATCH_SCORE) {
+      jobState.updateMetric("skipped");
+      return { status: "SKIPPED", decision };
+    }
+    jobState.updateMetric("qualified");
+
+    const generated = await generateApplicationDocuments({
+      opportunity: { ...opportunity, application: decision.applicationRequirements || opportunity.application },
+      candidateProfile,
+      aiRuntime
+    });
+
+    if (!generated.coverLetter && decision.applicationRequirements?.coverLetter) {
+      const fallback = await generateCoverLetter(opportunity, candidateProfile, aiRuntime);
+      generated.coverLetter = fallback.coverLetter || "";
+    }
+
+    documents = {
+      coverLetterPath: generated.coverLetterPath,
+      baseResumePath: generated.baseResumePath,
+      coverLetter: generated.coverLetter
+    };
+  }
+
+  // Ensure application is in APPLICATION_READY state with documents
+  if (!existingApplication || existingApplication.status === "PLANNED" || existingApplication.status === "QUALIFIED") {
+    existingApplication = jobState.transitionApplication(appKey, "APPLICATION_READY", {
+      opportunityKey: opportunity.key,
+      platform: opportunity.platform,
+      url: opportunity.url,
+      candidateProfileVersion: candidateProfile.version || null,
+      documents
+    });
+  }
+
+  // Manual review mode check
   if (CONFIG.JOB_APPLICATION_MODE !== "auto") {
     jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
       reason: "Application generated in manual review mode"
     });
-    return { status: "USER_ACTION_REQUIRED", application: jobState.state.applications[appKey], decision, documents: generated };
+    return {
+      status: "USER_ACTION_REQUIRED",
+      application: jobState.state.applications[appKey],
+      documents
+    };
   }
 
+  // Navigate to live application form
   jobState.transitionApplication(appKey, "FORM_STARTED", {
     reason: "Navigating to live application form"
   });
 
-  await page.goto(opportunity.url, {
-    waitUntil: "domcontentloaded",
-    timeout: CONFIG.JOB_NAVIGATION_TIMEOUT_MS
-  });
-  await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
+  if (page) {
+    await page.goto(opportunity.url, {
+      waitUntil: "domcontentloaded",
+      timeout: CONFIG.JOB_NAVIGATION_TIMEOUT_MS
+    });
+    await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
+  }
+
+  // Check for security checkpoint on landing
+  if (browserAgent) {
+    const landingSnap = await browserAgent.captureLiveSnapshot("application-landing");
+    const challenge = platformSafetyGuard.detectSecurityChallenge(landingSnap);
+    if (challenge.detected) {
+      platformSafetyGuard.recordSecurityEvent(opportunity.platform, challenge.type, {
+        url: landingSnap.url,
+        reason: challenge.evidence
+      });
+      jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+        reason: `Security challenge encountered on platform: ${challenge.type}`
+      });
+      return {
+        status: "USER_ACTION_REQUIRED",
+        reason: challenge.evidence,
+        application: jobState.state.applications[appKey]
+      };
+    }
+  }
 
   const runner = new JobAgentRunner({ aiRuntime, browserAgent });
   const result = await runner.run({
     goal: "Complete and submit the application for this exact remote project using only verified candidate data. Discover the live form, map every required field to a known value, use the generated cover letter when requested, upload the base resume when requested, and do not submit until all required fields are valid. After submission, continue inspecting the live page until a trustworthy visible submission confirmation or equivalent post-condition is established.",
     platform,
-    opportunity: { ...opportunity, application: decision.applicationRequirements || opportunity.application },
+    opportunity: { ...opportunity, application: opportunity.application },
     candidateProfile,
     allowedOrigin: new URL(platform.url).origin,
     targetId: `apply:${opportunity.key}`,
     context: {
-      documents: generated,
+      documents,
       remoteOnly: CONFIG.JOB_REMOTE_ONLY,
       projectOnly: CONFIG.JOB_PROJECT_ONLY,
       googleAccountEmail: CONFIG.GOOGLE_ACCOUNT_EMAIL
@@ -127,17 +363,27 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     return { status: failState, application: jobState.state.applications[appKey], result };
   }
 
+  // =========================================================================
+  // SUBMISSION SAFETY & TRUTHFUL POST-VERIFICATION (Phase 6.5M)
+  // =========================================================================
   jobState.transitionApplication(appKey, "SUBMITTED", {
     submittedAt: new Date().toISOString(),
     correlationId: result.correlationId
   });
 
-  const verificationSnapshot = await browserAgent.captureLiveSnapshot("application-post-submit-verification");
-  const verification = await verifyApplicationSubmission({
-    platform,
-    opportunity,
-    snapshot: verificationSnapshot
-  }, aiRuntime);
+  platformSafetyGuard.recordSuccessfulAction(opportunity.platform, "default", "APPLICATION", {
+    correlationId: result.correlationId
+  });
+
+  let verification = { verified: false, evidence: "Verification snapshot unavailable" };
+  if (browserAgent) {
+    const verificationSnapshot = await browserAgent.captureLiveSnapshot("application-post-submit-verification");
+    verification = await verifyApplicationSubmission({
+      platform,
+      opportunity,
+      snapshot: verificationSnapshot
+    }, aiRuntime);
+  }
 
   if (!verification.verified) {
     jobState.transitionApplication(appKey, "UNVERIFIED", {
@@ -166,4 +412,8 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   return { status: "VERIFIED", application: jobState.state.applications[appKey], result };
 }
 
-module.exports = { applyToOpportunity };
+module.exports = {
+  applyToOpportunity,
+  applicationKey,
+  reconcileApplicationOnPage
+};

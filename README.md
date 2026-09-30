@@ -26,15 +26,16 @@ Crafted by **[CodeAir Software Solutions](https://www.codeair.tech)** under the 
 7. [Professional Growth & Credential Engine](#-professional-growth--credential-engine)
 8. [Declarative Portfolio Generator & Publisher](#-declarative-portfolio-generator--publisher)
 9. [Phase 6 State Machine & Idempotency Architecture](#-phase-6-state-machine--idempotency-architecture)
-10. [Cross-Platform Identity & Relationship Memory](#-cross-platform-identity--relationship-memory)
-11. [Semantic Browser & CDP Architecture](#-semantic-browser--cdp-architecture)
-12. [Multi-OS Installation & 24/7 Resilience](#-multi-os-installation--247-resilience)
-13. [CLI Command Reference](#-cli-command-reference)
-14. [Repository & Knowledge Base Structure](#-repository--knowledge-base-structure)
-15. [Safety, Security & Privacy Guarantees](#-safety-security--privacy-guarantees)
-16. [Verification, Audits & Quality Assurance](#-verification-audits--quality-assurance)
-17. [Distribution Packaging & Releases](#-distribution-packaging--releases)
-18. [Sponsorship, Enterprise Services & Backers](#-sponsorship-enterprise-services--backers)
+10. [Phase 6.5 Account Safety, Policy Guardrails & True Application Resume](#-phase-65-account-safety-policy-guardrails--true-application-resume)
+11. [Cross-Platform Identity & Relationship Memory](#-cross-platform-identity--relationship-memory)
+12. [Semantic Browser & CDP Architecture](#-semantic-browser--cdp-architecture)
+13. [Multi-OS Installation & 24/7 Resilience](#-multi-os-installation--247-resilience)
+14. [CLI Command Reference](#-cli-command-reference)
+15. [Repository & Knowledge Base Structure](#-repository--knowledge-base-structure)
+16. [Safety, Security & Privacy Guarantees](#-safety-security--privacy-guarantees)
+17. [Verification, Audits & Quality Assurance](#-verification-audits--quality-assurance)
+18. [Distribution Packaging & Releases](#-distribution-packaging--releases)
+19. [Sponsorship, Enterprise Services & Backers](#-sponsorship-enterprise-services--backers)
 
 ---
 
@@ -337,6 +338,76 @@ State stores (`job-state-store.js`, `growth-state-store.js`, `certification-stat
 
 ---
 
+## 🛡️ Phase 6.5 Account Safety, Policy Guardrails & True Application Resume
+
+Phase 6.5 introduces an uncompromising, fail-closed account safety architecture alongside true application resume and reconciliation capabilities.
+
+### 1. Fail-Closed Platform Safety Guard (`src/safety/platform-safety-guard.js`)
+All consequential automation actions must pass through the centralized `PlatformSafetyGuard`. The guard enforces a strict **Fail-Closed** policy:
+- **14 Normalized Action Categories:** `DISCOVERY`, `NAVIGATION`, `READ`, `PROFILE_EDIT`, `LOGIN`, `LEARNING`, `APPLICATION`, `MESSAGE`, `COMMENT`, `DM`, `POST`, `UPLOAD`, `SUBMIT`, `ACCOUNT_SECURITY`.
+- **Unknown Platform Protection:** Any platform not explicitly declared in `config/platform-safety-policy.json` is immediately **BLOCKED**.
+- **Unknown Action Category:** Any action outside the recognized 14 semantic categories is immediately **BLOCKED**.
+- **Missing or Ambiguous Policy:** The system refuses to execute side effects when permissions are unverified.
+
+### 2. Declarative Platform Safety Registry (`config/platform-safety-policy.json`)
+Platform policies are strictly data-driven and decoupled from runtime logic:
+- Individual toggles per platform: `allowAutoLogin`, `allowAutoApplication`, `allowAutoCommenting`, `allowAutoPosting`, `allowAutoDM`, `allowAutoLearning`, `allowAutoProfileEdit`.
+- Automation operating modes:
+  - `ALLOWED`: Automated execution permitted within configured action budgets.
+  - `HUMAN_APPROVAL_REQUIRED`: Requires explicit operator approval (`USER_ACTION_REQUIRED`). No automated browser side-effect executes.
+  - `DISCOVERY_ONLY`: Confines actions to `DISCOVERY`, `NAVIGATION`, and `READ`. Blocks all mutations.
+  - `DISABLED`: Completely disables automation on that platform (`BLOCKED`).
+
+### 3. Security Challenge Quarantine & Circuit Breaker
+The system refuses to bypass security challenges:
+- **Detected Challenges:** CAPTCHA, reCAPTCHA, hCaptcha, Cloudflare Turnstile, MFA / 2FA prompts, SMS OTPs, phone verification, identity document uploads, suspicious login alerts, account restrictions, security checkpoints, and proctoring controls.
+- **Immediate Quarantine:** When a high-severity security event or checkpoint is observed, the account is immediately transitioned to `QUARANTINED` status and automation halts.
+- **Automated Retry Circuit Breaker:**
+  - `1 Security Event`: Warning recorded; risk elevated.
+  - `2 Security Events`: Cooldown activated (30 minutes of automatic rate-limiting).
+  - `3+ Security Events`: Account quarantined immediately.
+  - *Zero Infinite Loops:* Repeated failures never cause endless retry loops.
+- **Human Resolution:** A quarantined account remains suspended until an operator inspects the live browser, resolves the checkpoint, and explicitly restores the account (`resolveQuarantine`).
+
+### 4. Action Budgets & Rate Limit Enforcement
+Enforces multi-window safety limits to prevent platform rate-limit triggering:
+- Per-run limits (`maxActionsPerRun`)
+- Hourly limits (`maxActionsPerHour`)
+- Daily limits (`maxActionsPerDay`)
+- Concurrency limits (`maxConcurrentActions`)
+- When any budget is exhausted, the guard returns `RATE_LIMITED`. The system **never** attempts to circumvent limits via proxy rotation, IP changing, or account cycling.
+
+### 5. Sensitive Data Redaction & Telemetry Safety
+Guarantees zero exposure of private authentication material:
+- **Telemetry Redaction (`src/telemetry/action-telemetry.js`):** Passwords, auth tokens, session cookies, OTP codes, and private keys are recursively sanitized and redacted to `[REDACTED]` before writing to `action-telemetry.jsonl` or diagnostic DOM dumps.
+- **AI Prompt Sanitization (`src/ai/ai-runtime.js`):** Prompts are scrubbed of credentials, auth tokens, and session cookies prior to dispatching to Gemini, MiniMax, or any external AI model.
+
+### 6. True Application Resume & Reconciliation Lifecycle
+Eliminates brittle application workflows by inspecting existing application records before generating new proposals:
+- **Stable Application Key:** Deterministic `platform:opportunityExternalId` prevents duplicate records across restarts.
+- **CASE 1 (No Application):** Normal qualification, document synthesis, and application.
+- **CASE 2 (`APPLICATION_READY`):** Reuses previously generated documents without redundant AI calls.
+- **CASE 3 (`FORM_STARTED`):** Re-inspects live form and continues execution.
+- **CASE 4 (`FORM_FILLED`):** Inspects live page: if already submitted, advances state; if form is still filled and valid, submits safely. Never recreates proposal from scratch.
+- **CASE 5 (`SUBMITTING`):** Reconciles live page evidence; never blindly clicks submit again on crash recovery.
+- **CASE 6 (`SUBMITTED`):** Bypasses re-submission; performs post-submission live DOM verification.
+- **CASE 7 (`VERIFIED`):** Safe idempotent skip.
+- **CASE 8 (`UNVERIFIED`):** Reconciles live evidence into `VERIFIED`, `USER_ACTION_REQUIRED`, or `FAILED`.
+- **CASE 9 (`FAILED`):** Safely retries existing application under the same record ID.
+
+### 7. Explicit Ethical & Technical Boundaries
+Agentic Automation is designed for safe, policy-aware operations:
+> [!IMPORTANT]
+> **What this system DOES NOT do:**
+> - **NO CAPTCHA / MFA bypass:** Halts immediately and requests human handoff.
+> - **NO identity verification bypass:** Never fakes or bypasses KYC/ID verification.
+> - **NO anti-detection or evasion trickery:** The system does not claim or attempt to disguise automation as a human to bypass bot detection.
+> - **NO proxy or IP rotation for ban evasion:** Respects platform rate limits and cooldowns.
+> - **NO account cycling or fake accounts:** Only operates on verified, authorized user accounts.
+> - *Notice on timing delays:* Jitter and variable delays exist purely for UI event-dispatch reliability and DOM rendering stability, never as a ban-prevention mechanism.
+
+---
+
 ## 👥 Cross-Platform Identity & Relationship Memory
 
 The relationship engine maintains a unified identity graph across Threads, Facebook, and LinkedIn:
@@ -478,7 +549,8 @@ This automatically tiles social automation, job automation, and terminal monitor
 ### Verification & Testing
 | Command | Description |
 |---|---|
-| `npm test` | Runs complete master test suite (all 8 validation suites) |
+| `npm test` | Runs complete master test suite (all 9 validation suites) |
+| `npm run test:safety` | Runs Phase 6.5 Account Safety, Policy Guardrails & Application Resume tests |
 | `npm run test:state-machine` | Runs Phase 6 state machine and idempotency validation tests |
 | `npm run test:growth` | Runs Professional Growth Engine tests |
 | `npm run test:portfolio` | Runs Portfolio Architecture validation tests |
@@ -497,6 +569,7 @@ meta-automation/
 ├── threads-agent.js                  # Master CLI & onboarding controller
 ├── config/
 │   ├── index.js                      # Runtime configuration manager
+│   ├── platform-safety-policy.json   # Declarative platform safety policies
 │   ├── job-platforms.json            # 10 declarative job marketplaces
 │   ├── professional-growth-platforms.json # Declarative learning platform registry
 │   ├── portfolio-platforms.json      # Declarative portfolio publishing registry
@@ -520,12 +593,12 @@ meta-automation/
 │   ├── browser/                      # CDP browser management & operator tools
 │   ├── content/                      # Omnichannel content generation
 │   ├── jobs/                         # Job Revenue & Professional Growth engines
-│   │   ├── application/              # Proposal & document generation engine
+│   │   ├── application/              # Proposal & resume reconciliation engine
 │   │   ├── growth/                   # Skill development & credential discovery
 │   │   ├── portfolio/                # Canvas card generation & publishing
 │   │   └── storage/                  # Atomic state stores & validators
 │   ├── leads/                        # Lead scoring, identity graph & relationships
-│   └── safety/                       # Global guard, rate limiters & action policy
+│   └── safety/                       # Fail-closed platform guard, rate limits & policy
 ├── installers/                       # Automated cross-platform installers
 │   ├── install-android-termux.sh
 │   ├── install-linux.sh
@@ -543,6 +616,7 @@ meta-automation/
     ├── cross-platform-audit.js
     ├── desktop-runner.test.js
     ├── job-engine-audit.js
+    ├── platform-safety-and-resume.test.js # Phase 6.5 safety & resume suite (18/18 PASS)
     ├── portfolio-architecture.test.js
     ├── professional-growth.test.js
     ├── state-machine-idempotency.test.js
@@ -581,6 +655,7 @@ npm test
 - **`tests/professional-growth.test.js`**: Verifies skill plan generation, credential discovery, platform selection, and evidence tracking.
 - **`tests/portfolio-architecture.test.js`**: Verifies single catalog truth in `projects.json`, absence of hardcoded duplicate arrays, and asset integrity.
 - **`tests/state-machine-idempotency.test.js`**: 10 rigorous tests validating Phase 6 state transitions, atomic persistence, unsubmitted proposal retry gates, and audit trails.
+- **`tests/platform-safety-and-resume.test.js`**: 18 rigorous tests validating Phase 6.5 fail-closed policy guards, challenge quarantine, circuit breaker, rate limit budgets, sensitive telemetry/prompt redaction, and true application resume/reconciliation.
 
 ---
 
