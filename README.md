@@ -641,7 +641,7 @@ meta-automation/
     ├── cross-platform-audit.js
     ├── desktop-runner.test.js
     ├── job-engine-audit.js
-    ├── platform-safety-and-resume.test.js # Phase 6.5 safety & resume suite (18/18 PASS)
+    ├── platform-safety-and-resume.test.js # Phase 6.5 safety & resume suite (30/30 PASS)
     ├── portfolio-architecture.test.js
     ├── professional-growth.test.js
     ├── state-machine-idempotency.test.js
@@ -680,7 +680,7 @@ npm test
 - **`tests/professional-growth.test.js`**: Verifies skill plan generation, credential discovery, platform selection, and evidence tracking.
 - **`tests/portfolio-architecture.test.js`**: Verifies single catalog truth in `projects.json`, absence of hardcoded duplicate arrays, and asset integrity.
 - **`tests/state-machine-idempotency.test.js`**: 10 rigorous tests validating Phase 6 state transitions, atomic persistence, unsubmitted proposal retry gates, and audit trails.
-- **`tests/platform-safety-and-resume.test.js`**: 18 rigorous tests validating Phase 6.5 fail-closed policy guards, challenge quarantine, circuit breaker, rate limit budgets, sensitive telemetry/prompt redaction, and true application resume/reconciliation.
+- **`tests/platform-safety-and-resume.test.js`**: 30 rigorous tests validating Phase 6.5 fail-closed policy guards, challenge quarantine, circuit breaker, rate limit budgets, sensitive telemetry/prompt redaction, and true application resume/reconciliation (30/30 PASS).
 
 ---
 
