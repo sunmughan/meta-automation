@@ -21,6 +21,7 @@ function cleanupTestState() {
   if (fs.existsSync(TEST_STATE_DIR)) {
     fs.rmSync(TEST_STATE_DIR, { recursive: true, force: true });
   }
+  platformSafetyGuard.resetCounters();
 }
 
 async function runTests() {
@@ -493,6 +494,7 @@ async function runTests() {
   // ═══════════════════════════════════════════════════════════════
   // REQUIRED APPLICATION RESUME TESTS (19 - 30)
   // ═══════════════════════════════════════════════════════════════
+  platformSafetyGuard.resetCounters();
 
   // TEST 19: FORM_FILLED restart
   await test("TEST 19: Application in FORM_FILLED restarts with stable ID and resumes without recreating", async () => {

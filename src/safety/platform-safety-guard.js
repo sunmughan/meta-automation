@@ -613,6 +613,39 @@ class PlatformSafetyGuard {
     logger.info(`[SAFETY GUARD] Resolved quarantine for ${platKey}:${account} by ${reviewer}`);
     return accState;
   }
+
+  resetCounters(platformId = null, account = "default") {
+    if (platformId) {
+      const platKey = String(platformId).toLowerCase().trim();
+      this.runCounters.delete(`${platKey}:${account}`);
+      this.activeActions.delete(platKey);
+      const accState = this.getAccountState(platKey, account);
+      if (accState) {
+        accState.actionHistory = [];
+        accState.status = "ACTIVE";
+        accState.riskLevel = "NORMAL";
+        accState.cooldownUntil = null;
+        accState.quarantinedAt = null;
+        accState.securityEvents = [];
+        accState.reason = "";
+      }
+    } else {
+      this.runCounters.clear();
+      this.activeActions.clear();
+      for (const p of Object.values(this.safetyState.platforms || {})) {
+        for (const acc of Object.values(p || {})) {
+          acc.actionHistory = [];
+          acc.status = "ACTIVE";
+          acc.riskLevel = "NORMAL";
+          acc.cooldownUntil = null;
+          acc.quarantinedAt = null;
+          acc.securityEvents = [];
+          acc.reason = "";
+        }
+      }
+    }
+    this.saveSafetyState();
+  }
 }
 
 const platformSafetyGuard = new PlatformSafetyGuard();
