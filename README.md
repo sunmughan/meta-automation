@@ -342,12 +342,37 @@ State stores (`job-state-store.js`, `growth-state-store.js`, `certification-stat
 
 Phase 6.5 introduces an uncompromising, fail-closed account safety architecture alongside true application resume and reconciliation capabilities.
 
-### 1. Fail-Closed Platform Safety Guard (`src/safety/platform-safety-guard.js`)
-All consequential automation actions must pass through the centralized `PlatformSafetyGuard`. The guard enforces a strict **Fail-Closed** policy:
+### 1. Canonical Global Safety Enforcement Boundary
+All consequential automation actions must pass through the centralized `PlatformSafetyGuard` immediately before browser execution. Rather than relying solely on high-level workflow callers, the browser execution boundary itself (`BrowserAgent.executeAtomicAction`, `UniversalBrowserAgent.executeAction`, `BrowserOperator`) acts as the authoritative gatekeeper.
+
+```
+OBSERVE (Fresh Live DOM / Accessibility Snapshot)
+   ↓
+DECIDE (Semantic Plan / Action Selection)
+   ↓
+SEMANTIC CLASSIFICATION (classifySemanticAction → Fail Closed if Unknown)
+   ↓
+CHALLENGE CHECK (detectSecurityChallenge → Immediate Quarantine on CAPTCHA/MFA)
+   ↓
+SAFETY POLICY EVALUATION (evaluateAction → ALLOWED | BLOCKED | USER_ACTION_REQUIRED | RATE_LIMITED | QUARANTINED)
+   ↓
+ACQUIRE CONCURRENCY SLOT
+   ↓
+EXECUTE ONE ATOMIC SIDE EFFECT (Native CDP Input/Click/Type)
+   ↓ (try ... finally)
+RELEASE CONCURRENCY SLOT
+   ↓
+RECORD TELEMETRY & ACCOUNTING (recordSuccessfulAction exactly once)
+   ↓
+VERIFY (Fresh Post-Condition Observation)
+```
+
 - **14 Normalized Action Categories:** `DISCOVERY`, `NAVIGATION`, `READ`, `PROFILE_EDIT`, `LOGIN`, `LEARNING`, `APPLICATION`, `MESSAGE`, `COMMENT`, `DM`, `POST`, `UPLOAD`, `SUBMIT`, `ACCOUNT_SECURITY`.
+- **Fail-Closed Semantic Classification:** Consequential actions (`CLICK`, `TYPE`, `PRESS`, `UPLOAD`, `NAVIGATE`) are mapped to semantic action categories based on context. If an action's semantic intent cannot be definitively classified, it fails closed (`null` → `BLOCKED`).
 - **Unknown Platform Protection:** Any platform not explicitly declared in `config/platform-safety-policy.json` is immediately **BLOCKED**.
 - **Unknown Action Category:** Any action outside the recognized 14 semantic categories is immediately **BLOCKED**.
 - **Missing or Ambiguous Policy:** The system refuses to execute side effects when permissions are unverified.
+- **Concurrency Slot Safety:** Slot acquisition uses `try ... finally` guarantees so that failed actions release concurrency locks immediately without leaking resources or double-counting.
 
 ### 2. Declarative Platform Safety Registry (`config/platform-safety-policy.json`)
 Platform policies are strictly data-driven and decoupled from runtime logic:

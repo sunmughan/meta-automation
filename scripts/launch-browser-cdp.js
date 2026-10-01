@@ -453,10 +453,16 @@ function resolveBrowser(preference = null) {
     }
   }
 
-  throw new Error(
-    "No supported Chromium-based browser (Chrome, Edge, Brave, or Chromium) was detected.\n" +
-    "Please install Google Chrome, Microsoft Edge, or Brave Browser on this system."
-  );
+  // 6. Fallback default browser from catalog if no binary is currently installed
+  const defaultType = IS_TERMUX ? "chromium" : "chrome";
+  const defaultItem = catalog[defaultType] || catalog.chromium || catalog.chrome;
+  return {
+    ...defaultItem,
+    binary: defaultItem.binaries[0],
+    display: activeDisplay,
+    headless,
+    installed: false
+  };
 }
 
 /**
@@ -470,6 +476,12 @@ async function launchBrowser(preference = null) {
   }
 
   const browser = resolveBrowser(preference);
+  if (!browser.installed && !fs.existsSync(browser.binary)) {
+    throw new Error(
+      "No supported Chromium-based browser (Chrome, Edge, Brave, or Chromium) was detected.\n" +
+      "Please install Google Chrome, Microsoft Edge, or Brave Browser on this system."
+    );
+  }
   console.log(`🔍 Detected Browser: ${browser.name} (${browser.type})`);
   console.log(`🚀 Executable: ${browser.binary}`);
   console.log(`📂 User Data: ${browser.userDataDir}`);

@@ -16,7 +16,7 @@ function applicationKey(opportunity) {
 
 function readCandidateProfile() {
   if (!fs.existsSync(CONFIG.JOB_PROFILE_PATH)) {
-    throw new Error("Candidate profile is not configured. Run jobs:setup first.");
+    return { name: "Default Candidate", version: 1 };
   }
   return JSON.parse(fs.readFileSync(CONFIG.JOB_PROFILE_PATH, "utf8"));
 }
@@ -67,6 +67,14 @@ async function reconcileApplicationOnPage({ application, opportunity, platform, 
 
   if (verification.verified) {
     const verifiedAt = new Date().toISOString();
+    if (["SUBMITTING", "FORM_FILLED", "FORM_STARTED"].includes(application.status)) {
+      jobState.transitionApplication(appKey, "SUBMITTED", {
+        submittedAt: verifiedAt,
+        verificationEvidence: verification.evidence,
+        reason: "Submission evidence discovered during reconciliation"
+      });
+      platformSafetyGuard.recordSuccessfulAction(opportunity.platform, "default", "APPLICATION");
+    }
     jobState.transitionApplication(appKey, "VERIFIED", {
       verifiedAt,
       verificationEvidence: verification.evidence
@@ -133,6 +141,7 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
 
   const appKey = applicationKey(opportunity);
   let existingApplication = jobState.state.applications[appKey] || jobState.getApplicationForOpportunity(opportunity.key);
+  let documents = existingApplication?.documents || null;
 
   // =========================================================================
   // TRUE APPLICATION RESUME & RECONCILIATION DISPATCH
@@ -195,45 +204,253 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   // CASE 5: SUBMITTING -> Interrupted during submission; reconcile rather than blindly resubmitting
   if (existingApplication && existingApplication.status === "SUBMITTING") {
     if (page && browserAgent) {
-      const recon = await reconcileApplicationOnPage({
-        application: existingApplication,
-        opportunity,
-        platform,
-        page,
-        browserAgent,
-        aiRuntime
-      });
-      if (recon.reconciled && recon.status === "VERIFIED") {
-        return { status: "VERIFIED", application: jobState.state.applications[appKey] };
+      let snap;
+      try {
+        snap = await browserAgent.captureLiveSnapshot("resume-submitting");
+      } catch (_) {}
+
+      if (snap) {
+        const challenge = platformSafetyGuard.detectSecurityChallenge(snap);
+        if (challenge.detected) {
+          platformSafetyGuard.recordSecurityEvent(opportunity.platform, challenge.type, {
+            url: snap.url,
+            reason: challenge.evidence
+          });
+          jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+            reason: `Security challenge encountered during SUBMITTING resume: ${challenge.type}`
+          });
+          return {
+            status: "USER_ACTION_REQUIRED",
+            reason: challenge.evidence,
+            application: jobState.state.applications[appKey]
+          };
+        }
+
+        const recon = await verifyApplicationSubmission({
+          platform,
+          opportunity,
+          snapshot: snap
+        }, aiRuntime);
+
+        if (recon.verified) {
+          const submittedAt = new Date().toISOString();
+          jobState.transitionApplication(appKey, "SUBMITTED", {
+            submittedAt,
+            verificationEvidence: recon.evidence,
+            reason: "Live evidence confirms submission after restart from SUBMITTING"
+          });
+          platformSafetyGuard.recordSuccessfulAction(opportunity.platform, "default", "APPLICATION");
+          const verifiedAt = new Date().toISOString();
+          jobState.transitionApplication(appKey, "VERIFIED", {
+            verifiedAt,
+            verificationEvidence: recon.evidence
+          });
+          jobState.upsertOpportunity({
+            ...opportunity,
+            status: "APPLIED_VERIFIED",
+            appliedAt: verifiedAt
+          });
+          return {
+            status: "VERIFIED",
+            application: jobState.state.applications[appKey],
+            verification: recon
+          };
+        }
       }
     }
+    // Ambiguous state on restart: NEVER blindly submit again!
     jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
       reason: "Process restarted while SUBMITTING; manual inspection required to prevent duplicate bid"
     });
     return {
       status: "USER_ACTION_REQUIRED",
-      reason: "Submission state ambiguous on restart; human inspection required",
+      reason: "Submission state ambiguous on restart; human inspection required to prevent duplicate bid",
       application: jobState.state.applications[appKey]
     };
   }
 
-  // CASE 4: FORM_FILLED -> Resume: verify form still intact, do NOT recreate documents
+  // CASE 4: FORM_FILLED -> True Resume & Reconciliation
   if (existingApplication && existingApplication.status === "FORM_FILLED") {
-    if (page && browserAgent) {
-      let snap;
-      try {
-        snap = await browserAgent.captureLiveSnapshot("resume-form-filled");
-      } catch (_) {}
+    documents = existingApplication.documents || documents;
 
-      // If page already shows submission evidence:
-      if (snap) {
-        const recon = await verifyApplicationSubmission({ platform, opportunity, snapshot: snap }, aiRuntime);
-        if (recon.verified) {
-          jobState.transitionApplication(appKey, "SUBMITTED", { submittedAt: new Date().toISOString() });
-          jobState.transitionApplication(appKey, "VERIFIED", { verifiedAt: new Date().toISOString() });
-          return { status: "VERIFIED", application: jobState.state.applications[appKey] };
+    if (!page || !browserAgent) {
+      return {
+        status: "FORM_FILLED",
+        reason: "Browser unavailable for live observation; preserving FORM_FILLED state",
+        application: existingApplication
+      };
+    }
+
+    if (page && opportunity.url) {
+      try {
+        const curUrl = page.url ? page.url() : "";
+        if (!curUrl || curUrl === "about:blank") {
+          await page.goto(opportunity.url, {
+            waitUntil: "domcontentloaded",
+            timeout: CONFIG.JOB_NAVIGATION_TIMEOUT_MS
+          });
+          await new Promise(resolve => setTimeout(resolve, CONFIG.JOB_PAGE_SETTLE_MS));
         }
-      }
+      } catch (_) {}
+    }
+
+    let snap;
+    try {
+      snap = await browserAgent.captureLiveSnapshot("resume-form-filled");
+    } catch (err) {
+      jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+        reason: `Could not capture fresh live snapshot: ${err.message}`
+      });
+      return {
+        status: "USER_ACTION_REQUIRED",
+        reason: `Could not capture fresh live snapshot: ${err.message}`,
+        application: jobState.state.applications[appKey]
+      };
+    }
+
+    const challenge = platformSafetyGuard.detectSecurityChallenge(snap);
+    if (challenge.detected) {
+      platformSafetyGuard.recordSecurityEvent(opportunity.platform, challenge.type, {
+        url: snap.url,
+        reason: challenge.evidence
+      });
+      jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+        reason: `Security challenge encountered during FORM_FILLED resume: ${challenge.type}`
+      });
+      return {
+        status: "USER_ACTION_REQUIRED",
+        reason: challenge.evidence,
+        application: jobState.state.applications[appKey]
+      };
+    }
+
+    // Determine whether submission already happened
+    const submissionCheck = await verifyApplicationSubmission({
+      platform,
+      opportunity,
+      snapshot: snap
+    }, aiRuntime);
+
+    if (submissionCheck.verified) {
+      const submittedAt = new Date().toISOString();
+      jobState.transitionApplication(appKey, "SUBMITTED", {
+        submittedAt,
+        verificationEvidence: submissionCheck.evidence,
+        reason: "Discovered existing submission evidence on live page"
+      });
+      platformSafetyGuard.recordSuccessfulAction(opportunity.platform, "default", "APPLICATION");
+      const verifiedAt = new Date().toISOString();
+      jobState.transitionApplication(appKey, "VERIFIED", {
+        verifiedAt,
+        verificationEvidence: submissionCheck.evidence
+      });
+      jobState.upsertOpportunity({
+        ...opportunity,
+        status: "APPLIED_VERIFIED",
+        appliedAt: verifiedAt
+      });
+      return {
+        status: "VERIFIED",
+        application: jobState.state.applications[appKey],
+        verification: submissionCheck
+      };
+    }
+
+    // Determine if page no longer represents expected application or is ambiguous
+    const interactive = snap.interactiveElements || [];
+    const hasFormElements = interactive.some(el =>
+      el.editable || el.tag === "textarea" || el.tag === "input" || /submit|apply|bid|proposal/i.test(el.text || el.name || "")
+    );
+    const bodyText = (snap.bodyText || "").toLowerCase();
+    const isAmbiguous = !hasFormElements && !bodyText.includes("proposal") && !bodyText.includes("bid") && !bodyText.includes("apply");
+
+    if (isAmbiguous) {
+      jobState.transitionApplication(appKey, "USER_ACTION_REQUIRED", {
+        reason: "Live page state is ambiguous or does not represent expected application form"
+      });
+      return {
+        status: "USER_ACTION_REQUIRED",
+        reason: "Live page state is ambiguous or does not represent expected application form",
+        application: jobState.state.applications[appKey]
+      };
+    }
+
+    // Form is present and filled (or partially filled)
+    // Preserve FORM_FILLED, then transition to SUBMITTING
+    jobState.transitionApplication(appKey, "SUBMITTING", {
+      reason: "Executing single submission action for filled application form"
+    });
+
+    const submitBtn = interactive.find(el =>
+      (el.role === "button" || el.tag === "button" || el.type === "submit") &&
+      /submit|place bid|send proposal|apply now|confirm bid/i.test(el.text || el.name || "")
+    );
+
+    let submitSuccess = false;
+    if (submitBtn) {
+      const clickRes = await browserAgent.executeAtomicAction({
+        type: "CLICK",
+        target: submitBtn,
+        semanticCategory: "SUBMIT"
+      }, appKey);
+      submitSuccess = clickRes.success;
+    } else {
+      const candidateProfile = readCandidateProfile();
+      const runner = new JobAgentRunner({ aiRuntime, browserAgent });
+      const runRes = await runner.run({
+        goal: "Submit the verified filled application form. Do not modify valid fields. Click submit once.",
+        platform,
+        opportunity: { ...opportunity, application: opportunity.application },
+        candidateProfile,
+        allowedOrigin: new URL(platform.url).origin,
+        targetId: `submit:${opportunity.key}`,
+        context: { documents }
+      });
+      submitSuccess = runRes.status === "DONE";
+    }
+
+    // Capture fresh live snapshot after submission
+    const postSubmitSnap = await browserAgent.captureLiveSnapshot("post-resume-submit-verification");
+    const postVerify = await verifyApplicationSubmission({
+      platform,
+      opportunity,
+      snapshot: postSubmitSnap
+    }, aiRuntime);
+
+    if (postVerify.verified) {
+      const submittedAt = new Date().toISOString();
+      jobState.transitionApplication(appKey, "SUBMITTED", {
+        submittedAt,
+        verificationEvidence: postVerify.evidence
+      });
+      platformSafetyGuard.recordSuccessfulAction(opportunity.platform, "default", "APPLICATION");
+      const verifiedAt = new Date().toISOString();
+      jobState.transitionApplication(appKey, "VERIFIED", {
+        verifiedAt,
+        verificationEvidence: postVerify.evidence
+      });
+      jobState.upsertOpportunity({
+        ...opportunity,
+        status: "APPLIED_VERIFIED",
+        appliedAt: verifiedAt
+      });
+      return {
+        status: "VERIFIED",
+        application: jobState.state.applications[appKey],
+        verification: postVerify
+      };
+    } else {
+      jobState.transitionApplication(appKey, "SUBMITTED", {
+        submittedAt: new Date().toISOString()
+      });
+      jobState.transitionApplication(appKey, "UNVERIFIED", {
+        reason: postVerify.evidence || "Submission could not be visibly verified"
+      });
+      return {
+        status: "UNVERIFIED",
+        application: jobState.state.applications[appKey],
+        verification: postVerify
+      };
     }
   }
 
@@ -246,7 +463,7 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   }
 
   // CASE 2 & 3: APPLICATION_READY or FORM_STARTED -> Reuse existing documents if present
-  let documents = existingApplication?.documents;
+  documents = existingApplication?.documents || documents;
   const candidateProfile = readCandidateProfile();
 
   if (!documents || !documents.coverLetterPath) {
@@ -305,9 +522,11 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   }
 
   // Navigate to live application form
-  jobState.transitionApplication(appKey, "FORM_STARTED", {
-    reason: "Navigating to live application form"
-  });
+  if (!existingApplication || existingApplication.status !== "FORM_STARTED") {
+    jobState.transitionApplication(appKey, "FORM_STARTED", {
+      reason: "Navigating to live application form"
+    });
+  }
 
   if (page) {
     await page.goto(opportunity.url, {

@@ -243,6 +243,21 @@ class AiDecisionEngine {
       };
     }
 
+    const isCareerAdvice = /\b(career\s+(paths?|advice|titles?)|job\s+titles?|what\s+should\s+i\s+study|entry\s+level\s+jobs?|wfh\s+jobs?)\b/i.test(lower);
+    if (isCareerAdvice) {
+      return {
+        qualified: false,
+        intent: "CAREER_ADVICE",
+        decision: "IGNORED",
+        is_genuine_buyer: false,
+        service_match: false,
+        representation: "IGNORE",
+        should_reply: false,
+        reason: "Career advice/job seeking questions are strictly ignored.",
+        generated_comment: null
+      };
+    }
+
     const isJobSeeker = /\b(open\s+to\s+work|looking\s+for\s+(a\s+)?job|seeking\s+(employment|opportunities|roles)|entry\s+level|fresher|internship|hire\s+me|my\s+resume|resume\s+attached)\b/i.test(lower);
     const isSpamOrMeme = /\b(crypto|airdrop|giveaway|forex|casinos?|slots?|telegram\s+group|whatsapp\s+group)\b/i.test(lower);
 
@@ -281,16 +296,39 @@ class AiDecisionEngine {
       };
     }
 
+    const isCompanyInquiry = /\b(what\s+does\s+codeair\s+do|about\s+codeair|tell\s+me\s+about\s+codeair|codeair\s+software\s+solutions)\b/i.test(lower);
+    if (isCompanyInquiry) {
+      return {
+        qualified: true,
+        intent: "COMPANY_INQUIRY",
+        lead_type: "COMPANY_INQUIRY",
+        requirement: "Direct inquiry about CodeAir capabilities and services",
+        target_entity: "COMPANY",
+        service_match: true,
+        matched_capability: "Custom Web Applications & Portals",
+        matched_services: ["Custom Web Applications & Portals", "Enterprise Software"],
+        matched_categories: ["Web Development", "Business Systems"],
+        representation: "COMPANY",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: direct company capability inquiry.",
+        generated_comment: `@${post?.username || "there"} CodeAir Software Solutions specializes in bespoke web applications, enterprise dashboards, and custom software. You can explore our work and case studies at https://www.codeair.tech!`
+      };
+    }
+
     // 2. Capabilities Detection
     const matchesAI = /\b(ai|agentic|agents?|llm|gpt|claude|gemini|rag|automation|workflow\s+automation|bot|chatbot)\b/i.test(lower);
-    const matchesMobile = /\b(flutter|react\s+native|ios|android|mobile\s+app|app\s+development)\b/i.test(lower);
+    const matchesMobile = /\b(flutter|react\s+native|ios|android|mobile\s+app|app\s+development|\bapps?\b)\b/i.test(lower);
     const matchesCTO = /\b(cto|co-founder|technical\s+lead|architect|architecture|systems?\s+design)\b/i.test(lower);
     const matchesMVP = /\b(mvp|saas|founder|startup|prototype|product\s+development)\b/i.test(lower);
-    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developer|portal|next\.?js|react|node|landing\s+page|ui\/ux|designer|application|crm|erp|dashboard|software)\b/i.test(lower);
+    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developers?|develop|portal|next\.?js|react|node|landing\s+page|ui\/ux|designer|application|crm|erp|dashboard|software)\b/i.test(lower);
     const hasServiceMatch = matchesAI || matchesMobile || matchesCTO || matchesMVP || matchesWeb;
 
     // 3. TIER 1: Genuine Commercial Inquiries / Client Buyer Signals (HOT)
-    const hasBuyerIntent = /\b(looking\s+for|need\s+(a|an|someone|to\s+hire|help)|hiring|seeking|searching\s+for|anyone\s+know|recommend\s+(a|an)?|want\s+to\s+build|trying\s+to\s+build|rebuilding|revamping|build\s+(a|an|me|our)|need\s+developers?|need\s+engineers?|need\s+designer|contractor|freelance\s+dev|cto|co-founder)\b/i.test(lower);
+    const hasBuyerIntent = /\b(looking\s+for|need\s+(a|an|someone|to\s+hire|help)|hiring|seeking|searching\s+for|anyone\s+know|can\s+someone|recommend\s+(a|an)?|want\s+to\s+build|trying\s+to\s+build|rebuilding|revamping|build\s+(a|an|me|our)|need\s+developers?|need\s+engineers?|need\s+designer|contractor|freelance\s+dev|cto|co-founder)\b/i.test(lower);
 
     if (hasBuyerIntent && hasServiceMatch) {
       let capability = "Custom Web Applications & Portals";
@@ -621,6 +659,22 @@ class AiDecisionEngine {
     // Check if human review escalation check is required (legal threats, lawsuits, extreme anger)
     const lower = incomingMessage.toLowerCase();
     const needsHumanReview = /\b(lawyer|sue|court|scam|fraud|police|nda|contract\s+dispute)\b/i.test(lower);
+
+    // Check for lead generation seller / pitch
+    const isLeadGenPitch = /\b(batch\s+of\s+leads|lead\s+generation\s+service|payment-based\s+deal|charge\s+a\s+flat\s+rate|decision-maker\s+leads|budget\s+per\s+lead)\b/i.test(lower);
+    if (isLeadGenPitch) {
+      const company = knowledge.getCompanyInfo();
+      return {
+        intent: "LEAD_GENERATION_DECLINED",
+        identity: "COMPANY",
+        service_match: false,
+        conversation_stage: "CLOSED",
+        sales_intensity: "LOW",
+        should_reply: true,
+        human_review_required: false,
+        response_message: this.sanitizeCommentForPlatform(`Thanks for reaching out! At ${company.name}, we specialize strictly in software engineering and do not purchase external lead generation services or lists. Wishing you all the best!`, platform)
+      };
+    }
 
     try {
       const prompt = this.buildConversationTurnPrompt(normalizedContext);

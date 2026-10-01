@@ -10,6 +10,7 @@ const stateStore = require("../storage/state-store");
 const aiDecisionEngine = require("../ai/ai-decision-engine");
 const duplicateGuard = require("../safety/duplicate-guard");
 const rateLimiter = require("../safety/rate-limiter");
+const { platformSafetyGuard } = require("../safety/platform-safety-guard");
 const threadsDms = require("../platforms/threads/threads-dms");
 const instagramDms = require("../platforms/instagram/instagram-dms");
 const logger = require("../logging/logger");
@@ -176,7 +177,31 @@ class DmMonitor {
       };
     }
 
-    // 8. Live Execution in Browser — enforce rate limit first
+    // 8. Central PlatformSafetyGuard check
+    const safetyEval = platformSafetyGuard.evaluateAction({
+      platform,
+      actionType: "DM",
+      workflow: "DM",
+      details: { sender: dmItem.sender, dmTurnId }
+    });
+
+    if (!safetyEval.allowed) {
+      logger.warn(`[DM MONITOR] DM sending blocked by PlatformSafetyGuard: ${safetyEval.reason}`);
+      stateStore.recordHandledDm(dmTurnId, {
+        username: dmItem.sender,
+        messageText: dmItem.lastMessage,
+        responseText: decision.response_message,
+        status: safetyEval.status
+      }, platform);
+      return {
+        success: false,
+        status: safetyEval.status,
+        reason: safetyEval.reason,
+        approvalRequired: safetyEval.approvalRequired
+      };
+    }
+
+    // 9. Live Execution in Browser — enforce rate limit first
     const rateCheck = rateLimiter.canPerform("DM_REPLY", platform);
     if (!rateCheck.allowed) {
       logger.warn(`[DM MONITOR] DM rate limit reached for @${dmItem.sender}: ${rateCheck.reason}`);

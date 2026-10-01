@@ -2,6 +2,8 @@
 const telemetry = require("../telemetry/action-telemetry");
 const logger = require("../logging/logger");
 
+const { platformSafetyGuard } = require("../safety/platform-safety-guard");
+
 const ACTION_STATES = Object.freeze({
   DISCOVERED: "DISCOVERED",
   DECIDING: "DECIDING",
@@ -11,7 +13,9 @@ const ACTION_STATES = Object.freeze({
   BLOCKED: "BLOCKED",
   FAILED: "FAILED",
   UNVERIFIED: "UNVERIFIED",
-  QUARANTINED: "QUARANTINED"
+  QUARANTINED: "QUARANTINED",
+  USER_ACTION_REQUIRED: "USER_ACTION_REQUIRED",
+  RATE_LIMITED: "RATE_LIMITED"
 });
 
 const ALLOWED_ACTIONS = new Set(["NAVIGATE", "CLICK", "TYPE", "PRESS", "SCROLL", "WAIT", "OPEN", "BACK", "CLOSE", "EXTRACT", "UPLOAD", "STOP"]);
@@ -21,6 +25,9 @@ class UniversalBrowserAgent {
     if (!page) throw new Error("UniversalBrowserAgent requires a Puppeteer page");
     this.page = page;
     this.platform = platform;
+    this.account = options.account || "default";
+    this.workflow = options.workflow || "SOCIAL";
+    this.safetyGuard = options.safetyGuard || platformSafetyGuard;
     this.maxInteractive = options.maxInteractive || 300;
     this.maxCards = options.maxCards || 20;
     this.lastCursor = { x: 0, y: 0 };
@@ -169,13 +176,7 @@ class UniversalBrowserAgent {
     if (type === "STOP") return { success: true, terminal: true };
     if (type === "WAIT") { await new Promise(resolve => setTimeout(resolve, Math.max(250, Math.min(60000, Number(action.value) || 1500)))); return { success: true }; }
     if (type === "BACK" || type === "CLOSE") { await this.page.goBack({ waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {}); return { success: true }; }
-    if (type === "NAVIGATE" || type === "OPEN") {
-      const url = String(action.url || action.value || "");
-      if (!url.startsWith("http://") && !url.startsWith("https://")) throw new Error("NAVIGATE requires HTTP(S) URL");
-      await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-      return { success: true, url: this.page.url() };
-    }
-    if (type === "PRESS") { await this.page.keyboard.press(String(action.key || action.value || "Enter")); await new Promise(resolve => setTimeout(resolve, 500)); return { success: true }; }
+    if (type === "EXTRACT") return { success: true, snapshot: await this.captureLiveSnapshot(action.label || "extract") };
     if (type === "SCROLL") {
       const amount = Number(action.value) || 600;
       await this.page.evaluate(delta => {
@@ -200,34 +201,114 @@ class UniversalBrowserAgent {
       await new Promise(resolve => setTimeout(resolve, 800));
       return { success: true, amount };
     }
-    if (type === "EXTRACT") return { success: true, snapshot: await this.captureLiveSnapshot(action.label || "extract") };
-    const target = await this.resolveTarget(action.target);
-    if (!target) throw new Error("Current semantic target is unavailable; re-observe before retrying");
-    const box = await target.boundingBox();
-    if (!box) throw new Error("Target is not visibly actionable");
-    if (type === "CLICK") {
-      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-      await target.evaluate(el => el.scrollIntoView({ block: "center", inline: "center" }));
-      await this.smoothPointerMove(point);
-      await this.page.mouse.click(point.x, point.y);
-      await new Promise(resolve => setTimeout(resolve, 600));
-      return { success: true };
+
+    // Consequential actions: NAVIGATE, OPEN, CLICK, TYPE, PRESS, UPLOAD
+    const isConsequential = ["NAVIGATE", "OPEN", "CLICK", "TYPE", "PRESS", "UPLOAD"].includes(type);
+    let semanticCategory = null;
+    let slotAcquired = false;
+
+    if (isConsequential && this.safetyGuard) {
+      try {
+        const curUrl = this.page.url ? this.page.url() : "";
+        const challenge = this.safetyGuard.detectSecurityChallenge({ url: curUrl });
+        if (challenge.detected) {
+          this.safetyGuard.recordSecurityEvent(this.platform, challenge.type, { url: curUrl, reason: challenge.evidence });
+          return {
+            success: false,
+            state: ACTION_STATES.QUARANTINED,
+            reason: `Security challenge active: ${challenge.type}`
+          };
+        }
+      } catch (_) {}
+
+      semanticCategory = this.safetyGuard.classifySemanticAction(action, {
+        workflow: this.workflow,
+        platform: this.platform
+      });
+
+      if (!semanticCategory) {
+        logger.warn(`[UNIVERSAL AGENT] Fail-closed: Cannot determine semantic category for action ${type}`);
+        return {
+          success: false,
+          state: ACTION_STATES.BLOCKED,
+          reason: `Fail closed: Unknown semantic action category for ${type}`
+        };
+      }
+
+      const safetyEval = this.safetyGuard.evaluateAction({
+        platform: this.platform,
+        account: this.account,
+        actionType: semanticCategory,
+        workflow: this.workflow,
+        details: { action: type, target: action.target }
+      });
+
+      if (!safetyEval.allowed) {
+        logger.warn(`[UNIVERSAL AGENT] Safety guard blocked ${type} (${semanticCategory}) on ${this.platform}: ${safetyEval.reason}`);
+        return {
+          success: false,
+          state: safetyEval.status || ACTION_STATES.BLOCKED,
+          reason: safetyEval.reason,
+          approvalRequired: safetyEval.approvalRequired
+        };
+      }
+
+      this.safetyGuard.acquireSlot(this.platform);
+      slotAcquired = true;
     }
-    if (type === "TYPE") {
-      await target.evaluate(el => el.scrollIntoView({ block: "center", inline: "center" }));
-      await target.click();
-      await new Promise(resolve => setTimeout(resolve, 200));
-      if (action.clear) { await this.page.keyboard.down("Control"); await this.page.keyboard.press("KeyA"); await this.page.keyboard.up("Control"); await this.page.keyboard.press("Backspace"); }
-      for (const char of String(action.value || "")) { await this.page.keyboard.sendCharacter(char); await new Promise(resolve => setTimeout(resolve, 35 + Math.floor(Math.random() * 50))); }
-      return { success: true };
+
+    try {
+      let result;
+      if (type === "NAVIGATE" || type === "OPEN") {
+        const url = String(action.url || action.value || "");
+        if (!url.startsWith("http://") && !url.startsWith("https://")) throw new Error("NAVIGATE requires HTTP(S) URL");
+        await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+        result = { success: true, url: this.page.url() };
+      } else if (type === "PRESS") {
+        await this.page.keyboard.press(String(action.key || action.value || "Enter"));
+        await new Promise(resolve => setTimeout(resolve, 500));
+        result = { success: true };
+      } else {
+        const target = await this.resolveTarget(action.target);
+        if (!target) throw new Error("Current semantic target is unavailable; re-observe before retrying");
+        const box = await target.boundingBox();
+        if (!box) throw new Error("Target is not visibly actionable");
+        if (type === "CLICK") {
+          const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+          await target.evaluate(el => el.scrollIntoView({ block: "center", inline: "center" }));
+          await this.smoothPointerMove(point);
+          await this.page.mouse.click(point.x, point.y);
+          await new Promise(resolve => setTimeout(resolve, 600));
+          result = { success: true };
+        } else if (type === "TYPE") {
+          await target.evaluate(el => el.scrollIntoView({ block: "center", inline: "center" }));
+          await target.click();
+          await new Promise(resolve => setTimeout(resolve, 200));
+          if (action.clear) { await this.page.keyboard.down("Control"); await this.page.keyboard.press("KeyA"); await this.page.keyboard.up("Control"); await this.page.keyboard.press("Backspace"); }
+          for (const char of String(action.value || "")) { await this.page.keyboard.sendCharacter(char); await new Promise(resolve => setTimeout(resolve, 35 + Math.floor(Math.random() * 50))); }
+          result = { success: true };
+        } else if (type === "UPLOAD") {
+          const tag = await target.evaluate(el => el.tagName.toLowerCase());
+          if (tag !== "input") throw new Error("UPLOAD requires an observed file input");
+          await target.uploadFile(String(action.value));
+          result = { success: true };
+        } else {
+          throw new Error("Unhandled action type: " + type);
+        }
+      }
+
+      if (semanticCategory && isConsequential && this.safetyGuard) {
+        this.safetyGuard.recordSuccessfulAction(this.platform, this.account, semanticCategory, {
+          correlationId,
+          action: type
+        });
+      }
+      return result;
+    } finally {
+      if (slotAcquired && this.safetyGuard) {
+        this.safetyGuard.releaseSlot(this.platform);
+      }
     }
-    if (type === "UPLOAD") {
-      const tag = await target.evaluate(el => el.tagName.toLowerCase());
-      if (tag !== "input") throw new Error("UPLOAD requires an observed file input");
-      await target.uploadFile(String(action.value));
-      return { success: true };
-    }
-    throw new Error("Unhandled action type: " + type);
   }
 
   async executePlan(plan, correlationId) { this.validatePlan(plan); return this.executeAction(plan.actions[0], correlationId); }

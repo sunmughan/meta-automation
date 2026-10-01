@@ -3,11 +3,16 @@
  * Uses DOM/ARIA/text discovery first, coordinates only as a last resort.
  */
 const logger = require("../logging/logger");
+const { platformSafetyGuard } = require("../safety/platform-safety-guard");
 
 class BrowserOperator {
-  constructor(page) {
+  constructor(page, options = {}) {
     if (!page) throw new Error("BrowserOperator requires a Puppeteer page");
     this.page = page;
+    this.platform = options.platform || "unknown";
+    this.account = options.account || "default";
+    this.workflow = options.workflow || "SOCIAL";
+    this.safetyGuard = options.safetyGuard || platformSafetyGuard;
   }
 
   async snapshot(label = "snapshot") {
@@ -40,6 +45,47 @@ class BrowserOperator {
     if (locator.text) descriptions.push(`text=${locator.text}`);
     if (locator.aria) descriptions.push(`aria=${locator.aria}`);
     if (locator.selector) descriptions.push(`selector=${locator.selector}`);
+
+    if (this.safetyGuard) {
+      const semanticCategory = this.safetyGuard.classifySemanticAction({
+        type: "CLICK",
+        target: locator
+      }, { platform: this.platform, workflow: this.workflow });
+
+      if (!semanticCategory) {
+        throw new Error(`[SAFETY GUARD] Fail-closed: Cannot determine semantic category for click action on ${this.platform}`);
+      }
+
+      const evalRes = this.safetyGuard.evaluateAction({
+        platform: this.platform,
+        account: this.account,
+        actionType: semanticCategory,
+        workflow: this.workflow,
+        details: { action: "CLICK", locator }
+      });
+
+      if (!evalRes.allowed) {
+        throw new Error(`[SAFETY GUARD] Action BLOCKED (${evalRes.status}): ${evalRes.reason}`);
+      }
+
+      this.safetyGuard.acquireSlot(this.platform);
+      try {
+        const handle = await this.findVisible(locator, timeout);
+        if (!handle) throw new Error(`Visible element not found: ${descriptions.join(" | ")}`);
+
+        await handle.evaluate(el => el.scrollIntoView({behavior:"instant", block:"center", inline:"center"}));
+        const box = await handle.boundingBox();
+        if (box) {
+          await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        } else {
+          await handle.click();
+        }
+        this.safetyGuard.recordSuccessfulAction(this.platform, this.account, semanticCategory, { action: "CLICK" });
+        return true;
+      } finally {
+        this.safetyGuard.releaseSlot(this.platform);
+      }
+    }
 
     const handle = await this.findVisible(locator, timeout);
     if (!handle) throw new Error(`Visible element not found: ${descriptions.join(" | ")}`);
@@ -88,6 +134,51 @@ class BrowserOperator {
   }
 
   async typeInto(locator, text, options = {}) {
+    if (this.safetyGuard) {
+      const semanticCategory = this.safetyGuard.classifySemanticAction({
+        type: "TYPE",
+        target: locator
+      }, { platform: this.platform, workflow: this.workflow });
+
+      if (!semanticCategory) {
+        throw new Error(`[SAFETY GUARD] Fail-closed: Cannot determine semantic category for type action on ${this.platform}`);
+      }
+
+      const evalRes = this.safetyGuard.evaluateAction({
+        platform: this.platform,
+        account: this.account,
+        actionType: semanticCategory,
+        workflow: this.workflow,
+        details: { action: "TYPE", locator }
+      });
+
+      if (!evalRes.allowed) {
+        throw new Error(`[SAFETY GUARD] Action BLOCKED (${evalRes.status}): ${evalRes.reason}`);
+      }
+
+      this.safetyGuard.acquireSlot(this.platform);
+      try {
+        const editor = await this.findVisible(locator, options.timeout || 10000);
+        if (!editor) throw new Error(`Editable element not found: ${JSON.stringify(locator)}`);
+        await editor.evaluate(el => el.scrollIntoView({behavior:"instant", block:"center"}));
+        await editor.click();
+        await this.page.keyboard.press("Control+A").catch(() => {});
+        if (options.clear !== false) {
+          await this.page.keyboard.press("Meta+A").catch(() => {});
+        }
+        const delayMin = options.delayMin || 18;
+        const delayMax = options.delayMax || 45;
+        for (const char of String(text)) {
+          await this.page.keyboard.sendCharacter(char);
+          await new Promise(r => setTimeout(r, Math.floor(Math.random() * (delayMax-delayMin+1)) + delayMin));
+        }
+        this.safetyGuard.recordSuccessfulAction(this.platform, this.account, semanticCategory, { action: "TYPE" });
+        return true;
+      } finally {
+        this.safetyGuard.releaseSlot(this.platform);
+      }
+    }
+
     const editor = await this.findVisible(locator, options.timeout || 10000);
     if (!editor) throw new Error(`Editable element not found: ${JSON.stringify(locator)}`);
     await editor.evaluate(el => el.scrollIntoView({behavior:"instant", block:"center"}));

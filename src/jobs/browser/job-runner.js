@@ -1,5 +1,6 @@
 const { buildActionPlan } = require("../ai/job-ai");
 const CONFIG = require("../../../config");
+const { platformSafetyGuard } = require("../../safety/platform-safety-guard");
 
 class JobAgentRunner {
   constructor({ aiRuntime, browserAgent }) {
@@ -53,8 +54,29 @@ class JobAgentRunner {
   }
   async run({ goal, platform, candidateProfile, opportunity = null, allowedOrigin, context = {}, targetId, authFlow = false }) {
     let lastReason = "";
+    if (this.browserAgent) {
+      this.browserAgent.platform = platform?.id || platform || this.browserAgent.platform || "unknown";
+      this.browserAgent.workflow = authFlow ? "LOGIN" : "APPLICATION";
+    }
+
     for (let iteration = 1; iteration <= CONFIG.JOB_MAX_PLAN_ITERATIONS; iteration++) {
       const snapshot = await this.browserAgent.captureLiveSnapshot(`agent-loop-${iteration}`);
+
+      const guard = this.browserAgent.safetyGuard || platformSafetyGuard;
+      const challenge = guard.detectSecurityChallenge(snapshot);
+      if (challenge.detected) {
+        guard.recordSecurityEvent(this.browserAgent.platform, challenge.type, {
+          url: snapshot.url,
+          reason: challenge.evidence
+        });
+        return {
+          status: "USER_ACTION_REQUIRED",
+          quarantined: true,
+          iterations: iteration,
+          snapshot,
+          reason: `Security challenge detected: ${challenge.type}`
+        };
+      }
       const plan = await buildActionPlan({
         goal,
         platform,

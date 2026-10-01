@@ -137,6 +137,106 @@ class PlatformSafetyGuard {
   }
 
   /**
+   * Classifies a browser action into an authoritative semantic action category.
+   * Fail-Closed: returns null if a consequential action cannot be safely determined.
+   */
+  classifySemanticAction(action = {}, context = {}) {
+    if (!action) return null;
+
+    // 1. Explicit semanticCategory if provided and valid
+    if (action.semanticCategory) {
+      const explicit = String(action.semanticCategory).toUpperCase().trim();
+      if (ACTION_CATEGORIES.includes(explicit)) return explicit;
+    }
+    if (action.actionType) {
+      const actType = String(action.actionType).toUpperCase().trim();
+      if (ACTION_CATEGORIES.includes(actType)) return actType;
+    }
+
+    // 2. Explicit businessAction mapped to category
+    if (action.businessAction) {
+      const b = String(action.businessAction).toUpperCase().trim();
+      if (b === "COMMENT" || b === "REPLY" || b === "LIKE") return "COMMENT";
+      if (b === "DM" || b === "MESSAGE") return "DM";
+      if (b === "POST" || b === "PUBLISH") return "POST";
+      if (b === "APPLICATION" || b === "APPLY") return "APPLICATION";
+      if (b === "SUBMIT") return "SUBMIT";
+      if (b === "UPLOAD") return "UPLOAD";
+      if (b === "LOGIN" || b === "AUTH") return "LOGIN";
+      if (b === "DISCOVERY" || b === "SEARCH") return "DISCOVERY";
+      if (ACTION_CATEGORIES.includes(b)) return b;
+    }
+
+    const type = String(action.type || "").toUpperCase().trim();
+    const workflow = String(context.workflow || action.workflow || "").toUpperCase().trim();
+
+    // 3. Non-consequential / read-only actions
+    if (["WAIT", "EXTRACT", "STOP", "BACK", "CLOSE"].includes(type)) {
+      return "READ";
+    }
+    if (type === "SCROLL") {
+      return "READ";
+    }
+    if (type === "NAVIGATE" || type === "OPEN") {
+      const url = String(action.value || action.url || "").toLowerCase();
+      if (url.includes("login") || url.includes("signin") || url.includes("oauth") || workflow === "LOGIN" || workflow === "AUTH") {
+        return "LOGIN";
+      }
+      return "NAVIGATION";
+    }
+    if (type === "UPLOAD") {
+      return "UPLOAD";
+    }
+
+    // 4. Consequential actions: CLICK, TYPE, PRESS
+    const target = action.target || {};
+    const targetText = String(target.text || target.name || target.aria || target.placeholder || action.label || "").toLowerCase();
+
+    // Sensitive security target check
+    if (targetText.includes("password") || targetText.includes("2fa") || targetText.includes("mfa") || targetText.includes("two-factor") || targetText.includes("security checkpoint")) {
+      return "ACCOUNT_SECURITY";
+    }
+
+    // High-intent target keywords
+    const isSubmitIntent = /submit|place bid|send proposal|apply now|confirm bid|confirm application|complete application/i.test(targetText);
+    const isPostIntent = /publish|share post|create post|share to/i.test(targetText);
+    const isCommentIntent = /post comment|send comment|submit reply|reply/i.test(targetText);
+    const isDmIntent = /send message|send dm|direct message/i.test(targetText);
+
+    if (isSubmitIntent) return "SUBMIT";
+    if (isPostIntent) return "POST";
+    if (isCommentIntent) return "COMMENT";
+    if (isDmIntent) return "DM";
+
+    // Workflow-based classification
+    if (workflow.includes("APPLICATION") || workflow.includes("JOB")) {
+      if (isSubmitIntent) return "SUBMIT";
+      return "APPLICATION";
+    }
+    if (workflow.includes("POST") || workflow.includes("PUBLISH")) {
+      return "POST";
+    }
+    if (workflow.includes("COMMENT") || workflow.includes("REPLY")) {
+      return "COMMENT";
+    }
+    if (workflow.includes("DM") || workflow.includes("MESSAGE")) {
+      return "DM";
+    }
+    if (workflow.includes("PROFILE")) {
+      return "PROFILE_EDIT";
+    }
+    if (workflow.includes("LOGIN") || workflow.includes("AUTH")) {
+      return "LOGIN";
+    }
+    if (workflow.includes("LEARNING") || workflow.includes("GROWTH") || workflow.includes("SKILL")) {
+      return "LEARNING";
+    }
+
+    // Consequential action without identifiable category -> FAIL CLOSED
+    return null;
+  }
+
+  /**
    * Evaluates if a consequential action can safely execute under current policy and state.
    * Fail-Closed design: anything unknown or unpermitted is blocked.
    */

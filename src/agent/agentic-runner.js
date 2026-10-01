@@ -18,6 +18,7 @@
 const CONFIG = require("../../config");
 const logger = require("../logging/logger");
 const { ACTION_STATES } = require("./browser-agent");
+const { platformSafetyGuard } = require("../safety/platform-safety-guard");
 
 class AgenticRunner {
   /**
@@ -62,6 +63,13 @@ class AgenticRunner {
     let lastFailure = null;
     let lastSnapshot = null;
 
+    if (platform && this.browserAgent) {
+      this.browserAgent.platform = (platform && platform.id) || platform;
+    }
+    if (context.workflow && this.browserAgent) {
+      this.browserAgent.workflow = context.workflow;
+    }
+
     logger.info(`[AGENTIC RUNNER] Starting goal: "${goal.slice(0, 120)}..." (runId: ${runId})`);
 
     for (let iteration = 1; iteration <= this.maxIterations; iteration++) {
@@ -70,6 +78,24 @@ class AgenticRunner {
       // ═══════════════════════════════════════════════════════
       const snapshot = await this.browserAgent.captureLiveSnapshot(`agentic-${iteration}`);
       lastSnapshot = snapshot;
+
+      const guard = this.browserAgent.safetyGuard || platformSafetyGuard;
+      const challenge = guard.detectSecurityChallenge(snapshot);
+      if (challenge.detected) {
+        const plat = this.browserAgent.platform || (platform && platform.id) || context.platform || "unknown";
+        guard.recordSecurityEvent(plat, challenge.type, {
+          url: snapshot.url,
+          reason: challenge.evidence
+        });
+        return {
+          status: "USER_ACTION_REQUIRED",
+          quarantined: true,
+          iterations: iteration,
+          snapshot,
+          reason: `Security challenge detected: ${challenge.type}`,
+          runId
+        };
+      }
 
       // ═══════════════════════════════════════════════════════
       // STEP 2: AI REASONING — send screen to AI for decision
@@ -211,6 +237,27 @@ class AgenticRunner {
           actions: plan.actions.map(a => a.type),
           result: "EXECUTION_ERROR",
           error: execErr.message
+        });
+        continue;
+      }
+
+      if (result && !result.success) {
+        lastFailure = result.reason || result.state || "Execution failed";
+        if (["BLOCKED", "USER_ACTION_REQUIRED", "RATE_LIMITED", "QUARANTINED"].includes(result.state)) {
+          return {
+            status: result.state,
+            iterations: iteration,
+            snapshot: lastSnapshot,
+            reason: result.reason || result.state,
+            approvalRequired: result.approvalRequired,
+            runId
+          };
+        }
+        previousActions.push({
+          iteration,
+          actions: plan.actions.map(a => a.type),
+          result: "EXECUTION_ERROR",
+          error: lastFailure
         });
         continue;
       }

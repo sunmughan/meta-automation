@@ -16,6 +16,7 @@ const path = require("path");
 const logger = require("../logging/logger");
 const telemetry = require("../telemetry/action-telemetry");
 const { ActionVerifier } = require("./action-verifier");
+const { platformSafetyGuard, ACTION_CATEGORIES } = require("../safety/platform-safety-guard");
 
 // Strict allowed action types
 const ALLOWED_ACTIONS = new Set([
@@ -47,10 +48,21 @@ const ACTION_STATES = {
 };
 
 class BrowserAgent {
-  constructor(page, platform = "threads") {
-    if (!page) throw new Error("BrowserAgent requires an active Puppeteer page instance");
-    this.page = page;
-    this.platform = platform;
+  constructor(pageOrOptions, platformArg = "threads", options = {}) {
+    if (pageOrOptions && typeof pageOrOptions === "object" && !pageOrOptions.goto && pageOrOptions.page) {
+      this.page = pageOrOptions.page;
+      this.platform = pageOrOptions.platform || "threads";
+      this.safetyGuard = pageOrOptions.safetyGuard || platformSafetyGuard;
+      this.account = pageOrOptions.account || "default";
+      this.workflow = pageOrOptions.workflow || "GENERAL";
+    } else {
+      if (!pageOrOptions) throw new Error("BrowserAgent requires an active Puppeteer page instance");
+      this.page = pageOrOptions;
+      this.platform = platformArg || "threads";
+      this.safetyGuard = options.safetyGuard || platformSafetyGuard;
+      this.account = options.account || "default";
+      this.workflow = options.workflow || "GENERAL";
+    }
   }
 
   /**
@@ -352,133 +364,255 @@ class BrowserAgent {
 
   /**
    * Executes a single atomic browser action safely with human typing jitter and center-scrolling.
+   * Consequential actions strictly enforce fail-closed PlatformSafetyGuard policy evaluation,
+   * live challenge detection, and concurrency accounting.
    */
   async executeAtomicAction(action, correlationId) {
-    const type = action.type.toUpperCase();
-    const target = action.target || {};
+    const type = String(action?.type || "").toUpperCase();
+    const target = action?.target || {};
     const started = Date.now();
 
-    telemetry.record({
-      correlationId,
+    // 1. Identify consequential vs non-consequential
+    const isConsequential = ["NAVIGATE", "CLICK", "TYPE", "PRESS", "UPLOAD"].includes(type);
+
+    // 2. Classify semantic category through canonical safety guard
+    const workflow = action.workflow || this.workflow || "GENERAL";
+    const semanticCategory = this.safetyGuard.classifySemanticAction(action, {
+      workflow,
       platform: this.platform,
-      action: type,
-      state: ACTION_STATES.ATTEMPTED,
-      pageUrl: this.page.url(),
-      targetDescription: JSON.stringify(target)
+      account: this.account
     });
 
-    switch (type) {
-      case "NAVIGATE": {
-        const url = action.value || action.url;
-        if (!url || !url.startsWith("http")) throw new Error(`NAVIGATE requires absolute HTTP URL: ${url}`);
-        logger.info(`[BROWSER AGENT] Navigating to ${url}...`);
-        await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
-        await new Promise(r => setTimeout(r, 2500));
-        return { success: true, url: this.page.url() };
-      }
+    // 3. Fail closed if consequential action cannot be classified into a valid category
+    if (isConsequential && (!semanticCategory || !ACTION_CATEGORIES.includes(semanticCategory))) {
+      logger.warn(`[BROWSER AGENT] Consequential action ${type} failed closed: unknown semantic category`);
+      telemetry.record({
+        correlationId,
+        platform: this.platform,
+        action: type,
+        state: ACTION_STATES.BLOCKED,
+        failureReason: `Unknown semantic category for consequential action: ${type}`
+      });
+      return {
+        success: false,
+        state: ACTION_STATES.BLOCKED,
+        reason: `Unknown semantic category for consequential action: ${type}`
+      };
+    }
 
-      case "CLICK": {
-        const element = await this.resolveSemanticElement(target, target.timeout || 10000);
-        if (!element) throw new Error(`Could not resolve element for CLICK: ${JSON.stringify(target)}`);
-
-        await element.evaluate(el => el.scrollIntoView({ behavior: "instant", block: "center", inline: "center" }));
-        await new Promise(r => setTimeout(r, 200));
-
-        const box = await element.boundingBox();
-        if (box) {
-          // Randomized human offset within the button bounding box
-          const offsetX = box.x + Math.max(5, Math.min(box.width - 5, box.width / 2 + (Math.random() * 10 - 5)));
-          const offsetY = box.y + Math.max(5, Math.min(box.height - 5, box.height / 2 + (Math.random() * 6 - 3)));
-          await this.page.mouse.click(offsetX, offsetY);
-        } else {
-          await element.click();
-        }
-        await new Promise(r => setTimeout(r, 600));
-        return { success: true };
-      }
-
-      case "TYPE": {
-        const editor = await this.resolveSemanticElement(target, target.timeout || 10000);
-        if (!editor) throw new Error(`Could not resolve editable element for TYPE: ${JSON.stringify(target)}`);
-
-        await editor.evaluate(el => el.scrollIntoView({ behavior: "instant", block: "center" }));
-        await editor.click();
-        await new Promise(r => setTimeout(r, 300));
-
-        if (action.clear) {
-          await this.page.keyboard.down("Control");
-          await this.page.keyboard.press("KeyA");
-          await this.page.keyboard.up("Control");
-          await this.page.keyboard.press("Backspace");
-        }
-
-        const text = String(action.value || "");
-        logger.info(`[BROWSER AGENT] Visibly typing ${text.length} chars...`);
-        for (const char of text) {
-          await this.page.keyboard.sendCharacter(char);
-          const jitter = Math.floor(Math.random() * 35) + 25; // 25ms - 60ms human jitter
-          await new Promise(r => setTimeout(r, jitter));
-        }
-        await new Promise(r => setTimeout(r, 500));
-        return { success: true };
-      }
-
-      case "PRESS": {
-        const key = action.key || action.value || "Enter";
-        await this.page.keyboard.press(key);
-        await new Promise(r => setTimeout(r, 1000));
-        return { success: true, key };
-      }
-
-      case "SCROLL": {
-        const distance = Number(action.value) || 500;
-        await this.page.evaluate(y => {
-          const isVisible = el => {
-            if (!el) return false;
-            const r = el.getBoundingClientRect();
-            const s = getComputedStyle(el);
-            return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none";
+    // 4. Live security challenge check on page before consequential interaction
+    if (this.page && isConsequential) {
+      try {
+        const pageText = await this.page.evaluate(() => (document.body ? document.body.innerText : "")).catch(() => "");
+        const pageTitle = await this.page.title().catch(() => "");
+        const pageUrl = (typeof this.page.url === "function") ? this.page.url() : "";
+        const challenge = this.safetyGuard.detectSecurityChallenge({ bodyText: pageText, title: pageTitle, url: pageUrl });
+        if (challenge && challenge.detected) {
+          const secEvent = this.safetyGuard.recordSecurityEvent(this.platform, challenge.type, {
+            url: pageUrl,
+            account: this.account,
+            reason: challenge.evidence
+          });
+          telemetry.record({
+            correlationId,
+            platform: this.platform,
+            action: type,
+            state: secEvent.status,
+            failureReason: secEvent.reason,
+            evidence: challenge
+          });
+          return {
+            success: false,
+            state: secEvent.status,
+            reason: secEvent.reason,
+            securityChallenge: challenge
           };
-          const candidates = Array.from(document.querySelectorAll("*"))
-            .filter(isVisible)
-            .map(el => ({ el, area: el.clientWidth * el.clientHeight, scrollable: el.scrollHeight > el.clientHeight + 40 }))
-            .filter(x => x.scrollable)
-            .sort((a, b) => b.area - a.area);
-          const container = candidates[0]?.el;
-          if (container) container.scrollTop += y;
-          else window.scrollBy({ top: y, behavior: "smooth" });
-        }, distance);
-        await new Promise(r => setTimeout(r, 1200));
-        return { success: true, distance };
+        }
+      } catch (_) {}
+    }
+
+    // 5. Evaluate action under platform safety policy
+    if (semanticCategory) {
+      const evaluation = this.safetyGuard.evaluateAction({
+        platform: this.platform,
+        account: this.account,
+        actionType: semanticCategory,
+        workflow,
+        details: { target, correlationId }
+      });
+
+      if (!evaluation.allowed) {
+        logger.warn(`[BROWSER AGENT] Action ${type} (${semanticCategory}) blocked by safety guard on ${this.platform}: ${evaluation.reason}`);
+        telemetry.record({
+          correlationId,
+          platform: this.platform,
+          action: type,
+          state: evaluation.status,
+          failureReason: evaluation.reason
+        });
+        return {
+          success: false,
+          state: evaluation.status,
+          reason: evaluation.reason,
+          approvalRequired: evaluation.approvalRequired
+        };
+      }
+    }
+
+    // 6. Action accounting with try/finally slot release
+    let slotAcquired = false;
+    if (semanticCategory && isConsequential) {
+      this.safetyGuard.acquireSlot(this.platform);
+      slotAcquired = true;
+    }
+
+    try {
+      telemetry.record({
+        correlationId,
+        platform: this.platform,
+        action: type,
+        state: ACTION_STATES.ATTEMPTED,
+        pageUrl: (typeof this.page.url === "function") ? this.page.url() : "",
+        targetDescription: JSON.stringify(target)
+      });
+
+      let execResult;
+      switch (type) {
+        case "NAVIGATE": {
+          const url = action.value || action.url;
+          if (!url || !url.startsWith("http")) throw new Error(`NAVIGATE requires absolute HTTP URL: ${url}`);
+          logger.info(`[BROWSER AGENT] Navigating to ${url}...`);
+          await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+          await new Promise(r => setTimeout(r, 2500));
+          execResult = { success: true, url: this.page.url() };
+          break;
+        }
+
+        case "CLICK": {
+          const element = await this.resolveSemanticElement(target, target.timeout || 10000);
+          if (!element) throw new Error(`Could not resolve element for CLICK: ${JSON.stringify(target)}`);
+
+          await element.evaluate(el => el.scrollIntoView({ behavior: "instant", block: "center", inline: "center" }));
+          await new Promise(r => setTimeout(r, 200));
+
+          const box = await element.boundingBox();
+          if (box) {
+            // Randomized human offset within the button bounding box
+            const offsetX = box.x + Math.max(5, Math.min(box.width - 5, box.width / 2 + (Math.random() * 10 - 5)));
+            const offsetY = box.y + Math.max(5, Math.min(box.height - 5, box.height / 2 + (Math.random() * 6 - 3)));
+            await this.page.mouse.click(offsetX, offsetY);
+          } else {
+            await element.click();
+          }
+          await new Promise(r => setTimeout(r, 600));
+          execResult = { success: true };
+          break;
+        }
+
+        case "TYPE": {
+          const editor = await this.resolveSemanticElement(target, target.timeout || 10000);
+          if (!editor) throw new Error(`Could not resolve editable element for TYPE: ${JSON.stringify(target)}`);
+
+          await editor.evaluate(el => el.scrollIntoView({ behavior: "instant", block: "center" }));
+          await editor.click();
+          await new Promise(r => setTimeout(r, 300));
+
+          if (action.clear) {
+            await this.page.keyboard.down("Control");
+            await this.page.keyboard.press("KeyA");
+            await this.page.keyboard.up("Control");
+            await this.page.keyboard.press("Backspace");
+          }
+
+          const text = String(action.value || "");
+          logger.info(`[BROWSER AGENT] Visibly typing ${text.length} chars...`);
+          for (const char of text) {
+            await this.page.keyboard.sendCharacter(char);
+            const jitter = Math.floor(Math.random() * 35) + 25; // 25ms - 60ms human jitter
+            await new Promise(r => setTimeout(r, jitter));
+          }
+          await new Promise(r => setTimeout(r, 500));
+          execResult = { success: true };
+          break;
+        }
+
+        case "PRESS": {
+          const key = action.key || action.value || "Enter";
+          await this.page.keyboard.press(key);
+          await new Promise(r => setTimeout(r, 1000));
+          execResult = { success: true, key };
+          break;
+        }
+
+        case "SCROLL": {
+          const distance = Number(action.value) || 500;
+          await this.page.evaluate(y => {
+            const isVisible = el => {
+              if (!el) return false;
+              const r = el.getBoundingClientRect();
+              const s = getComputedStyle(el);
+              return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none";
+            };
+            const candidates = Array.from(document.querySelectorAll("*"))
+              .filter(isVisible)
+              .map(el => ({ el, area: el.clientWidth * el.clientHeight, scrollable: el.scrollHeight > el.clientHeight + 40 }))
+              .filter(x => x.scrollable)
+              .sort((a, b) => b.area - a.area);
+            const container = candidates[0]?.el;
+            if (container) container.scrollTop += y;
+            else window.scrollBy({ top: y, behavior: "smooth" });
+          }, distance);
+          await new Promise(r => setTimeout(r, 1200));
+          execResult = { success: true, distance };
+          break;
+        }
+
+        case "WAIT": {
+          const waitMs = Number(action.value) || 2000;
+          await new Promise(r => setTimeout(r, waitMs));
+          execResult = { success: true, waitMs };
+          break;
+        }
+
+        case "EXTRACT": {
+          const snapshot = await this.captureLiveSnapshot(action.label || "extract");
+          execResult = { success: true, snapshot };
+          break;
+        }
+
+        case "UPLOAD": {
+          const filePath = String(action.value || "").trim();
+          if (!filePath) throw new Error("UPLOAD requires a local file path in action.value");
+          if (!fs.existsSync(filePath)) throw new Error(`Upload file does not exist: ${filePath}`);
+          const input = await this.resolveSemanticElement(target, target.timeout || 10000);
+          if (!input) throw new Error(`Could not resolve upload input: ${JSON.stringify(target)}`);
+          await input.uploadFile(path.resolve(filePath));
+          await new Promise(r => setTimeout(r, 700));
+          execResult = { success: true, uploadedPath: path.resolve(filePath) };
+          break;
+        }
+
+        case "STOP":
+          execResult = { success: true, stopped: true };
+          break;
+
+        default:
+          throw new Error(`Unimplemented action type: ${type}`);
       }
 
-      case "WAIT": {
-        const waitMs = Number(action.value) || 2000;
-        await new Promise(r => setTimeout(r, waitMs));
-        return { success: true, waitMs };
+      // Record successful action accounting exactly once
+      if (semanticCategory && isConsequential) {
+        this.safetyGuard.recordSuccessfulAction(this.platform, this.account, semanticCategory, {
+          correlationId,
+          action: type
+        });
       }
 
-      case "EXTRACT": {
-        const snapshot = await this.captureLiveSnapshot(action.label || "extract");
-        return { success: true, snapshot };
+      return execResult;
+    } finally {
+      if (slotAcquired) {
+        this.safetyGuard.releaseSlot(this.platform);
       }
-
-      case "UPLOAD": {
-        const filePath = String(action.value || "").trim();
-        if (!filePath) throw new Error("UPLOAD requires a local file path in action.value");
-        if (!fs.existsSync(filePath)) throw new Error(`Upload file does not exist: ${filePath}`);
-        const input = await this.resolveSemanticElement(target, target.timeout || 10000);
-        if (!input) throw new Error(`Could not resolve upload input: ${JSON.stringify(target)}`);
-        await input.uploadFile(path.resolve(filePath));
-        await new Promise(r => setTimeout(r, 700));
-        return { success: true, uploadedPath: path.resolve(filePath) };
-      }
-
-      case "STOP":
-        return { success: true, stopped: true };
-
-      default:
-        throw new Error(`Unimplemented action type: ${type}`);
     }
   }
 
@@ -509,9 +643,21 @@ class BrowserAgent {
     try {
       for (let i = 0; i < plan.actions.length; i++) {
         const act = plan.actions[i];
+        if (!act.workflow) act.workflow = plan.workflow || this.workflow;
         logger.info(`[BROWSER AGENT] Step ${i + 1}/${plan.actions.length}: ${act.type}`);
         const res = await this.executeAtomicAction(act, correlationId);
         results.push(res);
+        if (!res.success) {
+          logger.warn(`[BROWSER AGENT] Action step ${i + 1} did not succeed: ${res.reason || res.state}`);
+          return {
+            success: false,
+            state: res.state || ACTION_STATES.FAILED,
+            reason: res.reason,
+            approvalRequired: res.approvalRequired,
+            correlationId,
+            results
+          };
+        }
       }
 
       telemetry.record({

@@ -16,6 +16,7 @@ const CONFIG = require("../../config");
 const AgenticRunner = require("./agentic-runner");
 const rateLimiter = require("../safety/rate-limiter");
 const duplicateGuard = require("../safety/duplicate-guard");
+const { platformSafetyGuard } = require("../safety/platform-safety-guard");
 const stateStore = require("../storage/state-store");
 const logger = require("../logging/logger");
 
@@ -53,6 +54,24 @@ class AgenticSocialOps {
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
     const isApprovalMode = options.approvalMode !== undefined ? options.approvalMode : CONFIG.APPROVAL_MODE;
     const isPostingEnabled = CONFIG.POSTING_ENABLED;
+
+    // Central platform safety policy check
+    const safetyEval = platformSafetyGuard.evaluateAction({
+      platform: this.platform,
+      actionType: "COMMENT",
+      workflow: "COMMENT",
+      details: { postId: post.postId, target: post.username }
+    });
+
+    if (!safetyEval.allowed) {
+      logger.warn(`[AGENTIC SOCIAL] Safety guard blocked comment on ${this.platform}: ${safetyEval.reason}`);
+      return {
+        success: false,
+        status: safetyEval.status,
+        reason: safetyEval.reason,
+        approvalRequired: safetyEval.approvalRequired
+      };
+    }
 
     // Safety checks
     const dupCheck = duplicateGuard.canExecute({
@@ -283,6 +302,24 @@ Output data format: { "query": "the search query used", "posts": [...] }`,
   async publishPost(content, options = {}) {
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
 
+    // Central platform safety policy check
+    const safetyEval = platformSafetyGuard.evaluateAction({
+      platform: this.platform,
+      actionType: "POST",
+      workflow: "POST",
+      details: { hasMedia: !!options.mediaPath }
+    });
+
+    if (!safetyEval.allowed) {
+      logger.warn(`[AGENTIC SOCIAL] Safety guard blocked post on ${this.platform}: ${safetyEval.reason}`);
+      return {
+        success: false,
+        status: safetyEval.status,
+        reason: safetyEval.reason,
+        approvalRequired: safetyEval.approvalRequired
+      };
+    }
+
     if (isDryRun || !CONFIG.POSTING_ENABLED) {
       logger.audit("POST_PUBLISH_SIMULATED", `${this.platform}:publish`, {
         platform: this.platform,
@@ -333,6 +370,24 @@ Verify the post appears on the timeline/feed as a published post.`,
    */
   async sendDirectMessage(recipient, message, options = {}) {
     const isDryRun = options.dryRun !== undefined ? options.dryRun : CONFIG.DRY_RUN;
+
+    // Central platform safety policy check
+    const safetyEval = platformSafetyGuard.evaluateAction({
+      platform: this.platform,
+      actionType: "DM",
+      workflow: "DM",
+      details: { recipient }
+    });
+
+    if (!safetyEval.allowed) {
+      logger.warn(`[AGENTIC SOCIAL] Safety guard blocked DM on ${this.platform}: ${safetyEval.reason}`);
+      return {
+        success: false,
+        status: safetyEval.status,
+        reason: safetyEval.reason,
+        approvalRequired: safetyEval.approvalRequired
+      };
+    }
 
     // Rate limiting
     const rateCheck = rateLimiter.canPerform("DM_REPLY", this.platform);
@@ -425,6 +480,24 @@ Output: { "notifications": [{ "type": "", "sender": "", "preview": "", "needsRes
    * @param {string} commentary — Commentary to add
    */
   async quotePost(originalPost, commentary) {
+    // Central platform safety policy check
+    const safetyEval = platformSafetyGuard.evaluateAction({
+      platform: this.platform,
+      actionType: "POST",
+      workflow: "POST",
+      details: { originalPostAuthor: originalPost.username }
+    });
+
+    if (!safetyEval.allowed) {
+      logger.warn(`[AGENTIC SOCIAL] Safety guard blocked quote-post on ${this.platform}: ${safetyEval.reason}`);
+      return {
+        success: false,
+        status: safetyEval.status,
+        reason: safetyEval.reason,
+        approvalRequired: safetyEval.approvalRequired
+      };
+    }
+
     if (CONFIG.DRY_RUN || !CONFIG.POSTING_ENABLED) {
       logger.audit("QUOTE_POST_SIMULATED", `${this.platform}:quote`, {
         originalAuthor: originalPost.username,
