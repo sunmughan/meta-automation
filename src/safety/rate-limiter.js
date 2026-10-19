@@ -6,16 +6,48 @@
 
 const CONFIG = require("../../config");
 const stateStore = require("../storage/state-store");
+const antiBan = require("./anti-ban");
+
+/**
+ * Maps legacy rate-limiter action types to anti-ban action types.
+ */
+function toAntiBanAction(actionType) {
+  const t = String(actionType || "").toUpperCase();
+  if (t.includes("COMMENT")) return "comment";
+  if (t.includes("REPLY")) return "reply";
+  if (t.includes("DM")) return "dm";
+  if (t.includes("LIKE")) return "like";
+  if (t.includes("FOLLOW")) return "follow";
+  if (t.includes("CONNECT")) return "connect";
+  if (t.includes("PUBLISH") || t.includes("POST")) return "publish";
+  return "comment";
+}
 
 class RateLimiter {
   /**
    * Checks if an action is within allowed rate limits.
    *
+   * UPGRADED: Now delegates to the anti-ban module first for comprehensive
+   * cross-platform protection (daily limits, human delays, activity windows,
+   * warm-up mode, cooldown escalation). Falls back to legacy hourly checks.
+   *
    * @param {string} actionType - "NEW_POST_COMMENT" | "REPLY" | "DM_REPLY"
-   * @param {string} [platform] - "threads" | "instagram"
-   * @returns {{ allowed: boolean, reason?: string }}
+   * @param {string} [platform] - "threads" | "instagram" | "facebook" | "linkedin"
+   * @returns {{ allowed: boolean, reason?: string, delayMs?: number }}
    */
   canPerform(actionType, platform = "threads") {
+    // Anti-ban is the primary gate: comprehensive protection for all platforms.
+    try {
+      const banCheck = antiBan.check(toAntiBanAction(actionType), platform);
+      if (!banCheck.allowed) {
+        return { allowed: false, reason: `[AntiBan] ${banCheck.reason}`, delayMs: banCheck.delayMs };
+      }
+      // Anti-ban passed; attach the human-like delay for the caller to honor.
+      this._lastDelayMs = banCheck.delayMs;
+    } catch (_) {
+      // Anti-ban failed; continue with legacy checks (fail-open for safety module).
+    }
+
     const normalizedType = (actionType === "COMMENT" || actionType === "NEW_POST_COMMENT")
       ? "NEW_POST_COMMENT"
       : actionType;

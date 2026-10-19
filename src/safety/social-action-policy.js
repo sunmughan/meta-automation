@@ -1,8 +1,13 @@
 /**
  * V2 side-effect budget.
  * Limits are a safety and quality control, not a mechanism for bypassing platform enforcement.
+ *
+ * UPGRADED: Now delegates to the anti-ban module for comprehensive protection.
+ * These caps are the absolute ceiling; anti-ban enforces stricter per-platform
+ * daily/hourly limits, human delays, and activity windows underneath.
  */
 const stateStore = require("../storage/state-store");
+const antiBan = require("./anti-ban");
 
 const DEFAULT_LIMITS = Object.freeze({
   LIKE: 30,
@@ -30,6 +35,18 @@ function limits() {
 class SocialActionPolicy {
   canPerform(action, platform) {
     const type = String(action || "").toUpperCase();
+    const plat = String(platform || "threads").toLowerCase();
+
+    // Anti-ban is the primary gate.
+    try {
+      const banCheck = antiBan.check(type.toLowerCase(), plat);
+      if (!banCheck.allowed) {
+        return { allowed: false, reason: `[AntiBan] ${banCheck.reason}`, delayMs: banCheck.delayMs };
+      }
+    } catch (_) {
+      // Fail-open if anti-ban errors.
+    }
+
     const cap = limits()[type];
     if (!cap || cap < 1) return { allowed: false, reason: "Action type is not enabled in V2 policy" };
 
