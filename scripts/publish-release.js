@@ -1,10 +1,134 @@
 /**
  * scripts/publish-release.js
- * Universal release publisher for GitHub Releases using authenticated browser CDP session.
+ * Universal release publisher for GitHub Releases.
+ * Uses GitHub REST API with GITHUB_TOKEN if available, otherwise falls back to browser CDP session.
  */
 
 const path = require("path");
 const fs = require("fs");
+
+async function publishViaGitHubApi(tag, releaseNotes, version) {
+  let token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    const envPath = path.resolve(__dirname, "../.env");
+    if (fs.existsSync(envPath)) {
+      const match = fs.readFileSync(envPath, "utf8").match(/GITHUB_TOKEN=([^\r\n]+)/);
+      if (match) token = match[1].trim();
+    }
+  }
+
+  if (!token) return false;
+
+  console.log(`==> Publishing via GitHub REST API with GITHUB_TOKEN...`);
+  const repo = "sunmughan/meta-automation";
+  const title = `${tag} - Comprehensive Cross-Platform Anti-Ban Fortification & Multi-Layer Stealth`;
+
+  // 1. Check if release already exists
+  const checkRes = await fetch(`https://api.github.com/repos/${repo}/releases/tags/${tag}`, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json",
+      "User-Agent": "meta-automation-releaser"
+    }
+  });
+
+  let releaseData = null;
+  if (checkRes.ok) {
+    releaseData = await checkRes.json();
+    console.log(`Release ${tag} already exists (ID: ${releaseData.id}), updating release notes...`);
+    const updateRes = await fetch(`https://api.github.com/repos/${repo}/releases/${releaseData.id}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "meta-automation-releaser"
+      },
+      body: JSON.stringify({
+        name: title,
+        body: releaseNotes
+      })
+    });
+    if (updateRes.ok) {
+      releaseData = await updateRes.json();
+    }
+  } else {
+    console.log(`Creating new release for ${tag}...`);
+    const createRes = await fetch(`https://api.github.com/repos/${repo}/releases`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "meta-automation-releaser"
+      },
+      body: JSON.stringify({
+        tag_name: tag,
+        target_commitish: "agentic-social-v2",
+        name: title,
+        body: releaseNotes,
+        draft: false,
+        prerelease: false
+      })
+    });
+
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      throw new Error(`GitHub API create release failed: ${createRes.status} ${errText}`);
+    }
+    releaseData = await createRes.json();
+    console.log(`✅ Release created successfully with ID: ${releaseData.id}`);
+  }
+
+  // 2. Upload assets from release/
+  const releaseDir = path.resolve(__dirname, "../release");
+  if (fs.existsSync(releaseDir)) {
+    const assetFiles = fs.readdirSync(releaseDir).map(f => path.join(releaseDir, f)).filter(f => fs.statSync(f).isFile() && !f.endsWith(".DS_Store"));
+    const existingAssets = releaseData.assets || [];
+
+    for (const filePath of assetFiles) {
+      const fileName = path.basename(filePath);
+      console.log(`Uploading asset: ${fileName}...`);
+
+      const existing = existingAssets.find(a => a.name === fileName);
+      if (existing) {
+        console.log(`Deleting existing asset ${fileName} (${existing.id})...`);
+        await fetch(`https://api.github.com/repos/${repo}/releases/assets/${existing.id}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "meta-automation-releaser"
+          }
+        });
+      }
+
+      const fileBuffer = fs.readFileSync(filePath);
+      const uploadUrl = `https://uploads.github.com/repos/${repo}/releases/${releaseData.id}/assets?name=${encodeURIComponent(fileName)}`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github+json",
+          "Content-Type": fileName.endsWith(".txt") ? "text/plain" : (fileName.endsWith(".zip") ? "application/zip" : "application/gzip"),
+          "User-Agent": "meta-automation-releaser"
+        },
+        body: fileBuffer
+      });
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        console.warn(`Asset upload warning for ${fileName}: ${uploadRes.status} ${errText}`);
+      } else {
+        console.log(`✅ Uploaded: ${fileName}`);
+      }
+    }
+  }
+
+  console.log(`\n🎉 Release ${tag} successfully published and assets uploaded via GitHub API!`);
+  console.log(`Release URL: ${releaseData.html_url}`);
+  return true;
+}
 
 (async () => {
   try {
@@ -13,6 +137,47 @@ const fs = require("fs");
     const tag = `v${version}`;
 
     console.log(`==> Publishing release ${tag} for package ${pkg.name}...`);
+
+    const checksumsPath = path.resolve(__dirname, "../release/SHA256SUMS.txt");
+    const checksumsContent = fs.existsSync(checksumsPath) ? fs.readFileSync(checksumsPath, "utf8") : "";
+
+    const releaseNotes = `## What's New in ${tag}
+
+### 🛡️ Multi-Layer Anti-Ban & Cross-Platform Stealth Engine
+- **CDP Anti-Detection Launch Flags**: Automatic injection of \`--disable-blink-features=AutomationControlled\`, \`--password-store=basic\`, and \`--enable-automation=false\` to eliminate automation artifacts at the browser engine level.
+- **Dynamic CDP Stealth Injections**: Injected on every new document to mask \`navigator.webdriver\`, emulate \`window.chrome.runtime\`/\`window.chrome.app\`, and normalize permissions queries across Threads, Instagram, Facebook, and LinkedIn tabs.
+- **Closed-Loop Warning & Action-Block Escalation**: Active real-time DOM detection for action blocks, temporary restrictions, captchas, and rate-limit dialogs. Immediately halts actions and escalates cooldown timers (30m / 120m / 24h emergency backoff) via \`AntiBan\`.
+
+### 🖱️ Humanized Interaction Mechanics
+- **Cubic Bezier Mouse Movement**: Replaced instant coordinate jumps with natural human mouse trajectories (\`humanMouseMove\` and \`humanClick\`) featuring randomized control points and velocity easing.
+- **Micro-Jitter Coordinates**: Element clicks land within a natural randomized bounding area rather than fixed mathematical centers.
+- **Dynamic Typing Cadence**: Keystroke jitter (22–55ms) with natural cognitive pauses between words (40–120ms) and sentence boundaries (70–210ms).
+
+### 💼 Job Engine (Freelancer) Full Anti-Ban Protection
+- **Integrated Marketplace Limits**: Extended \`PLATFORM_LIMITS\` and \`MIN_ACTION_GAP_SECONDS\` to Freelancer and Upwork proposals (\`bid\` and \`apply\` actions).
+- **Enforced Safety Gates**: Pre-application rate limit checks, human reading delays, and verified submission tracking before recording success.
+
+### 📸 Instagram Guarded Live Interaction Pipeline
+- **CDP Execution Engine**: Upgraded from mock placeholder to active live posting pipeline with duplicate prevention, checkpoint detection, and DOM verification.
+
+### 🧪 Resilient Browser Auto-Detection & Semantic Fallback
+- **Auto-Browser Resolution**: Gracefully resolves the primary browser candidate profile without crashing in headless container environments.
+- **Grounded Semantic AI Matching**: Refined capability matching to accurately qualify natural language buyer inquiries and career advice posts.
+
+---
+
+### 📦 Checksums
+\`\`\`
+${checksumsContent}
+\`\`\``;
+
+    // Try API publication first if token available
+    const apiSuccess = await publishViaGitHubApi(tag, releaseNotes, version);
+    if (apiSuccess) {
+      process.exit(0);
+    }
+
+    console.log("==> No GITHUB_TOKEN found; falling back to browser CDP session...");
 
     const puppeteer = await import("puppeteer-core");
     const browser = await puppeteer.connect({ browserURL: "http://127.0.0.1:9222" });
@@ -60,51 +225,10 @@ const fs = require("fs");
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
       }
-    }, `${tag} - Agentic Browser Controller, 2026 Live-DOM Adapters & Omnichannel AI Growth Engine`);
+    }, `${tag} - Comprehensive Cross-Platform Anti-Ban Fortification & Multi-Layer Stealth`);
 
     const bodyTextarea = await ghPage.$("#release_body") || await ghPage.$("textarea[name=\"release[body]\"]");
     if (bodyTextarea) {
-      const releaseNotes = `## What's New in ${tag}
-
-### 🎮 Agentic Browser Controller Architecture
-- **Live DOM as Ground Truth**: Operates directly with the live browser DOM over Chrome DevTools Protocol (\`CDP\` :9222). Bypasses brittle third-party APIs, sandbox limitations, 2FA hurdles, and rate limit bans.
-- **9-Level Semantic Fallback Locator**: Completely eliminates brittle single-selector dependencies across: (1) ARIA role + accessible name, (2) visible text, (3) \`aria-label\`, (4) \`title\`, (5) \`placeholder\`, (6) semantic DOM attributes, (7) candidate multi-selectors, (8) contextual parent scoping, and (9) bounding box coordinates.
-- **Truthful Action State Machine**: Strict lifecycle (\`DISCOVERED ➔ DECIDING ➔ ATTEMPTED ➔ SUBMITTED ➔ VERIFIED\`). Zero unverified confirmations — actions are only marked \`VERIFIED\` after independent out-of-composer DOM inspection.
-- **Automated Failure Diagnostics**: Captures full-page screenshots and DOM dumps to \`logs/screenshots/\` on any blocked or unverified attempt.
-
-### ✍️ 2026 TipTap & ProseMirror Rich-Text Dispatch Engine
-- **Block Editor State Synchronization**: Specialized injection pipeline for LinkedIn post modals, LinkedIn comment boxes, and Facebook Comet composers.
-- **Synthetic InputEvent & Typing Jitter**: Dispatches \`beforeinput\` and \`InputEvent("input", { inputType: "insertText", data: char, bubbles: true })\` with human-like variable cadence (30–95ms jitter).
-- **ProseMirror Empty Node Cleansing**: Replaces \`<p class="is-editor-empty">\` to trigger internal virtual DOM document updates and cleanly enable post/comment submit buttons.
-
-### 📜 Virtualized Container-Level Programmatic Scrolling
-- **Overcoming SPA Viewport Traps**: Replaces non-functional \`window.scrollBy\` with container-level scrolling on \`main#workspace, #workspace, .scaffold-layout__main\`.
-- **Triggering IntersectionObservers**: Ensures continuous feed recycling and captures live dynamic posts without getting stuck.
-
-### 🖱️ CDP Native Mouse Click Dispatch (\`page.mouse.click(x, y)\`)
-- **Ember.js & React SPA Route Navigation**: Calculates bounding boxes and sends genuine OS-level hardware mouse clicks, ensuring conversation switching in LinkedIn messaging and modal triggers succeed without event dropping.
-
-### 📱 Android Termux + Termux:X11 Parity
-- **Full Mobile Autonomy**: Run 24/7 on Android devices without root via Termux and Termux:X11.
-- **Android 12+ Optimization Guidelines**: Comprehensive documentation for disabling Phantom Process Killer via ADB and setting battery to Unrestricted.
-- **1-Click Master Runner**: \`./start-termux\` manages X11 display, launches Chromium with CDP flags, and connects the engine automatically.
-
-### 🌐 Omnichannel Coverage (LinkedIn + Facebook + Threads)
-- **LinkedIn Outbound & Inbound**: TipTap post publishing, container scrolling feed discovery, connection triage (\`/in/\` accepted, spam rejected), unread DM triage & AI conversion replies, inbound comment replies with \`@Name\` tags.
-- **Facebook Operations**: Founder & agency group discovery, commercial buyer search, timeline post publishing, Messenger direct message triage, comment notification replies.
-- **Threads Continuous Presence**: High-intent keyword discovery, home feed scanning, viral quote-posting, activity replies, direct messages.
-
-### ⚡ Round-Robin Tab Isolation & Performance
-- **Visual Foreground Switching**: Sequential execution cycles Threads ➔ Facebook ➔ LinkedIn with \`bringToFront: true\`, preventing focus-stealing and keyboard collisions.
-- **Dynamic Knowledge Grounding**: 100% brand isolation with live hot-reloading from \`knowledge/*.md\`. Official WhatsApp booking link (\`https://wa.me/codeair\`).
-
----
-
-### 📦 Checksums
-\`\`\`
-${fs.readFileSync(path.resolve(__dirname, "../release/SHA256SUMS.txt"), "utf8")}
-\`\`\``;
-
       await ghPage.evaluate((notes) => {
         const ta = document.querySelector("#release_body, textarea[name=\"release[body]\"]");
         if (ta) {
