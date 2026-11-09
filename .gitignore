@@ -43,6 +43,7 @@ Thumbs.db
 # OS / IDE
 .idea/
 .vscode/
+.agents/
 *.swp
 *.swo
 scratch/

@@ -8,6 +8,7 @@ const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const rateLimiter = require("../../safety/rate-limiter");
+const antiBan = require("../../safety/anti-ban");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const logger = require("../../logging/logger");
 
@@ -253,8 +254,28 @@ class LinkedInActions {
         });
       }, snippet);
 
+      // Check for LinkedIn security checkpoints, unusual traffic or action restriction modals
+      const pageError = await page.evaluate(() => {
+        const text = (document.body.innerText || "").toLowerCase();
+        if (text.includes("we noticed unusual activity") || text.includes("unusual activity on your account") || text.includes("restricted your account")) {
+          return "BLOCKED";
+        }
+        if (text.includes("quick security check") || text.includes("verify your identity") || text.includes("you've reached the weekly invitation limit") || text.includes("action limit reached")) {
+          return "WARNING";
+        }
+        return null;
+      });
+
+      if (pageError === "BLOCKED") {
+        antiBan.reportBlock("linkedin", "LinkedIn unusual activity / restriction detected");
+        return { success: false, reason: "LinkedIn account restricted or checkpoint triggered" };
+      } else if (pageError === "WARNING") {
+        antiBan.reportWarning("linkedin", "LinkedIn security check or action limit warning");
+      }
+
       if (verified) {
         logger.info(`✅ LinkedIn comment verified posted on @${post.username}'s post!`);
+        antiBan.record("comment", "linkedin", post.postId);
         rateLimiter.recordAction("COMMENT", "linkedin");
         stateStore.recordComment(post.postId, {
           username: post.username,

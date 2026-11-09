@@ -6,6 +6,7 @@ const JobAgentRunner = require("../browser/job-runner");
 const { generateApplicationDocuments } = require("../documents/document-engine");
 const { getPlatform } = require("../platform-registry");
 const jobState = require("../storage/job-state-store");
+const antiBan = require("../../safety/anti-ban");
 
 function applicationKey(opportunity) {
   return `${opportunity.platform}:${opportunity.externalId}`;
@@ -42,6 +43,12 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   }
   if (applicationsToday() >= CONFIG.JOB_MAX_APPLICATIONS_PER_DAY) {
     return { status: "RATE_LIMITED", reason: "Configured daily application limit reached" };
+  }
+
+  const targetPlatform = String(opportunity.platform || "freelancer").toLowerCase();
+  const banCheck = antiBan.check("apply", targetPlatform);
+  if (!banCheck.allowed) {
+    return { status: "RATE_LIMITED", reason: `[AntiBan] ${banCheck.reason}`, delayMs: banCheck.delayMs };
   }
   if (jobState.hasApplicationForOpportunity(opportunity.key)) {
     return { status: "SKIPPED", reason: "Application already recorded for opportunity" };
@@ -133,6 +140,7 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
   }, aiRuntime);
 
   if (!verification.verified) {
+    antiBan.reportWarning(targetPlatform, verification.evidence || "Submission was not visibly confirmed");
     jobState.upsertApplication({
       ...application,
       status: "UNVERIFIED",
@@ -147,6 +155,7 @@ async function applyToOpportunity({ opportunity, page, browserAgent, aiRuntime }
     };
   }
 
+  antiBan.record("apply", targetPlatform, application.key);
   const submittedAt = new Date().toISOString();
   jobState.upsertApplication({
     ...application,

@@ -52,6 +52,24 @@ const PLATFORM_LIMITS = Object.freeze({
     follow:   { hour: 5,  day: 30  },
     publish:  { hour: 1,  day: 2   },
   },
+  freelancer: {
+    bid:      { hour: 4,  day: 20  },
+    apply:    { hour: 4,  day: 20  },
+    dm:       { hour: 5,  day: 25  },
+    publish:  { hour: 1,  day: 5   },
+  },
+  upwork: {
+    bid:      { hour: 3,  day: 15  },
+    apply:    { hour: 3,  day: 15  },
+    dm:       { hour: 4,  day: 20  },
+    publish:  { hour: 1,  day: 5   },
+  },
+  job_marketplace: {
+    bid:      { hour: 4,  day: 20  },
+    apply:    { hour: 4,  day: 20  },
+    dm:       { hour: 5,  day: 25  },
+    publish:  { hour: 1,  day: 5   },
+  },
 });
 
 /**
@@ -66,6 +84,8 @@ const MIN_ACTION_GAP_SECONDS = Object.freeze({
   follow: 120,
   connect: 300,
   publish: 3600,
+  bid: 300,
+  apply: 300,
 });
 
 /**
@@ -282,6 +302,8 @@ class AntiBan {
       follow: [5000, 20000],
       connect: [10000, 30000],
       publish: [5000, 15000],
+      bid: [12000, 45000],
+      apply: [12000, 45000],
     }[action] || [5000, 15000];
     return this._randomBetween(base[0], base[1]);
   }

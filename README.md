@@ -3,13 +3,27 @@
 [![Agentic](https://img.shields.io/badge/Architecture-End--to--End%20Agentic-blue.svg)](https://github.com/sunmughan/meta-automation)
 [![Platforms](https://img.shields.io/badge/Social-Threads%20%7C%20Facebook%20%7C%20LinkedIn-success.svg)](https://github.com/sunmughan/meta-automation)
 [![Browser](https://img.shields.io/badge/Browser-CDP%20%2B%20Live%20DOM-critical.svg)](https://github.com/sunmughan/meta-automation)
-[![Release](https://img.shields.io/badge/Release-v2.0-blueviolet.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v2.0)
+[![Release](https://img.shields.io/badge/Release-v2.1.0-blueviolet.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v2.1.0)
+[![Anti--Ban](https://img.shields.io/badge/Anti--Ban-Multi--Layer%20Stealth-success.svg)](https://github.com/sunmughan/meta-automation)
 [![Node](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Repository URL compatibility:** the GitHub slug remains `meta-automation`. The product is no longer positioned as a conventional "Meta Automation" bot. It is an **end-to-end agentic automation runtime** that learns who it represents, observes live browser state, reasons about what should happen next, executes one action, verifies the result, and continues from fresh evidence.
+> **Repository URL compatibility:** the GitHub slug remains `meta-automation`. The product is an **end-to-end agentic automation runtime** that learns who it represents, observes live browser state, reasons about what should happen next, executes verified actions, and protects account health across social and job platforms.
 
 Built by **CodeAir Software Solutions**.
+
+---
+
+## 🛡️ What's New in v2.1.0: Multi-Layer Anti-Ban & Cross-Platform Stealth
+
+Version 2.1.0 upgrades cross-platform account safety, anti-fingerprinting evasion, and interaction humanization across Threads, Instagram, Facebook, LinkedIn, and Freelancer:
+
+- **Browser Anti-Detection & CDP Cloaking:** Automatic injection of `--disable-blink-features=AutomationControlled`, `navigator.webdriver` masking, native `window.chrome` runtime emulation, and normalized permissions query handlers.
+- **Closed-Loop Warning & Cooldown Escalation:** Active detection of platform rate limits, captchas, and action-block toasts on Threads, Facebook, LinkedIn, and Instagram, instantly triggering automated backoff and emergency cooldowns via `AntiBan`.
+- **Humanized Interaction Mechanics:** Randomized cubic Bezier mouse trajectories, natural down/up hold intervals, interactive coordinate micro-jitters, and human typing cadence with natural punctuation pauses.
+- **Job Engine (Freelancer) Anti-Ban Protection:** Full integration of Freelancer and work marketplaces into the `AntiBan` layer, enforcing pre-application rate limit gates, sleep schedules, and verified submission tracking.
+- **Instagram Live Interaction Pipeline:** Upgraded from mock placeholder to a guarded live interaction engine with duplicate prevention and DOM verification.
+- **Resilient Multi-Browser Auto-Resolution:** Graceful platform candidate resolution on headless container environments.
 
 ---
 

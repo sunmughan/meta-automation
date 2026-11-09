@@ -8,6 +8,51 @@ class BrowserOperator {
   constructor(page) {
     if (!page) throw new Error("BrowserOperator requires a Puppeteer page");
     this.page = page;
+    this.currentMouse = { x: 150 + Math.floor(Math.random() * 200), y: 150 + Math.floor(Math.random() * 200) };
+  }
+
+  /**
+   * Moves mouse smoothly along a randomized cubic Bezier curve to simulate natural human arm movement.
+   */
+  async humanMouseMove(targetX, targetY, options = {}) {
+    const startX = this.currentMouse.x;
+    const startY = this.currentMouse.y;
+    const distance = Math.hypot(targetX - startX, targetY - startY);
+    const steps = Math.min(25, Math.max(8, Math.floor(distance / 25)));
+
+    // Generate random control points for Bezier trajectory
+    const cp1X = startX + (targetX - startX) * 0.25 + (Math.random() - 0.5) * 50;
+    const cp1Y = startY + (targetY - startY) * 0.1 + (Math.random() - 0.5) * 50;
+    const cp2X = startX + (targetX - startX) * 0.75 + (Math.random() - 0.5) * 30;
+    const cp2Y = startY + (targetY - startY) * 0.9 + (Math.random() - 0.5) * 30;
+
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      // Ease in-out timing curve
+      const easedT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      const u = 1 - easedT;
+      const x = Math.round(u * u * u * startX + 3 * u * u * easedT * cp1X + 3 * u * easedT * easedT * cp2X + easedT * easedT * easedT * targetX);
+      const y = Math.round(u * u * u * startY + 3 * u * u * easedT * cp1Y + 3 * u * easedT * easedT * cp2Y + easedT * easedT * easedT * targetY);
+
+      await this.page.mouse.move(x, y).catch(() => {});
+      this.currentMouse = { x, y };
+      await new Promise(r => setTimeout(r, Math.floor(Math.random() * 8) + 4));
+    }
+
+    this.currentMouse = { x: targetX, y: targetY };
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 40) + 20));
+  }
+
+  /**
+   * Executes a humanized mouse click with Bezier trajectory, natural down/up hold, and jitter.
+   */
+  async humanClick(targetX, targetY) {
+    await this.humanMouseMove(targetX, targetY);
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 45) + 35));
+    await this.page.mouse.down().catch(() => {});
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 55) + 40));
+    await this.page.mouse.up().catch(() => {});
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 60) + 30));
   }
 
   async snapshot(label = "snapshot") {
@@ -47,7 +92,10 @@ class BrowserOperator {
     await handle.evaluate(el => el.scrollIntoView({behavior:"instant", block:"center", inline:"center"}));
     const box = await handle.boundingBox();
     if (box) {
-      await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      // Natural micro-jitter within the element's interactive center area
+      const jitterX = box.x + box.width * (0.35 + 0.3 * Math.random());
+      const jitterY = box.y + box.height * (0.35 + 0.3 * Math.random());
+      await this.humanClick(jitterX, jitterY);
     } else {
       await handle.click();
     }
@@ -96,11 +144,17 @@ class BrowserOperator {
     if (options.clear !== false) {
       await this.page.keyboard.press("Meta+A").catch(() => {});
     }
-    const delayMin = options.delayMin || 18;
-    const delayMax = options.delayMax || 45;
+    const delayMin = options.delayMin || 22;
+    const delayMax = options.delayMax || 55;
     for (const char of String(text)) {
       await this.page.keyboard.sendCharacter(char);
-      await new Promise(r => setTimeout(r, Math.floor(Math.random() * (delayMax-delayMin+1)) + delayMin));
+      let pause = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
+      if (char === " " && Math.random() < 0.25) {
+        pause += Math.floor(Math.random() * 80) + 40; // Thought pause between words
+      } else if (char === "." || char === "?" || char === "," || char === "!") {
+        pause += Math.floor(Math.random() * 140) + 70; // Sentence boundary pause
+      }
+      await new Promise(r => setTimeout(r, pause));
     }
     return true;
   }

@@ -11,6 +11,7 @@ const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const rateLimiter = require("../../safety/rate-limiter");
+const antiBan = require("../../safety/anti-ban");
 const aiDecisionEngine = require("../../ai/ai-decision-engine");
 const logger = require("../../logging/logger");
 
@@ -432,6 +433,11 @@ class ThreadsActions {
         }
         if (check.error && check.error.includes("error dialog")) {
           verificationReason = check.error;
+          if (/action blocked|restricted|suspended/i.test(verificationReason)) {
+            antiBan.reportBlock("threads", verificationReason);
+          } else {
+            antiBan.reportWarning("threads", verificationReason);
+          }
           break;
         }
       }
@@ -479,6 +485,7 @@ class ThreadsActions {
       });
 
       // ONLY RECORD SUCCESS IF TRULY VERIFIED
+      antiBan.record("comment", "threads", post.postId);
       duplicateGuard.recordExecuted({
         platform: "threads",
         actionType: "COMMENT",

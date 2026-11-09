@@ -8,6 +8,7 @@ const CONFIG = require("../../../config");
 const browserManager = require("../../browser/browser-manager");
 const stateStore = require("../../storage/state-store");
 const rateLimiter = require("../../safety/rate-limiter");
+const antiBan = require("../../safety/anti-ban");
 const duplicateGuard = require("../../safety/duplicate-guard");
 const logger = require("../../logging/logger");
 
@@ -142,8 +143,28 @@ class FacebookActions {
         });
       }, snippet);
 
+      // Check for Facebook action block / security checkpoint alerts
+      const pageError = await page.evaluate(() => {
+        const text = (document.body.innerText || "").toLowerCase();
+        if (text.includes("you’re temporarily blocked") || text.includes("you're temporarily blocked") || text.includes("action blocked")) {
+          return "BLOCKED";
+        }
+        if (text.includes("try again later") || text.includes("slow down") || text.includes("unusual activity")) {
+          return "WARNING";
+        }
+        return null;
+      });
+
+      if (pageError === "BLOCKED") {
+        antiBan.reportBlock("facebook", "Facebook temporarily blocked actions");
+        return { success: false, reason: "Facebook action blocked" };
+      } else if (pageError === "WARNING") {
+        antiBan.reportWarning("facebook", "Facebook unusual activity warning");
+      }
+
       if (verified) {
         logger.info(`✅ Facebook comment verified posted on @${post.username}'s post!`);
+        antiBan.record("comment", "facebook", post.postId);
         rateLimiter.recordAction("COMMENT", "facebook");
         stateStore.recordComment(post.postId, {
           username: post.username,

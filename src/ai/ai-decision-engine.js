@@ -244,17 +244,19 @@ class AiDecisionEngine {
     }
 
     const isJobSeeker = /\b(open\s+to\s+work|looking\s+for\s+(a\s+)?job|seeking\s+(employment|opportunities|roles)|entry\s+level|fresher|internship|hire\s+me|my\s+resume|resume\s+attached)\b/i.test(lower);
+    const isCareerAdvice = /\b(career\s+(paths?|advice|transition)|job\s+titles?|finished\s+my\s+ba|what\s+career)\b/i.test(lower);
     const isSpamOrMeme = /\b(crypto|airdrop|giveaway|forex|casinos?|slots?|telegram\s+group|whatsapp\s+group)\b/i.test(lower);
 
-    if (isJobSeeker || isSpamOrMeme) {
+    if (isJobSeeker || isCareerAdvice || isSpamOrMeme) {
       return {
-        intent: isJobSeeker ? "JOB_SEEKER" : "SPAM",
+        intent: isCareerAdvice ? "CAREER_ADVICE" : (isJobSeeker ? "JOB_SEEKER" : "SPAM"),
         decision: "IGNORED",
         is_genuine_buyer: false,
         service_match: false,
         representation: "IGNORE",
         should_reply: false,
-        reason: `Filtered via grounded semantic classifier: identified as ${isJobSeeker ? "job seeker" : "spam"}.`
+        lead_type: isCareerAdvice ? "CAREER_ADVICE" : (isJobSeeker ? "JOB_SEEKER" : "SPAM"),
+        reason: `Filtered via grounded semantic classifier: identified as ${isCareerAdvice ? "career advice" : (isJobSeeker ? "job seeker" : "spam")}.`
       };
     }
 
@@ -281,16 +283,38 @@ class AiDecisionEngine {
       };
     }
 
+    const isCompanyInquiry = /\b(what\s+does\s+codeair\s+do|about\s+codeair|services\s+of\s+codeair|tell\s+me\s+about\s+codeair)\b/i.test(lower);
+    if (isCompanyInquiry) {
+      return {
+        qualified: true,
+        intent: "COMPANY_INQUIRY",
+        lead_type: "COMPANY_INQUIRY",
+        requirement: "Direct inquiry about CodeAir software capabilities and services",
+        target_entity: "COMPANY",
+        service_match: true,
+        matched_capability: "Custom Web Applications & Portals",
+        matched_services: ["Custom Web Applications & Portals", "Enterprise Software"],
+        matched_categories: ["Web Development", "Business Systems"],
+        representation: "COMPANY",
+        decision: "QUALIFIED",
+        temperature: "HOT",
+        relevance_score: 95,
+        is_genuine_buyer: true,
+        should_reply: true,
+        reason: "Grounded semantic match: direct company capability inquiry."
+      };
+    }
+
     // 2. Capabilities Detection
     const matchesAI = /\b(ai|agentic|agents?|llm|gpt|claude|gemini|rag|automation|workflow\s+automation|bot|chatbot)\b/i.test(lower);
-    const matchesMobile = /\b(flutter|react\s+native|ios|android|mobile\s+app|app\s+development)\b/i.test(lower);
+    const matchesMobile = /\b(flutter|react\s+native|ios|android|mobile\s+app|app\s+development|\bapps?\b)\b/i.test(lower);
     const matchesCTO = /\b(cto|co-founder|technical\s+lead|architect|architecture|systems?\s+design)\b/i.test(lower);
     const matchesMVP = /\b(mvp|saas|founder|startup|prototype|product\s+development)\b/i.test(lower);
-    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developer|portal|next\.?js|react|node|landing\s+page|ui\/ux|designer|application|crm|erp|dashboard|software)\b/i.test(lower);
+    const matchesWeb = /\b(website|web\s+app|web\s+development|frontend|backend|full[- ]?stack|developers?|develop\w*|portal|next\.?js|react|node|landing\s+page|ui\/ux|designers?|application|crm|erp|dashboard|software)\b/i.test(lower);
     const hasServiceMatch = matchesAI || matchesMobile || matchesCTO || matchesMVP || matchesWeb;
 
     // 3. TIER 1: Genuine Commercial Inquiries / Client Buyer Signals (HOT)
-    const hasBuyerIntent = /\b(looking\s+for|need\s+(a|an|someone|to\s+hire|help)|hiring|seeking|searching\s+for|anyone\s+know|recommend\s+(a|an)?|want\s+to\s+build|trying\s+to\s+build|rebuilding|revamping|build\s+(a|an|me|our)|need\s+developers?|need\s+engineers?|need\s+designer|contractor|freelance\s+dev|cto|co-founder)\b/i.test(lower);
+    const hasBuyerIntent = /\b(looking\s+for|need\s+(a|an|someone|to\s+hire|help)|hiring|seeking|searching\s+for|anyone\s+know|recommend\s+(a|an)?|want\s+to\s+build|trying\s+to\s+build|rebuilding|revamping|build\s+(a|an|me|our)|need\s+developers?|need\s+engineers?|need\s+designer|contractor|freelance\s+dev|cto|co-founder|can\s+someone\s+(develop|build|help|make)|who\s+can\s+(develop|build|help|make))\b/i.test(lower);
 
     if (hasBuyerIntent && hasServiceMatch) {
       let capability = "Custom Web Applications & Portals";
@@ -652,6 +676,22 @@ class AiDecisionEngine {
       throw new Error("AI returned empty conversation turn output");
     } catch (err) {
       logger.warn(`[AI Engine] AI conversation turn reasoning failed: ${err.message}`);
+
+      // Grounded rule: explicitly decline unsolicited B2B lead generation / contact list offers
+      const isLeadGenOffer = /\b(lead\s+generation|leads\s+delivered|targeted\s+decision-maker\s+leads|batch\s+of\s+leads|payment-based\s+deal|budget\s+per\s+lead)\b/i.test(incomingMessage);
+      if (isLeadGenOffer) {
+        return {
+          intent: "LEAD_GENERATION_DECLINED",
+          identity: "FOUNDER",
+          service_match: false,
+          conversation_stage: "CLOSED",
+          sales_intensity: "LOW",
+          should_reply: true,
+          human_review_required: false,
+          response_message: "Thanks for the proposal regarding lead generation and contact lists, but we handle our client acquisition in-house and are not looking for outsourced lead lists at this time. Best of luck!"
+        };
+      }
+
       const profiles = knowledge.getOfficialProfiles();
       const whatsappUrl = knowledge.getWhatsAppUrl() || profiles.company?.whatsapp || profiles.founder?.whatsapp || "";
       const isCallRequest = conversationStage === "DISCOVERY_CALL" || /\b(call|schedule|phone|meeting|consultation|whatsapp)\b/i.test(incomingMessage);

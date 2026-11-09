@@ -453,6 +453,19 @@ function resolveBrowser(preference = null) {
     }
   }
 
+  // 6. Graceful candidate resolution (returns default browser profile even if binary isn't preinstalled)
+  const defaultType = IS_TERMUX ? "chromium" : (catalog.chrome ? "chrome" : (catalog.brave ? "brave" : "chromium"));
+  const defaultItem = catalog[defaultType] || Object.values(catalog)[0];
+  if (defaultItem) {
+    return {
+      ...defaultItem,
+      binary: defaultItem.binaries[0],
+      display: activeDisplay,
+      headless,
+      installed: false
+    };
+  }
+
   throw new Error(
     "No supported Chromium-based browser (Chrome, Edge, Brave, or Chromium) was detected.\n" +
     "Please install Google Chrome, Microsoft Edge, or Brave Browser on this system."
@@ -470,6 +483,12 @@ async function launchBrowser(preference = null) {
   }
 
   const browser = resolveBrowser(preference);
+  if (!browser.installed && !fs.existsSync(browser.binary)) {
+    throw new Error(
+      "No supported Chromium-based browser (Chrome, Edge, Brave, or Chromium) was detected.\n" +
+      "Please install Google Chrome, Microsoft Edge, or Brave Browser on this system."
+    );
+  }
   console.log(`🔍 Detected Browser: ${browser.name} (${browser.type})`);
   console.log(`🚀 Executable: ${browser.binary}`);
   console.log(`📂 User Data: ${browser.userDataDir}`);
@@ -535,6 +554,9 @@ async function launchBrowser(preference = null) {
     "--no-default-browser-check",
     "--restore-last-session",
     "--force-device-scale-factor=1",
+    "--disable-blink-features=AutomationControlled",
+    "--password-store=basic",
+    "--enable-automation=false",
     ...(browser.flags || [])
   ];
 

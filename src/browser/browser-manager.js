@@ -32,6 +32,62 @@ class BrowserManager {
   }
 
   /**
+   * Injects anti-bot stealth scripts into a browser page.
+   * Evades navigator.webdriver detection, mocks Chrome runtime, and normalizes navigator APIs.
+   */
+  async applyStealthScripts(page) {
+    if (!page || page.isClosed()) return;
+    try {
+      await page.evaluateOnNewDocument(() => {
+        try {
+          Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+            configurable: true
+          });
+        } catch (_) {}
+
+        try {
+          if (!window.chrome) {
+            window.chrome = {};
+          }
+          if (!window.chrome.runtime) {
+            window.chrome.runtime = {
+              id: undefined,
+              connect: () => {},
+              sendMessage: () => {}
+            };
+          }
+          if (!window.chrome.app) {
+            window.chrome.app = {
+              isInstalled: false,
+              InstallState: { DISABLED: "disabled", INSTALLED: "installed", NOT_INSTALLED: "not_installed" },
+              RunningState: { CANNOT_RUN: "cannot_run", READY_TO_RUN: "ready_to_run", RUNNING: "running" }
+            };
+          }
+        } catch (_) {}
+
+        try {
+          Object.defineProperty(navigator, 'languages', {
+            get: () => ['en-US', 'en'],
+            configurable: true
+          });
+        } catch (_) {}
+
+        try {
+          const originalQuery = window.navigator.permissions?.query;
+          if (originalQuery) {
+            window.navigator.permissions.query = (parameters) => (
+              parameters && parameters.name === 'notifications'
+                ? Promise.resolve({ state: Notification.permission })
+                : originalQuery(parameters)
+            );
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  /**
    * Checks if a cached page reference is still alive and usable.
    * Detects detached frames, closed pages, and stale CDP sessions.
    */
@@ -220,6 +276,7 @@ class BrowserManager {
       }
 
       await this.maximizeWindowForPage(selectedPage);
+      await this.applyStealthScripts(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
@@ -283,6 +340,7 @@ class BrowserManager {
       }
 
       await this.maximizeWindowForPage(selectedPage);
+      await this.applyStealthScripts(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
@@ -349,6 +407,7 @@ class BrowserManager {
       }
 
       await this.maximizeWindowForPage(selectedPage);
+      await this.applyStealthScripts(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
@@ -415,6 +474,7 @@ class BrowserManager {
       }
 
       await this.maximizeWindowForPage(selectedPage);
+      await this.applyStealthScripts(selectedPage);
 
       selectedPage.removeAllListeners("dialog");
       selectedPage.on("dialog", async dialog => {
