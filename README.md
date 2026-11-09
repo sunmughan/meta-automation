@@ -1,776 +1,487 @@
 # Agentic Automation 🤖
 
-[![Agentic](https://img.shields.io/badge/Architecture-End--to--End%20Agentic-blue.svg)](https://github.com/sunmughan/meta-automation)
-[![Platforms](https://img.shields.io/badge/Social-Threads%20%7C%20Facebook%20%7C%20LinkedIn-success.svg)](https://github.com/sunmughan/meta-automation)
-[![Browser](https://img.shields.io/badge/Browser-CDP%20%2B%20Live%20DOM-critical.svg)](https://github.com/sunmughan/meta-automation)
-[![Release](https://img.shields.io/badge/Release-v2.1.0-blueviolet.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v2.1.0)
-[![Anti--Ban](https://img.shields.io/badge/Anti--Ban-Multi--Layer%20Stealth-success.svg)](https://github.com/sunmughan/meta-automation)
-[![Node](https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg)](https://nodejs.org)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Agentic Architecture](https://img.shields.io/badge/Architecture-End--to--End%20Agentic-3b82f6.svg)](https://github.com/sunmughan/meta-automation)
+[![Supported Platforms](https://img.shields.io/badge/Social%20%26%20Work-Threads%20%7C%20IG%20%7C%20FB%20%7C%20LinkedIn%20%7C%20Freelancer-10b981.svg)](https://github.com/sunmughan/meta-automation)
+[![Browser CDP](https://img.shields.io/badge/Browser-CDP%20%2B%20Live%20DOM%20(No%20Selectors)-ef4444.svg)](https://github.com/sunmughan/meta-automation)
+[![Release v2.1.0](https://img.shields.io/badge/Release-v2.1.0%20(Production%20Ready)-8b5cf6.svg)](https://github.com/sunmughan/meta-automation/releases/tag/v2.1.0)
+[![Anti-Ban Protection](https://img.shields.io/badge/Anti--Ban-Multi--Layer%20Stealth-06b6d4.svg)](https://github.com/sunmughan/meta-automation)
+[![Node Runtime](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-22c55e.svg)](https://nodejs.org)
+[![License MIT](https://img.shields.io/badge/License-MIT-f59e0b.svg)](LICENSE)
 
-> **Repository URL compatibility:** the GitHub slug remains `meta-automation`. The product is an **end-to-end agentic automation runtime** that learns who it represents, observes live browser state, reasons about what should happen next, executes verified actions, and protects account health across social and job platforms.
+> **Repository URL Compatibility Notice:** The repository slug remains `meta-automation` for upstream URL compatibility. The product architecture and execution plane is **Agentic Automation** — an autonomous, principal-aware browser agent runtime that learns who it represents, reasons over live web state, and safely executes verified work across social channels and client marketplaces.
 
-Built by **CodeAir Software Solutions**.
-
----
-
-## 🛡️ What's New in v2.1.0: Multi-Layer Anti-Ban & Cross-Platform Stealth
-
-Version 2.1.0 upgrades cross-platform account safety, anti-fingerprinting evasion, and interaction humanization across Threads, Instagram, Facebook, LinkedIn, and Freelancer:
-
-- **Browser Anti-Detection & CDP Cloaking:** Automatic injection of `--disable-blink-features=AutomationControlled`, `navigator.webdriver` masking, native `window.chrome` runtime emulation, and normalized permissions query handlers.
-- **Closed-Loop Warning & Cooldown Escalation:** Active detection of platform rate limits, captchas, and action-block toasts on Threads, Facebook, LinkedIn, and Instagram, instantly triggering automated backoff and emergency cooldowns via `AntiBan`.
-- **Humanized Interaction Mechanics:** Randomized cubic Bezier mouse trajectories, natural down/up hold intervals, interactive coordinate micro-jitters, and human typing cadence with natural punctuation pauses.
-- **Job Engine (Freelancer) Anti-Ban Protection:** Full integration of Freelancer and work marketplaces into the `AntiBan` layer, enforcing pre-application rate limit gates, sleep schedules, and verified submission tracking.
-- **Instagram Live Interaction Pipeline:** Upgraded from mock placeholder to a guarded live interaction engine with duplicate prevention and DOM verification.
-- **Resilient Multi-Browser Auto-Resolution:** Graceful platform candidate resolution on headless container environments.
+Built and maintained with ❤️ by **[Sunmughan Swamy](https://github.com/sunmughan)** at **[CodeAir Software Solutions](https://www.codeair.tech)**.
 
 ---
 
-## What this project is now
+## 📑 Table of Contents
 
-This is a **personal/business operating agent for browser-based work**.
-
-Instead of maintaining a separate bot for every website, the system provides one agentic execution plane:
-
-```
-Your Identity + Business Context
-             ↓
-      Agentic Brain / Memory
-             ↓
-      Live Browser Observation
-             ↓
-       Security / Safety Gate
-             ↓
-       Next-Best-Action Reasoning
-             ↓
-        One Atomic Action
-             ↓
-       Fresh Browser State
-             ↓
-       AI Evidence Verification
-             ↓
-      Relationship / State Update
-             ↓
-             LOOP
-```
-
-The important principle is:
-
-**The agent does not know you because your name is hardcoded into a prompt. It knows you because onboarding creates a structured source of truth about the person, company, capabilities, communication style, browser environment and operating controls.**
+- [Executive Overview](#-executive-overview)
+- [System Architecture](#-system-architecture)
+- [The Closed-Loop Agentic Reasoning Cycle](#-the-closed-loop-agentic-reasoning-cycle)
+- [Dual Autopilot Architecture (Social vs. Job Engine)](#-dual-autopilot-architecture)
+- [Multi-Layer Anti-Ban & Cross-Platform Stealth](#-multi-layer-anti-ban--cross-platform-stealth)
+- [Platform Support & Capability Matrix](#-platform-support--capability-matrix)
+- [Multi-Tier AI Decision Engine](#-multi-tier-ai-decision-engine)
+- [3-Minute Multi-Platform Quickstart](#-3-minute-multi-platform-quickstart)
+  - [Guided Onboarding Wizard](#1-first-time-onboarding-wizard)
+  - [Linux & macOS](#2a-linux--macos-quickstart)
+  - [Windows 10/11 (PowerShell & CMD)](#2b-windows-1011-quickstart)
+  - [Android Termux (24/7 Mobile Daemon)](#2c-android-termux--termuxx11-247-mobile-daemon)
+- [Where Information Lives & Privacy Model](#-where-information-lives--privacy-model)
+- [Security & Safe Handoff Model](#-security--safe-handoff-model)
+- [CLI Reference & Operations Cheat Sheet](#-cli-reference--operations-cheat-sheet)
+- [Project Directory Structure](#-project-directory-structure)
+- [Verification & Audits](#-verification--audits)
+- [License & Authors](#-license--authors)
 
 ---
 
-# 🚀 First Run: Onboarding Comes First
+## 🌟 Executive Overview
 
-The first-time onboarding flow is the most important configuration in the system.
+Most automation tools fail because they are brittle: they rely on hardcoded CSS selectors, XPath strings, or fixed prompt templates that break whenever a social platform updates its UI.
 
-Run:
+**Agentic Automation** completely departs from brittle automation scripts. It acts as an **autonomous proxy of you or your business**:
 
-```bash
-npm run onboard
+```
+WHO AM I REPRESENTING?  ──>  WHAT DOES MY BUSINESS OFFER?  ──>  WHAT MAY I CLAIM?  ──>  WHAT REQUIRES APPROVAL?
 ```
 
-or:
+### Core Architectural Pillars
 
-```bash
-node threads-agent.js onboard
-```
-
-The wizard is divided into six simple stages.
-
-### 1. Your identity
-
-The agent learns:
-
-- Full name
-- Professional role / title
-- Professional bio
-- Skills and expertise
-- Location
-- Timezone
-- Languages
-
-Example:
-
-```text
-Sunmughan Swamy
-Founder / CTO
-Software engineering, SaaS, AI automation, architecture...
-India
-Asia/Kolkata
-English, Hindi
-```
-
-This becomes part of the agent's identity context.
-
-### 2. Verified profiles
-
-You provide the identities the agent is allowed to represent:
-
-- LinkedIn
-- Threads
-- GitHub
-- Personal website / portfolio
-- WhatsApp booking URL
-
-The agent can therefore distinguish between:
-
-```text
-PERSONAL IDENTITY
-COMPANY IDENTITY
-PRODUCT IDENTITY
-CONTACT / HANDOFF IDENTITY
-```
-
-### 3. Company / brand
-
-The agent learns:
-
-- Company name
-- Website
-- What the company does
-- Main product / demo
-- Ideal customer
-- Approved services
-- Excluded services
-
-This is the foundation for grounded business reasoning.
-
-For example, if your company provides custom SaaS development but not SEO services, the agent has an explicit boundary instead of inventing an answer.
-
-### 4. Agent behaviour
-
-You define:
-
-- Communication style
-- Primary objective
-- Preferred CTA
-- Topics / claims to avoid
-- Autonomous DM replies
-- Autonomous follows
-- Autonomous connection requests
-- Autonomous publishing
-
-This is deliberately separate from identity.
-
-**Who you are** and **what the agent is allowed to do on your behalf** are different pieces of state.
-
-### 5. Browser & platform control
-
-You configure:
-
-- Browser: auto / Chrome / Edge / Brave / Chromium
-- CDP endpoint
-- Enabled social platforms
-- Round-robin or concurrent execution
-
-Supported social platforms in the V2 agentic plane:
-
-- Threads
-- Facebook
-- LinkedIn
-
-The browser session remains yours. The agent operates through the authenticated browser/CDP environment rather than asking for platform passwords.
-
-### 6. Safety & AI
-
-You configure:
-
-- Dry-run mode
-- Approval mode
-- Maximum comments/hour
-- Maximum replies/hour
-- Maximum DMs/hour
-- Maximum follows/hour
-- Maximum connections/hour
-- Maximum publishes/hour
-- Scan interval
-- AI provider
-- AI model
-- AI credentials
-
-**Recommended first-run configuration:**
-
-```text
-DRY RUN        = ON
-APPROVAL       = ON
-AUTO DM        = OFF
-AUTO FOLLOW    = OFF
-AUTO CONNECT   = OFF
-AUTO PUBLISH   = OFF
-```
-
-Once the user verifies the agent's behavior, controls can be relaxed deliberately.
+| 🧠 Principal Awareness | 👁️ Selector-Free Semantic DOM | 🛡️ Multi-Layer Anti-Ban Shield | 💼 Dual Autopilot Planes |
+|:---|:---|:---|:---|
+| Grounded in structured source-of-truth files (`founder.md`, `company.md`, `services.md`). Operates strictly within verified claims and approved capabilities. | Never depends on brittle CSS classes or XPath coordinates. Targets are dynamically resolved from the browser's live accessibility tree. | CDP cloaking, Bezier mouse trajectories, natural typing jitter, and automated cooldown backoff prevent account flags and blocks. | Strict isolation between high-velocity Social Lead Generation (Threads, FB, LinkedIn, IG) and focused Client Marketplace Proposals (Freelancer.com). |
 
 ---
 
-# 🧠 Where the user's information lives
+## 🏗️ System Architecture
 
-Onboarding creates two different kinds of state.
+The runtime operates across four decoupled layers: Configuration & Principal Grounding, Cognitive Reasoning, Dual Autopilot Dispatch, and the Live Browser CDP Plane.
 
-### Source-of-truth knowledge
+```mermaid
+flowchart TD
+    subgraph Config["1. Principal & Knowledge Layer"]
+        OB["Onboarding Wizard (npm run onboard)"]
+        UP["private/user-profile.json"]
+        KB["knowledge/*.md (founder, company, services)"]
+        OB --> UP
+        OB --> KB
+    end
 
-```text
-knowledge/
-├── founder.md
-├── company.md
-├── profiles.md
-└── services.md
-```
+    subgraph Cognition["2. Multi-Tier AI Decision Engine"]
+        T1["Tier 1: Antigravity Language Server (Local / Primary)"]
+        T2["Tier 2: OpenAI-Compatible Cloud AI Fallback"]
+        T3["Tier 3: Grounded Local Semantic Classifier"]
+        T1 -->|Failover| T2
+        T2 -->|Failover| T3
+    end
 
-These files describe **who the agent represents** and what it is allowed to claim.
+    subgraph Dispatcher["3. Master Runner & Dual Autopilot Dispatcher"]
+        MR["Master Runner (scripts/desktop-runner.js)"]
+        MUTEX{"Mutual Exclusivity Guard"}
+        MR --> MUTEX
+        MUTEX -->|Mode: social| SA["Social Autopilot Engine"]
+        MUTEX -->|Mode: job| JA["Job Autopilot Engine"]
+    end
 
-### Private operational profile
+    subgraph SocialPlanes["Social Execution Plane"]
+        SA --> TH["Threads Agent"]
+        SA --> FB["Facebook Agent & Groups"]
+        SA --> LI["LinkedIn Agent & InMail"]
+        SA --> IG["Instagram Interaction Engine"]
+    end
 
-```text
-private/user-profile.json
-```
+    subgraph JobPlanes["Job Revenue Plane"]
+        JA --> TABISO["Freelancer Tab Isolation Guard"]
+        TABISO --> FL["Freelancer.com Proposal Engine"]
+        TABISO --> CG["1000x1000 Canvas Portfolio Card Generator"]
+    end
 
-This stores the structured onboarding configuration, including:
+    subgraph StealthBrowser["4. Protected CDP Browser Layer (:9222 / :9223)"]
+        CDP["Chrome / Brave / Edge / Chromium"]
+        STEALTH["Anti-Ban Shield: Webdriver Masking, Bezier Mouse, Jitter Typing"]
+        CDP --- STEALTH
+    end
 
-- identity
-- profiles
-- company context
-- behavior controls
-- browser settings
-- safety budgets
-- AI selection
-
-The `private/` directory is gitignored.
-
-Secrets such as API keys remain in local `.env` configuration and are never requested through social login flows.
-
----
-
-# 🔄 How the agent actually operates
-
-The agent does not execute a pre-written social script.
-
-For every meaningful cycle:
-
-### Observe
-
-It captures a semantic representation of the current live browser state:
-
-- visible text
-- interactive controls
-- roles
-- accessible names
-- editable fields
-- links
-- dialogs
-- visible content cards
-- current URL
-- element relationships
-
-### Reason
-
-The AI considers:
-
-- your identity
-- company context
-- conversation history
-- relationship state
-- current browser state
-- current objective
-- safety controls
-
-It chooses the **next best action**, rather than following a fixed platform script.
-
-### Execute
-
-The browser agent executes one atomic action against a target discovered from the current live observation.
-
-### Verify
-
-After the action:
-
-```text
-OLD STATE
-   ↓
-ACTION
-   ↓
-NEW LIVE STATE
-   ↓
-AI VERIFICATION
-```
-
-A click is not automatically considered a success.
-
-An application is not considered submitted merely because a button was clicked.
-
-A message is not considered sent merely because typing completed.
-
-### Re-plan
-
-The agent observes again and decides what to do next.
-
----
-
-# 🧩 No brittle UI automation in the V2 execution plane
-
-The V2 agent does **not** depend on:
-
-- platform CSS selectors
-- XPath recipes
-- selector wait chains
-- coordinate tables
-- platform-specific click maps
-- regex-based UI decisions
-- hardcoded social conversation templates
-
-Interactive targets are discovered from the current semantic browser snapshot.
-
-This makes the execution model:
-
-```
-LIVE UI → UNDERSTAND → ACT → RE-OBSERVE
-```
-
-rather than:
-
-```
-IF selector X exists → CLICK X
+    UP --> Cognition
+    KB --> Cognition
+    Cognition --> Dispatcher
+    TH --> CDP
+    FB --> CDP
+    LI --> CDP
+    IG --> CDP
+    FL --> CDP
 ```
 
 ---
 
-# 🛡️ Security model
+## 🔄 The Closed-Loop Agentic Reasoning Cycle
 
-Security is treated as a first-class state.
+Every autonomous cycle executes in a strict **Observe ➔ Reason ➔ Act ➔ Verify ➔ Re-plan** feedback loop. An action is never assumed successful until verified on the fresh DOM.
 
-The agent stops and requests human intervention when it encounters:
+```mermaid
+flowchart LR
+    A["1. OBSERVE\nCapture Live Semantic DOM\nText, Roles, Inputs, Buttons"] --> B["2. SECURITY GATE\nAudit Page for Captchas,\nLogins, Warning Toasts"]
+    B --> C["3. REASON\nMatch Post with Principal Context\nDecide Next Best Action"]
+    C --> D["4. EXECUTE\nDispatch Humanized Atomic Action\nBezier Curve, Natural Keystrokes"]
+    D --> E["5. VERIFY\nCapture Fresh Snapshot\nAI Confirms Action Succeeded"]
+    E --> F["6. RE-PLAN & SAVE\nUpdate Relationship State\nEnforce Hourly Budgets"]
+    F --> A
+```
 
-- CAPTCHA
-- login requirement
-- identity verification
-- security checkpoint
-- unknown security state
-- ambiguous authentication state
+### Step-by-Step Execution Mechanics
 
-The system does not attempt to bypass these controls.
-
-Unexpected browser tabs can also be quarantined so an agentic workflow does not accidentally act on an unrelated page.
+1. **Observe**: Captures a semantic snapshot of the active page through Chrome DevTools Protocol (`DOM.getDocument`, `Accessibility.getFullAXTree`), extracting visible text cards, interactive roles, inputs, and links.
+2. **Security Gate**: Analyzes the page for security checkpoints, Cloudflare turnstiles, 2FA prompts, or platform warning dialogs. If detected, execution pauses and triggers an immediate safe handoff alert.
+3. **Reason**: The AI compares the live context against your configured identity, approved services, and target audience. It determines the next best action (e.g. qualify genuine software buyer, bypass recruitment spam, draft consultative reply).
+4. **Execute**: Translates the decision into an atomic action using humanized input primitives (smooth Bezier mouse movements, randomized keystroke intervals, micro-scrolling).
+5. **Verify**: Rather than assuming clicks succeed, the agent re-inspects the DOM to confirm that the comment element is visible or the proposal was accepted.
+6. **Re-Plan & Save**: Records the interaction in `threads-engagement-state.json`, decrements the hourly safety budget, and selects the next target.
 
 ---
 
-# 👤 Cross-platform identity & relationship memory
+## 💼 Dual Autopilot Architecture
 
-A person discovered on one platform does not have to remain an isolated record.
+Meta Automation enforces a **strict Dual Autopilot separation** to ensure social lead generation and high-stakes client bidding never interfere with one another.
 
-The relationship layer can connect verified identities across:
+```mermaid
+flowchart TD
+    Runner["Meta Automation Master Runner\n(./start-termux or npm start)"]
+    Prompt{"Select Autopilot Mode"}
+    Runner --> Prompt
 
-```text
-Threads
-   ↕
-Facebook
-   ↕
-LinkedIn
-```
+    Prompt -->|Choice 1: Social| Social["1. Social Autopilot Plane"]
+    Prompt -->|Choice 2: Job| Job["2. Job Autopilot Plane"]
 
-The lifecycle is:
+    subgraph SocialScope["Social Autopilot Features"]
+        Social --> S1["Omnichannel Lead Discovery (Threads, FB, LinkedIn, IG)"]
+        Social --> S2["AI Intent Qualification (Filters out recruiters & scammers)"]
+        Social --> S3["Contextual Engagement & Relationship Lifecycle"]
+        Social --> S4["Automated 5-Slide Carousel & Card Publishing"]
+    end
 
-```text
-OBSERVED
-  ↓
-IDENTIFIED
-  ↓
-QUALIFIED
-  ↓
-ENGAGED
-  ↓
-CONVERSATION
-  ↓
-OPPORTUNITY
-  ↓
-HANDOFF
-  ↓
-WON / LOST
-```
+    subgraph JobScope["Job Autopilot Features"]
+        Job --> J1["Marketplace Proposal Engine (Freelancer.com)"]
+        Job --> J2["Freelancer Tab Isolation (Auto-closes non-work tabs)"]
+        Job --> J3["1000x1000 High-DPI Portfolio Card Generator"]
+        Job --> J4["Autonomous Client Bid & Skill Matcher"]
+    end
 
-Identity resolution is conservative. Uncertain cross-platform matches are not automatically merged.
-
----
-
-# ✍️ Omnichannel content
-
-The content engine starts from a business objective rather than platform-specific copy.
-
-The agent can reason about the same idea and produce platform-native variants for:
-
-- Threads
-- LinkedIn
-- Facebook
-
-The user's configured voice, business context, audience and approved capabilities are used as grounding.
-
----
-
-# 💼 Dual Autopilot Architecture & Job Revenue Engine
-
-Meta Automation operates with a **strict Dual Autopilot Architecture** dividing operations into two mutually exclusive planes:
-
-```
-                      ┌──────────────────────────────────────┐
-                      │    Meta Automation Master Runner     │
-                      │     (./start-termux / npm start)     │
-                      └──────────────────┬───────────────────┘
-                                         │ Interactive Mode Prompt
-                     ┌───────────────────┴───────────────────┐
-                     ▼                                       ▼
-        ┌─────────────────────────┐             ┌─────────────────────────┐
-        │   1. Social Autopilot   │             │    2. Job Autopilot     │
-        │  (Threads, FB, LinkedIn)│             │ (Freelancer.com Engine) │
-        └────────────┬────────────┘             └────────────┬────────────┘
-                     │                                       │
-        • CDP Port :9222                        • CDP Port :9222 / :9223
-        • Omnichannel Leads                     • Tab Isolation: ONLY Freelancer
-        • Context-Aware DMs                     • Auto Portfolio Publisher
-        • Verified Engagements                  • Autonomous Job Proposal AI
+    style Social fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style Job fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#fff
 ```
 
 ### 🔒 Mutual Exclusivity & Single Active Engine Rule
-To prevent cross-contamination between social networking and high-focus client proposals:
-- **Exactly ONE mode is active at any time.**
-- Starting one autopilot automatically checks and cleanly terminates the other if running.
-- **Freelancer Tab Isolation**: When Job Autopilot launches, all non-freelancer tabs (Threads, Facebook, Instagram, LinkedIn) are automatically detected and closed via CDP. Only `freelancer.com` tabs remain open and focused.
+
+1. **Strict Concurrency Protection**: Exactly **ONE** autopilot mode is active at any time. Starting one automatically checks for and terminates the other.
+2. **Freelancer Tab Isolation**: When Job Autopilot runs, non-freelancer tabs (Threads, Facebook, Instagram, LinkedIn) are automatically detected and closed via CDP. Only `freelancer.com` tabs remain open and focused.
+3. **Distinct Browser Profiles**: Optional isolated port allocation (`:9222` for Social, `:9223` for Job Engine) guarantees clean session cookie and cache boundaries.
 
 ---
 
-### 🎨 Autonomous Portfolio Engine & Profile Builder
-The runtime includes a built-in high-DPI portfolio generator and automated publisher:
-- **1000x1000 Canvas Renderer** ([scripts/generate-portfolio-cards.js](file:///data/data/com.termux/files/home/meta-automation/scripts/generate-portfolio-cards.js)): Generates publication-ready showcase cards with gradient branding, tech badges, impact metrics, and typography using Chromium's native HTML5 canvas over CDP.
-- **Automated Publisher** ([scripts/upload-freelancer-portfolio.js](file:///data/data/com.termux/files/home/meta-automation/scripts/upload-freelancer-portfolio.js)): Automates the multi-step Freelancer.com `/discover/publish` workflow over CDP, uploading cards via `DOM.setFileInputFiles`, populating compliant descriptions (>=140 chars), injecting skill tags, and publishing live.
-- **Showcase Projects**: Nita Kitchenware B2B E-Commerce, Zynero Games, OpenPatti, StaffGo, Printless NFC, Societify, 1Quotation, BluePearl Luxury, MachineMandi.
+## 🛡️ Multi-Layer Anti-Ban & Cross-Platform Stealth
 
----
+Version 2.1.0 integrates a multi-tier defense system preventing automated account flags across all platforms:
 
-### 🚀 Running the Job Revenue Engine
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Browser as Chromium / Brave (CDP)
+    participant Shield as Anti-Ban Shield
+    participant AI as AI Engine & Runner
+    participant Platform as Social / Job Platform
 
-Run interactively or target specific modes:
+    Note over Browser,Shield: Layer 1: Browser Fingerprint Cloaking
+    Shield->>Browser: Inject --disable-blink-features=AutomationControlled
+    Shield->>Browser: Mask navigator.webdriver = undefined
+    Shield->>Browser: Emulate native window.chrome runtime & plugins
 
-```bash
-# Interactive mode selector (Choose Social vs Job Autopilot)
-./start-termux
-# or:
-npm start
+    Note over AI,Browser: Layer 2: Humanized Physical Interaction
+    AI->>Browser: Compute randomized cubic Bezier cursor trajectory
+    AI->>Browser: Micro-jitter coordinates (±2px) around interactive center
+    AI->>Browser: Simulate human typing cadence with punctuation pauses (60-180ms)
 
-# Dedicated Job Autopilot launcher (Freelancer.com isolated)
-./start-job-automation
-# or:
-npm run start:job
+    Note over Browser,Platform: Layer 3: Closed-Loop Warning Detection
+    Browser->>Platform: Submit atomic action
+    Platform-->>Browser: Response DOM / Toast Notification
+    Browser->>Shield: Inspect for 'Action Blocked' / 'Try again later' / Captcha
 
-# Dedicated Social Autopilot launcher
-./start-automation
-# or:
-npm run start:social
-
-# Job Engine CLI commands
-npm run jobs:setup     # Setup candidate profile & skills
-npm run jobs:auth      # Verify marketplace session
-npm run jobs:profile   # Audit profile & portfolio status
-npm run jobs:scan      # Scan open projects matching skills
-npm run jobs:run       # Autonomous bid generation & submission
-npm run jobs:status    # Check live revenue engine metrics
+    alt Warning / Limit Detected
+        Shield->>AI: Trigger Emergency Cooldown (1h - 24h backoff)
+        Shield->>AI: Alert user for manual session handoff
+    else Action Verified
+        Shield->>AI: Action confirmed clean; update hourly budget counter
+    end
 ```
 
-See [JOB_REVENUE_ENGINE.md](JOB_REVENUE_ENGINE.md).
+### Defensive Capabilities Breakdown
+
+- **CDP Masking**: Eliminates `navigator.webdriver`, normalizes `navigator.permissions.query`, and simulates legitimate Chrome extension runtimes.
+- **Natural Biometrics**: Mouse movements use multi-point cubic Bezier curves with natural deceleration. Keystrokes include variable hold durations and natural inter-character delays.
+- **Platform Warning Watchers**: Real-time scanners continuously check for Meta/LinkedIn "Account Restricted", "You've been temporarily blocked", and suspicious rate-limit toasts.
+- **Sleep Cycles & Budget Caps**: Enforces hard hourly action limits and automated night-time sleep cycles to mirror natural human sleep schedules.
 
 ---
 
-# 🖥️ Browser architecture
+## 📊 Platform Support & Capability Matrix
 
-The runtime connects to a user-controlled Chromium-family browser through CDP.
-
-Supported browser choices:
-
-- Chrome
-- Edge
-- Brave
-- Chromium
-- Auto-detected browser
-
-Example:
-
-```text
-User's authenticated browser
-          ↓
-       CDP :9222
-          ↓
-Universal Browser Agent
-          ↓
-Semantic Observation
-          ↓
-AI Reasoning
-```
-
-The automation does not need your platform password.
+| Platform | Lead Discovery | AI Intent Screening | Verified Commenting | Direct Messaging | Card Publishing | Tab Isolation | Stealth Level |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Threads** | ✅ Feed & Search | ✅ 6 Buyer Niches | ✅ Live Verified | ✅ Contextual | ✅ 5-Slide Carousel | Optional | 🛡️ Maximum |
+| **Instagram** | ✅ Tagged Posts | ✅ B2B Matcher | ✅ Live Guarded | ✅ Direct Inbox | ✅ Visual Cards | Optional | 🛡️ Maximum |
+| **Facebook** | ✅ Groups & Search | ✅ Founder Lead Filter | ✅ Verified Post | ✅ Messenger | ✅ Discussion Cards | Optional | 🛡️ High |
+| **LinkedIn** | ✅ Feed & Hashtags | ✅ Enterprise Filter | ✅ Thought Partner | ✅ InMail Guard | ✅ Article Snippets | Optional | 🛡️ Maximum |
+| **Freelancer** | ✅ Project Scraper | ✅ Budget / Tech Match | ✅ Autonomous Bids | ✅ Project Chat | ✅ 1000x1000 Cards | 🔒 Strict Isolation | 🛡️ Maximum |
 
 ---
 
-# 📱 Android / Termux + Termux:X11
+## 🧠 Multi-Tier AI Decision Engine
 
-The project provides first-class support for **Android 24/7 background autonomous execution** via Termux and Termux:X11.
+The agent uses a resilient, three-tier fallback architecture that guarantees continuous operation without high API costs or service outages:
 
-### 1. Install Android dependencies
+```mermaid
+graph TD
+    Input["Candidate Post / Lead / Proposal Request"] --> T1{"Tier 1: Antigravity Language Server\n(Local Localhost Session)"}
 
-```bash
-pkg update -y
-pkg install -y git nodejs-lts x11-repo chromium termux-x11-nightly zip
+    T1 -->|Available| Res1["✅ High-Accuracy Local Reasoning\n(Zero Token Cost • 100% Private)"]
+    T1 -->|Unavailable / Offline| T2{"Tier 2: OpenAI-Compatible Cloud AI\n(Configured API Key & Model)"}
+
+    T2 -->|Successful| Res2["✅ Cloud Semantic Reasoning\n(OpenAI / Claude / Gemini)"]
+    T2 -->|API Error / Rate Limit| T3["Tier 3: Grounded Local Semantic Classifier\n(Rule Engine & Regex Intent Graph)"]
+
+    T3 --> Res3["✅ Grounded Intent Output\n(Zero Hallucination • Offline Fallback)"]
+
+    style Res1 fill:#065f46,stroke:#10b981,color:#fff
+    style Res2 fill:#1e40af,stroke:#3b82f6,color:#fff
+    style Res3 fill:#78350f,stroke:#f59e0b,color:#fff
 ```
 
-### 2. Clone and install
+### Lead Qualification Categories
 
-```bash
-git clone https://github.com/sunmughan/meta-automation.git
-cd meta-automation
-npm install
-```
-
-### 3. Master Runner (`./start-termux`)
-
-The runner automatically manages the entire execution stack:
-
-```bash
-# Start continuous daemon in background
-./start-termux
-
-# Inspect live status and PID
-./status-automation
-
-# Stream live activity logs
-tail -f logs/daemon.log
-
-# Gracefully stop the automation
-./stop-automation
-
-# Restart or run interactively in foreground
-./start-termux --restart
-./start-termux --foreground
-```
-
-**What `./start-termux` handles automatically:**
-- **Termux:X11 Display Management**: Validates and initializes display `:1` with companion app activation.
-- **Fullscreen Chromium Geometry**: Detects Android display resolution (e.g., `1080x2400`), configures precise window position (`--window-position=0,0`) and size flags to prevent off-screen modal rendering.
-- **CDP Bridge**: Launches Chromium with `--remote-debugging-port=9222` while preserving your logged-in cookies and sessions.
-- **Antigravity-First AI Runtime**: Automatically validates the local Antigravity Language Server environment before starting.
-
-> [!TIP]
-> **Android 12+ Optimization:** Disable Phantom Process Killer via ADB (`adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"`) and set Termux battery usage to **Unrestricted** to prevent OS background suspension.
+- **`BUYER`**: Genuine buyers requesting custom software, mobile apps, web portals, SaaS, or AI automation.
+- **`FOUNDER_NETWORKING`**: Builders, bootstrappers, indie hackers, and potential technical co-founders.
+- **`TECH_DISCUSSION`**: Meaningful discussions on system architecture, developer stacks, and engineering.
+- **`FEEDBACK_REQUEST`**: Product launches, MVP teardowns, and constructive critique requests.
+- **`AUTOMATION`**: Businesses seeking workflow optimization, scraping, or CRM integrations.
+- **Strict Disqualifications**: Corporate recruiters (`RECRUITMENT`), job seekers (`JOB_SEEKER`), service provider spam (`SERVICE_PROVIDER`), graphic/logo requests (`OUT_OF_SCOPE`), and neutral polls (`IRRELEVANT`).
 
 ---
 
-# 🤖 Multi-Tier AI Decision Engine
+## ⚡ 3-Minute Multi-Platform Quickstart
 
-The automation features a resilient **3-tier semantic decision pipeline**:
+### 1. First-Time Onboarding Wizard
 
-1. **Tier 1: Antigravity Language Server (Local / Primary)** — High-precision local reasoning without third-party API dependencies or subscription token limits.
-2. **Tier 2: Cloud AI Fallback (OpenAI-Compatible)** — Seamless failover to configured OpenAI-compatible endpoints.
-3. **Tier 3: Grounded Local Semantic Classifier** — Zero premature discards; strictly classifies leads into:
-   - `BUYER` (Project buyers needing custom apps, portals, SaaS, mobile, AI)
-   - `FOUNDER_NETWORKING` (Builder community, indie hackers, technical co-founder outreach)
-   - `TECH_DISCUSSION` (Framework architectures, technical consultation)
-   - `FEEDBACK_REQUEST` (Product launch roasts, MVP critiques)
-   - `AUTOMATION` (Workflow optimization, scrapers, bot integrations)
-   - Strict exclusions: `RECRUITMENT`, `JOB_SEEKER`, `SERVICE_PROVIDER` (promotional spam), `OUT_OF_SCOPE` (graphic design, logos, accounting), and `IRRELEVANT` (community opinion polls).
-
-### Universal Clean Handle Sanitization
-Eliminates brittle `@user`, `@buyer`, `@facebook_buyer`, or `@linkedin_user` placeholder tags across all platforms, ensuring every generated comment reads naturally and seamlessly.
-
----
-
-# ⚙️ Main commands
-
-### First-time onboarding & profile configuration
+Before running any automation, initialize your profile. The wizard creates your local source-of-truth knowledge base and private configuration:
 
 ```bash
 npm run onboard
 ```
 
-### Agentic social runtime
+The interactive wizard configures:
+1. **Your Identity**: Name, professional bio, titles, core technical skills, timezone.
+2. **Verified Profiles**: Links to LinkedIn, Threads, GitHub, portfolio, and booking calendar.
+3. **Company Context**: Business name, core services, case studies, approved claims, and excluded topics.
+4. **Behavioral Boundaries**: Preferred tone, CTA preferences, and autonomous action approvals.
+5. **Browser & Network**: Browser flavor (Auto, Chrome, Brave, Edge), CDP port, and platform targets.
+6. **Safety Budgets**: Hourly maximums for comments, DMs, follows, and AI model selection.
+
+---
+
+### 2a. Linux & macOS Quickstart
 
 ```bash
-# Run one cycle across configured platforms
-npm run agentic:social -- --once
+# 1. Clone repository
+git clone https://github.com/sunmughan/meta-automation.git
+cd meta-automation
 
-# Single platform single cycle
-npm run agentic:social -- --platform=threads --once
-npm run agentic:social -- --platform=facebook --once
-npm run agentic:social -- --platform=linkedin --once
+# 2. Install dependencies
+npm install
 
-# Continuous autonomous daemon (infinite loop with adaptive backoff)
-npm run agentic:social -- --daemon
-npm run agentic:social -- --platform=threads --daemon
-```
+# 3. Launch browser in debug mode (example with Brave)
+brave-browser --remote-debugging-port=9222 &
 
-Custom objective:
+# 4. Run onboarding (if first run)
+npm run onboard
 
-```bash
-npm run agentic:social -- --goal="discover relevant software buyers and contribute useful responses"
-```
-
-Resume after a manual safety pause:
-
-```bash
-npm run agentic:social -- --resume
-```
-
-### Distribution release packaging
-
-```bash
-# Builds npm package, cross-platform tarballs & zip archives with SHA256 checksums
-npm run build:release
-```
-
-Generated packages in `release/`:
-- `meta-automation-2.0.0.tgz` (npm distribution package)
-- `meta-automation-android-termux.tar.gz` (Android Termux optimized bundle)
-- `meta-automation-linux-x64.tar.gz` (Linux distribution archive)
-- `meta-automation-macos-universal.tar.gz` (macOS distribution archive)
-- `meta-automation-windows-x64.zip` (Windows distribution archive)
-- `meta-automation-universal-v2.0.0.zip` (Universal platform release archive)
-- `SHA256SUMS.txt` (Cryptographic verification checksums)
-
-### Verification & audits
-
-```bash
-# Deterministic Agentic V2 architecture & onboarding audit
-npm run test:agentic
-
-# Legacy test suite & browser e2e
-npm run e2e:browser
-npm test
+# 5. Start interactive master runner
+npm start
 ```
 
 ---
 
-# 📂 Project structure
+### 2b. Windows 10/11 Quickstart
+
+Native PowerShell scripts configure your browser and start automation cleanly:
+
+```powershell
+# In PowerShell (Run as Administrator or standard terminal):
+# 1. Install dependencies
+npm install
+
+# 2. Launch Brave/Chrome with CDP debugging
+.\scripts\launch-brave-cdp.ps1
+
+# 3. Start automation (Interactive Mode)
+.\start-automation.ps1
+
+# Check status or stop anytime:
+.\status-automation.ps1
+.\stop-automation.ps1
+```
+
+*(Command Prompt `.bat` equivalents are also included: `start-automation.bat`, `stop-automation.bat`)*
+
+---
+
+### 2c. Android Termux + Termux:X11 (24/7 Mobile Daemon)
+
+Turn any spare Android smartphone into a dedicated 24/7 autonomous marketing server:
+
+```bash
+# 1. Install required packages in Termux
+pkg update -y
+pkg install -y git nodejs-lts x11-repo chromium termux-x11-nightly zip
+
+# 2. Clone and install
+git clone https://github.com/sunmughan/meta-automation.git
+cd meta-automation
+npm install
+
+# 3. Launch Master Runner (automatically handles X11 display :1 and Chromium geometry)
+./start-termux
+
+# 4. Manage background daemon
+./status-automation       # Check process status and memory
+tail -f logs/daemon.log   # View live real-time output
+./stop-automation         # Stop automation cleanly
+```
+
+> [!TIP]
+> **Android 12+ Background Stability:** Disable the Android Phantom Process Killer via ADB:
+> ```bash
+> adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"
+> ```
+> And set Termux battery usage to **Unrestricted** in Android System Settings.
+
+---
+
+## 🗃️ Where Information Lives & Privacy Model
+
+The system enforces strict separation between public code, knowledge state, and private credentials:
+
+```
+meta-automation/
+├── knowledge/                     <-- Source of Truth (Git-tracked markdown)
+│   ├── founder.md                 # Who the agent represents
+│   ├── company.md                 # Company description, offerings, and value proposition
+│   ├── profiles.md                # Verified platform handles and booking URLs
+│   └── services.md                # Approved service boundaries & excluded scopes
+│
+├── private/                       <-- Machine-local private state (GITIGNORED)
+│   └── user-profile.json          # Structured identity, browser endpoints, budgets
+│
+├── .env                           <-- Secrets & API Keys (GITIGNORED)
+│   ├── OPENAI_API_KEY=...
+│   └── GITHUB_TOKEN=...
+│
+└── threads-engagement-state.json  <-- Cross-platform relationship memory & audit trail
+```
+
+---
+
+## 🔐 Security & Safe Handoff Model
+
+### Zero Credential Exposure
+- **No Password Collection**: The wizard never requests social passwords, Google accounts, or 2FA codes.
+- **Session Preservation**: You log in manually once in your chosen browser. The agent interacts via CDP without ever reading raw session secrets.
+
+### Human Handoff Triggers
+When any of the following occur, the agent **immediately halts** and notifies the user:
+- Cloudflare Turnstile or CAPTCHA challenge
+- Platform authentication expiry or forced relogin
+- Two-Factor Authentication (2FA) checkpoint
+- Suspicious activity confirmation dialog
+- Ambiguous or high-consequence business interaction
+
+---
+
+## ⌨️ CLI Reference & Operations Cheat Sheet
+
+| Command | Action Description | Target Scope |
+|:---|:---|:---|
+| `npm run onboard` | Run interactive 6-stage setup wizard | Global Profile |
+| `npm start` | Launch interactive dual autopilot runner | Master Dispatcher |
+| `npm run start:social` | Start Social Autopilot directly | Threads, FB, LinkedIn |
+| `npm run start:job` | Start Job Autopilot directly | Freelancer.com |
+| `npm run agentic:social -- --once` | Execute a single cycle across social platforms | All Social Platforms |
+| `npm run agentic:social -- --platform=threads` | Target specific platform execution | Threads |
+| `npm run agentic:social -- --daemon` | Run social engine as infinite loop daemon | All Social Platforms |
+| `npm run jobs:scan` | Scan open marketplace projects matching skills | Freelancer.com |
+| `npm run jobs:run` | Generate and submit verified client bids | Freelancer.com |
+| `npm run jobs:profile` | Audit Freelancer profile and portfolio cards | Freelancer.com |
+| `npm run test:agentic` | Run deterministic V2 architecture and policy test | Test Suite |
+| `npm test` | Run complete 18-scenario regression audit suite | Test Suite |
+| `npm run build:release` | Package production distributions for Linux, Mac, Win, Android | Release Engine |
+
+---
+
+## 📁 Project Directory Structure
 
 ```text
 meta-automation/
-├── agentic-social.js                 # V2 agentic social entry point
-├── threads-agent.js                  # Unified CLI + onboarding
+├── agentic-social.js                 # Unified Agentic Social V2 entrypoint
+├── job-agent.js                      # Autonomous Job Revenue Engine
+├── threads-agent.js                  # Master CLI, Onboarding Wizard, and Actions
 ├── config/
-│   ├── index.js                      # Runtime configuration
-│   ├── social-platforms.json         # Declarative social platform registry
-│   └── social-lifecycle.json         # Relationship lifecycle
-├── knowledge/
-│   ├── founder.md                    # Who the agent represents
-│   ├── company.md                    # Company source of truth
-│   ├── profiles.md                   # Verified identity URLs
-│   └── services.md                   # Allowed / excluded capabilities
+│   ├── index.js                      # Environment and default runtime configuration
+│   ├── social-platforms.json         # Declarative platform capabilities registry
+│   └── social-lifecycle.json         # Relationship state transitions
+├── knowledge/                        # Grounded principal knowledge base
+│   ├── founder.md                    # Founder profile & background
+│   ├── company.md                    # Company mission & products
+│   ├── profiles.md                   # Verified public URLs
+│   └── services.md                   # Approved / excluded offerings
 ├── src/
-│   ├── agent/
-│   │   ├── universal-browser-agent.js
-│   │   └── visual-fallback.js
-│   ├── agentic/
-│   │   └── next-best-action.js
-│   ├── ai/
-│   │   └── ai-runtime.js
-│   ├── browser/
-│   ├── content/
-│   │   └── omnichannel-content.js
-│   ├── leads/
-│   │   ├── relationship-engine.js
-│   │   └── intelligent-identity-resolver.js
-│   ├── safety/
-│   │   ├── global-guard.js
-│   │   └── social-action-policy.js
-│   ├── social/
-│   │   └── agentic-social-runner.js
-│   └── telemetry/
-├── private/                          # Local-only user profile / credentials
-├── tests/
-│   └── agentic-v2.test.js
-└── roadmap.md
+│   ├── agent/                        # Universal live browser agent (No CSS/XPath)
+│   ├── agentic/                      # Next-best-action decision logic
+│   ├── ai/                           # 3-Tier AI runtime (Antigravity, OpenAI, Local)
+│   ├── browser/                      # CDP connector & multi-browser detection
+│   ├── content/                      # Omnichannel content synthesizer
+│   ├── leads/                        # Lead scoring & cross-platform relationship store
+│   ├── platforms/                    # Platform drivers (Threads, FB, LinkedIn, IG, Freelancer)
+│   ├── safety/                       # Anti-ban, rate limiter, duplicate guard
+│   └── telemetry/                    # Action logging and health metrics
+├── installers/                       # One-click installers for Linux, macOS, Win, Termux
+├── scripts/                          # Desktop runners, card generators, packaging tools
+├── tests/                            # Comprehensive scenario regression suites
+└── roadmap.md                        # Product development roadmap
 ```
 
 ---
 
-# 🔐 What onboarding should NOT ask for
+## 🧪 Verification & Audits
 
-The onboarding wizard intentionally does **not** ask for:
-
-- social-media passwords
-- Google passwords
-- 2FA codes
-- recovery codes
-- CAPTCHA answers
-- private authentication cookies
-
-Authentication happens through the visible browser session.
-
-When a security gate appears, the correct action is human handoff.
-
----
-
-# 🧪 Verification
-
-The V2 architecture includes a static audit covering:
-
-- universal browser-agent structure
-- semantic execution path
-- absence of CSS selector lookup in V2
-- absence of XPath dependency
-- absence of selector waits
-- absence of regex-based UI matching
-- lifecycle configuration
-- identity resolver
-- safety policy
-- V2 runner wiring
-
-Run:
+Run the complete regression suite to audit code safety, anti-ban mechanics, selector-free compliance, and platform drivers:
 
 ```bash
+# Complete 18-scenario audit + platform drivers
+npm test
+
+# Dedicated Agentic V2 architecture verification
 npm run test:agentic
 ```
 
-Live social E2E testing still requires an authenticated browser/CDP session on the user's machine.
+All 18 scenarios and platform audits run deterministically in under 10 seconds without active browser dependencies.
 
 ---
 
-# 🗺️ Product direction
+## 👥 License & Authors
 
-The long-term architecture is:
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for full details.
 
-```text
-                 USER / BUSINESS
-                        ↓
-                ONBOARDING PROFILE
-                        ↓
-              PERSONAL KNOWLEDGE GRAPH
-                        ↓
-                AGENTIC MEMORY
-                        ↓
-          ┌─────────────┴─────────────┐
-          ↓                           ↓
-    SOCIAL WORK                     JOB WORK
-          ↓                           ↓
-     LIVE BROWSER                 LIVE BROWSER
-          ↓                           ↓
-       OBSERVE                     OBSERVE
-          ↓                           ↓
-       REASON                      REASON
-          ↓                           ↓
-       EXECUTE                     EXECUTE
-          ↓                           ↓
-       VERIFY                      VERIFY
-          └─────────────┬─────────────┘
-                        ↓
-                 STATE + TELEMETRY
-```
+- **Author & Architect**: [Sunmughan Swamy](https://github.com/sunmughan) ([contact@codeair.tech](mailto:contact@codeair.tech))
+- **Organization**: [CodeAir Software Solutions](https://www.codeair.tech)
+- **GitHub Repository**: [`sunmughan/meta-automation`](https://github.com/sunmughan/meta-automation)
 
-The goal is not to create another collection of website bots.
-
-The goal is to create **one configurable agent that understands its principal and can operate safely across changing browser interfaces.**
-
----
-
-## License
-
-MIT.
-
-Built by [Sunmughan Swamy](https://github.com/sunmughan) and [CodeAir Software Solutions](https://www.codeair.tech).
-
-**Repository slug:** `sunmughan/meta-automation` — intentionally retained for URL compatibility.
+*Star the repository if this helped automate your workflows!* ⭐
