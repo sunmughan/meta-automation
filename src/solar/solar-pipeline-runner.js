@@ -2,9 +2,13 @@
  * src/solar/solar-pipeline-runner.js
  * Solar Client Pipeline Runner - scaffold only.
  *
- * Runs the three solar pipelines (buyer-discovery, pain-point-hunting,
- * warranty-angle) through the shared flow: scan, AI classify, dedup,
+ * Runs the four solar pipelines (buyer-discovery, pain-point-hunting,
+ * warranty-angle, sarpanch-outreach) through the shared flow: scan, AI classify, dedup,
  * draft, approve, record.
+ *
+ * The Sarpanch pipeline also has an SMS leg (Google Messages for web) that is
+ * manual 1-to-1 messaging from the client own phone number. This runner never
+ * sends SMS. It only drafts social pitches and tracks Sarpanch leads.
  *
  * SAFETY: this runner is DRY RUN ONLY. It never posts, comments, likes or
  * sends a DM. Live actions stay behind a human approval gate that does not
@@ -45,7 +49,7 @@ class SolarPipelineRunner {
    * In this scaffold the posts are supplied by the caller (scan step is a
    * separate browser task). Classification is live AI; drafting is live AI.
    *
-   * @param {string} pipelineId - buyer-discovery | pain-point-hunting | warranty-angle
+   * @param {string} pipelineId - buyer-discovery | pain-point-hunting | warranty-angle | sarpanch-outreach
    * @param {Array<Object>} posts - captured posts { text, username, url, postId, platform }
    * @returns {Promise<Object>} run summary with drafts, never live actions
    */

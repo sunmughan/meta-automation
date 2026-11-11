@@ -22,17 +22,49 @@ async function check(name, fn) {
 }
 
 async function main() {
-  await check("solar pipeline config loads and has three pipelines", () => {
+  await check("solar pipeline config loads and has four pipelines", () => {
     const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
-    assert.deepStrictEqual(Object.keys(cfg.pipelines).sort(), ["buyer-discovery", "pain-point-hunting", "warranty-angle"]);
+    assert.deepStrictEqual(Object.keys(cfg.pipelines).sort(), ["buyer-discovery", "pain-point-hunting", "sarpanch-outreach", "warranty-angle"]);
     assert.strictEqual(cfg.safety.dryRun, true);
     assert.strictEqual(cfg.safety.livePosting, false);
     assert.strictEqual(cfg.safety.approvalRequired, true);
   });
 
-  await check("solar search queries load for all three pipelines", () => {
+  await check("solar config scope is MP only, B2B and B2C, urban and rural", () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
+    assert.strictEqual(cfg.scope.stateOnly, true);
+    assert.strictEqual(cfg.scope.state, "Madhya Pradesh");
+    assert.deepStrictEqual(cfg.scope.segments.sort(), ["B2B", "B2C"]);
+    assert.deepStrictEqual(cfg.scope.regions.sort(), ["rural", "urban"]);
+    assert.strictEqual(cfg.client.name, "Amit Mathur");
+  });
+
+  await check("sarpanch pipeline has SMS channel and daily rules", () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
+    const sp = cfg.pipelines["sarpanch-outreach"];
+    assert.strictEqual(sp.smsChannel, "google-messages-web");
+    assert.ok(Array.isArray(sp.steps) && sp.steps.length >= 5, "sarpanch steps missing");
+    assert.ok(sp.proofCase.includes("35"), "proof case must cite the 35-home result");
+    assert.strictEqual(cfg.smsChannel.type, "google-messages-web");
+    assert.strictEqual(cfg.smsChannel.url, "https://messages.google.com/web");
+  });
+
+  await check("engagement rules ask questions for hot and cold leads", () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
+    assert.ok(cfg.engagement.hotBuyerQuestions.includes("monthly electricity bill"));
+    assert.ok(cfg.engagement.hotBuyerQuestions.includes("budget range"));
+    assert.ok(/never drop/i.test(cfg.engagement.nonBuyerRule), "non-buyer rule must say never drop");
+  });
+
+  await check("compliance flag notes TRAI DLT without claiming registration", () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
+    assert.ok(/DLT/i.test(cfg.compliance.dltNote), "DLT note missing");
+    assert.ok(/NO-REGISTRATION-CLAIMED/i.test(cfg.compliance.status), "must not claim registration");
+  });
+
+  await check("solar search queries load for all four pipelines", () => {
     const q = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-search-queries.json"), "utf8"));
-    for (const p of ["buyer-discovery", "pain-point-hunting", "warranty-angle"]) {
+    for (const p of ["buyer-discovery", "pain-point-hunting", "warranty-angle", "sarpanch-outreach"]) {
       assert.ok(Array.isArray(q[p]) && q[p].length > 0, `${p} has no queries`);
     }
   });
@@ -45,7 +77,7 @@ async function main() {
 
   await check("solar classifier exposes pipelines", () => {
     const classifier = require("../src/leads/solar-intent-classifier");
-    assert.deepStrictEqual(classifier.SolarIntentClassifier.pipelines().sort(), ["buyer-discovery", "pain-point-hunting", "warranty-angle"]);
+    assert.deepStrictEqual(classifier.SolarIntentClassifier.pipelines().sort(), ["buyer-discovery", "pain-point-hunting", "sarpanch-outreach", "warranty-angle"]);
   });
 
   await check("solar comment generator guardrails strip invented warranty coverage", () => {

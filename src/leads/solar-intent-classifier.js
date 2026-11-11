@@ -12,7 +12,7 @@
  * The AI still makes the final call, live, per post.
  */
 
-const SOLAR_PIPELINES = ["buyer-discovery", "pain-point-hunting", "warranty-angle"];
+const SOLAR_PIPELINES = ["buyer-discovery", "pain-point-hunting", "warranty-angle", "sarpanch-outreach"];
 
 class SolarIntentClassifier {
   /**
