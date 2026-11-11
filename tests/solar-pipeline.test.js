@@ -49,6 +49,14 @@ async function main() {
     assert.strictEqual(cfg.smsChannel.url, "https://messages.google.com/web");
   });
 
+  await check("SMS sender is Amit own SIM, 100/day on his plan", () => {
+    const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
+    assert.ok(/Amit Mathur/.test(cfg.smsChannel.sender), "SMS sender must be Amit Mathur");
+    assert.ok(!/Sunmughan/.test(cfg.smsChannel.sender), "SMS sender must not be Sunmughan");
+    assert.strictEqual(cfg.smsChannel.dailyQuota, 100);
+    assert.ok(/Amit's SIM plan/.test(cfg.smsChannel.quotaNote), "quota must sit on Amit plan");
+  });
+
   await check("engagement rules ask questions for hot and cold leads", () => {
     const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, "config", "solar-pipelines.json"), "utf8"));
     assert.ok(cfg.engagement.hotBuyerQuestions.includes("monthly electricity bill"));
