@@ -1,6 +1,6 @@
 /**
  * src/ai/ai-runtime.js
- * Primary AI runtime for CodeAir social and job automation.
+ * Primary AI runtime for CodeAir social automation.
  * Native Antigravity Gemini 3.8 Flash runtime with queue-based concurrency governance,
  * structured JSON parsing, retries, and resilient execution.
  */

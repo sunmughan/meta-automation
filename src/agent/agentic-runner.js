@@ -7,7 +7,6 @@
  *
  * This is the SINGLE engine that drives ALL browser operations:
  *   - Social media (Threads, LinkedIn, Facebook, Instagram)
- *   - Job platforms (Upwork, Freelancer, Contra, etc.)
  *   - Email (Gmail inbox, verification, responses)
  *   - Meetings (Google Meet, Microsoft Teams)
  *
@@ -32,7 +31,7 @@ class AgenticRunner {
     if (!browserAgent) throw new Error("AgenticRunner requires a BrowserAgent");
     this.aiRuntime = aiRuntime;
     this.browserAgent = browserAgent;
-    this.maxIterations = maxIterations || CONFIG.JOB_MAX_PLAN_ITERATIONS || 12;
+    this.maxIterations = maxIterations || 12;
     this.snapshotMaxChars = snapshotMaxChars || 12000;
   }
 
@@ -52,11 +51,10 @@ class AgenticRunner {
    * @param {Object} [params.context={}] — Operation context (platform, targetId, previous actions, etc.)
    * @param {string[]} [params.allowedOrigins] — Security: restrict navigation to these origins
    * @param {Object} [params.securityPolicy] — Security constraints (noCaptchaBypass, noCredentials, etc.)
-   * @param {Object} [params.candidateProfile] — Candidate data for job operations
    * @param {Object} [params.platform] — Platform config object
    * @returns {Promise<Object>} — { status, snapshot, plan, iterations, reason }
    */
-  async run({ goal, context = {}, allowedOrigins, securityPolicy, candidateProfile, platform }) {
+  async run({ goal, context = {}, allowedOrigins, securityPolicy, platform }) {
     const runId = `agentic_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const previousActions = [];
     let lastFailure = null;
@@ -81,7 +79,6 @@ class AgenticRunner {
         iteration,
         previousActions,
         lastFailure,
-        candidateProfile,
         platform,
         securityPolicy
       });
@@ -271,7 +268,7 @@ class AgenticRunner {
    * The AI receives the LIVE screen and decides what to do.
    * ZERO hardcoded knowledge about any website structure.
    */
-  buildReasoningPrompt({ goal, snapshot, context, iteration, previousActions, lastFailure, candidateProfile, platform, securityPolicy }) {
+  buildReasoningPrompt({ goal, snapshot, context, iteration, previousActions, lastFailure, platform, securityPolicy }) {
     const parts = [];
 
     parts.push(`You are an autonomous browser agent. You can ONLY see what's on the screen.
@@ -310,12 +307,6 @@ Every decision must come from what you see in the snapshot below.`);
     if (snapshot.bodyText) {
       const bodyExcerpt = snapshot.bodyText.slice(0, this.snapshotMaxChars);
       parts.push(`- Visible Text Content:\n${bodyExcerpt}`);
-    }
-
-    // Candidate profile (for job operations)
-    if (candidateProfile) {
-      parts.push(`\nCANDIDATE PROFILE (verified source of truth — use ONLY these facts):`);
-      parts.push(JSON.stringify(candidateProfile, null, 0).slice(0, 3000));
     }
 
     // Operation context

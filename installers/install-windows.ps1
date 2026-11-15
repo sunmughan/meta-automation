@@ -52,9 +52,6 @@ if ($browserFound) {
 Write-Host "[3/5] Installing Node.js dependencies..." -ForegroundColor Yellow
 & npm install
 
-# Job Revenue Engine setup: creates private profile directories and configures Antigravity AI runtime.
-node scripts/setup-job-engine.js
-
 # 4. Configure Environment
 Write-Host "[4/5] Setting up configuration (.env)..." -ForegroundColor Yellow
 if (-not (Test-Path "$rootDir\.env")) {

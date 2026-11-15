@@ -4,8 +4,6 @@ package-lock.json.bak
 
 # Environment & Secrets
 private/
-job-state/
-applications/
 .env
 .env.local
 .env.*.local
@@ -15,7 +13,6 @@ applications/
 # Runtime & State Files
 *.pid
 threads-agent.pid
-job-agent.pid
 threads-engagement-state.json
 threads-leads.json
 threads-leads-ai.json

@@ -33,7 +33,7 @@ class AgenticSocialOps {
     this.runner = new AgenticRunner({
       aiRuntime,
       browserAgent,
-      maxIterations: CONFIG.JOB_MAX_PLAN_ITERATIONS || 10
+      maxIterations: 10
     });
   }
 

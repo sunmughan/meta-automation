@@ -1249,27 +1249,12 @@ async function main() {
       await (require("./tests/suite").runAllTests());
       process.exit(0);
       break;
-    case "master":
-    case "orchestrator": {
-      const aiRuntime = require("./src/ai/ai-runtime");
-      const MasterOrchestrator = require("./src/orchestrator/master-orchestrator");
-      const orchestrator = new MasterOrchestrator({ aiRuntime });
-      await orchestrator.runContinuous();
-      break;
-    }
     case "run":
-      if (process.argv.includes("--master") || process.argv.includes("--all")) {
-        const aiRuntime = require("./src/ai/ai-runtime");
-        const MasterOrchestrator = require("./src/orchestrator/master-orchestrator");
-        const orchestrator = new MasterOrchestrator({ aiRuntime });
-        await orchestrator.runContinuous();
-      } else {
-        await commandRun();
-      }
+      await commandRun();
       break;
     default:
       console.log(`Unknown command: ${cmd}`);
-      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, health, accept, test, run, master");
+      console.log("Available: onboard, configure, auth, scan, analyze, approve, replies, dms, post, status, health, accept, test, run");
       process.exit(1);
   }
 }

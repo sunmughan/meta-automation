@@ -2,13 +2,8 @@
 /**
  * Standalone Meta Automation desktop launcher.
  *
- * Divided into 2 mutually exclusive runtime modes:
- *   [1] Social Autopilot -> threads-agent.js (CDP :9222)
- *   [2] Job Autopilot    -> job-agent.js (Freelancer.com ONLY, CDP :9222 / CDP :9223)
- *
- * Exactly ONE mode is active at any time.
- * On every launch, prompts the user to select the desired autopilot mode.
- * In Job Autopilot, all non-freelancer tabs are automatically purged.
+ * Social Autopilot only (solar-social-only branch) -> threads-agent.js (CDP :9222).
+ * Only the Social Autopilot ships in this branch.
  */
 
 const fs = require("fs");
@@ -20,8 +15,7 @@ const {
   LOG_FILES,
   getActiveMode,
   promptModeSelection,
-  launchSocialAutopilot,
-  launchJobAutopilot
+  launchSocialAutopilot
 } = require("../src/core/autopilot-manager");
 
 const ROOT = CONFIG.ROOT_DIR;
@@ -36,27 +30,20 @@ async function main() {
 
   const foreground = process.argv.includes("--foreground") || process.argv.includes("-f");
 
-  // Interactive mode selection every time start is executed
   const selectedMode = await promptModeSelection();
 
   console.log("==================================================");
   console.log("  META AUTOMATION — AUTOPILOT RUNTIME");
   console.log("==================================================");
-  console.log(`  SELECTED MODE: ${selectedMode === MODES.SOCIAL ? "SOCIAL AUTOPILOT (CDP :9222)" : "JOB AUTOPILOT (FREELANCER.COM ONLY, CDP :9222 / CDP :9223)"}`);
-  console.log("  MUTUAL EXCLUSIVITY: EXACTLY ONE ACTIVE ENGINE");
+  console.log("  SELECTED MODE: SOCIAL AUTOPILOT (CDP :9222)");
   console.log("==================================================");
 
-  let worker = null;
-  if (selectedMode === MODES.SOCIAL) {
-    worker = await launchSocialAutopilot({ foreground });
-  } else if (selectedMode === MODES.JOB) {
-    worker = await launchJobAutopilot({ foreground });
-  }
+  const worker = await launchSocialAutopilot({ foreground });
 
   if (!foreground) {
     console.log("\n✅ Autopilot is running detached in background.");
-    console.log(`   Active Mode: ${selectedMode === MODES.SOCIAL ? "Social Autopilot" : "Job Autopilot (Freelancer)"}`);
-    console.log(`   Log file   : ${selectedMode === MODES.SOCIAL ? "logs/daemon.log" : "logs/job-daemon.log"}`);
+    console.log("   Active Mode: Social Autopilot");
+    console.log("   Log file   : logs/daemon.log");
     console.log("   Status     : ./status-automation");
     console.log("   Stop       : ./stop-automation");
     return;

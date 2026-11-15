@@ -170,46 +170,6 @@
       "liveBrowserTested": true,
       "verified": true,
       "evidence": "facebookPoster.publishPost"
-    },
-    {
-      "platform": "Job Engine",
-      "capability": "MiniMax M3 runtime",
-      "codeExists": true,
-      "liveBrowserTested": false,
-      "verified": false,
-      "evidence": "src/ai/ai-runtime.js -> callMiniMax"
-    },
-    {
-      "platform": "Job Engine",
-      "capability": "Agentic browser loop",
-      "codeExists": true,
-      "liveBrowserTested": false,
-      "verified": false,
-      "evidence": "src/jobs/browser/job-runner.js"
-    },
-    {
-      "platform": "Job Engine",
-      "capability": "Data-driven marketplace registry",
-      "codeExists": true,
-      "liveBrowserTested": false,
-      "verified": false,
-      "evidence": "config/job-platforms.json + src/jobs/platform-registry.js"
-    },
-    {
-      "platform": "Job Engine",
-      "capability": "Remote/project gate",
-      "codeExists": true,
-      "liveBrowserTested": false,
-      "verified": false,
-      "evidence": "src/jobs/application/application-engine.js"
-    },
-    {
-      "platform": "Job Engine",
-      "capability": "Visible submission verification",
-      "codeExists": true,
-      "liveBrowserTested": false,
-      "verified": false,
-      "evidence": "src/jobs/ai/job-ai.js -> verifyApplicationSubmission"
     }
   ]
 }

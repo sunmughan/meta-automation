@@ -124,7 +124,7 @@ class BrowserAgent {
           snippet: cleanText(d.innerText || "").slice(0, 250)
         }));
 
-      // 4. Visible feed/article/job cards
+      // 4. Visible feed/article cards
       const cardSelectors = "article, [data-pressable-container='true'], .feed-shared-update-v2, [data-pagelet*='SearchResult'], [role='article'], a[href*='/projects/'], [data-project-id]";
       const rawMatches = Array.from(document.querySelectorAll(cardSelectors))
         .filter(isVisible)

@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/env bash
-# Stops both Meta Automation execution planes. Browser windows remain open.
+# Stops the Meta Automation social worker. Browser windows remain open.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
@@ -35,20 +35,10 @@ stop_pid_file() {
 }
 
 stop_pid_file "Social Automation" "$SCRIPT_DIR/threads-agent.pid"
-stop_pid_file "Job Revenue Engine" "$SCRIPT_DIR/job-agent.pid"
 
 PIDS="$(pgrep -f "node threads-agent\.js run" || true)"
 if [ -n "$PIDS" ]; then
   echo "Stopping orphaned social worker(s): $PIDS"
-  kill -TERM $PIDS 2>/dev/null || true
-  sleep 1
-  kill -9 $PIDS 2>/dev/null || true
-  STOPPED=true
-fi
-
-PIDS="$(pgrep -f "node job-agent\.js run" || true)"
-if [ -n "$PIDS" ]; then
-  echo "Stopping orphaned job worker(s): $PIDS"
   kill -TERM $PIDS 2>/dev/null || true
   sleep 1
   kill -9 $PIDS 2>/dev/null || true

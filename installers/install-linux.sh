@@ -53,8 +53,6 @@ fi
 echo "[3/6] Installing Node.js dependencies..."
 npm install
 
-# Job Revenue Engine setup: creates private profile directories and configures Antigravity AI runtime.
-node scripts/setup-job-engine.js
 
 # 4. Configure Environment
 echo "[4/6] Setting up environment configuration..."
@@ -67,7 +65,7 @@ fi
 
 # 5. Make scripts executable
 echo "[5/6] Making execution scripts executable..."
-chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js "$SCRIPT_DIR"/job-agent.js
+chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js
 
 # 6. Run Test Suite
 echo "[6/6] Verifying engine with test suite..."
@@ -80,9 +78,6 @@ echo "=================================================="
 echo "To start the background automation daemon (interactive mode selector):"
 echo "   ./start-automation"
 echo ""
-echo "To start the Autonomous Freelancer.com Job Engine directly:"
-echo "   ./start-job-automation"
-echo "   (or: ./start-job-automation --headless on cloud servers/VPS)"
 echo ""
 echo "To check system health and live stats:"
 echo "   ./status-automation"

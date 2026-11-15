@@ -51,7 +51,7 @@ echo "✅ Node.js: $(node -v 2>/dev/null || echo 'Installed')"
 echo "✅ Chromium: $(chromium-browser --version 2>/dev/null || chromium --version 2>/dev/null || echo 'Installed')"
 
 # 5. Configure Antigravity-first AI environment
- echo "[4/8] Preparing Antigravity-first AI + job-revenue environment..."
+ echo "[4/8] Preparing Antigravity-first AI environment..."
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
 fi
@@ -85,7 +85,7 @@ sed -i 's|^AI_RUNTIME=.*|AI_RUNTIME=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null
 sed -i 's|^AI_MODEL=.*|AI_MODEL=Gemini 3.8 Flash|' "$SCRIPT_DIR/.env" 2>/dev/null || true
 
 # 8. Set Executable Permissions
-chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js "$SCRIPT_DIR"/job-agent.js "$SCRIPT_DIR"/start-termux 2>/dev/null || true
+chmod +x "$SCRIPT_DIR"/start-* "$SCRIPT_DIR"/stop-* "$SCRIPT_DIR"/status-* "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/threads-agent.js "$SCRIPT_DIR"/start-termux 2>/dev/null || true
 
 # 7. Run the agentic setup after dependencies are available.
 if command -v agy >/dev/null 2>&1; then
@@ -104,9 +104,7 @@ else
     exit 1
 fi
 
-node "$SCRIPT_DIR/scripts/setup-job-engine.js"
 
-# setup-job-engine configures the job engine independently; social/agentic runtime remains Antigravity-first.
 sed -i 's|^AI_PROVIDER=.*|AI_PROVIDER=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
 sed -i 's|^AI_RUNTIME=.*|AI_RUNTIME=antigravity|' "$SCRIPT_DIR/.env" 2>/dev/null || true
 sed -i 's|^AI_MODEL=.*|AI_MODEL=Gemini 3.8 Flash|' "$SCRIPT_DIR/.env" 2>/dev/null || true
@@ -145,7 +143,7 @@ echo "  🎉 ANDROID TERMUX SETUP COMPLETE!"
 echo "=================================================="
 echo "How to run on Android:"
 echo "Option 1 (Resilient 24/7 Headless - Recommended):"
-echo "   ./start-job-automation --headless"
+echo "   ./start-automation"
 echo "   (Runs continuously in background without needing Termux:X11 display)"
 echo ""
 echo "Option 2 (GUI Mode with Termux:X11):"

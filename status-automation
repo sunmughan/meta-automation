@@ -14,10 +14,6 @@ const { getActiveMode } = require("./src/core/autopilot-manager");
 const active = getActiveMode();
 if (active.mode === "social") {
   console.log("  🟢 ACTIVE AUTOPILOT MODE : SOCIAL AUTOPILOT (PID " + active.pid + ")");
-} else if (active.mode === "job") {
-  console.log("  🟢 ACTIVE AUTOPILOT MODE : JOB AUTOPILOT - FREELANCER ONLY (PID " + active.pid + ")");
-} else if (active.mode === "conflict") {
-  console.log("  ⚠️  ACTIVE AUTOPILOT MODE : CONFLICT (Both Running - Run ./stop-automation)");
 } else {
   console.log("  ⚪ ACTIVE AUTOPILOT MODE : NONE (IDLE)");
 }
@@ -42,7 +38,6 @@ show_worker() {
 }
 
 show_worker "Social Automation" "$SCRIPT_DIR/threads-agent.pid"
-show_worker "Job Revenue Engine" "$SCRIPT_DIR/job-agent.pid"
 
 if curl -sf http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
   echo "🟢 Social Browser CDP : ACTIVE (:9222)"
@@ -50,24 +45,11 @@ else
   echo "🔴 Social Browser CDP : OFFLINE (:9222)"
 fi
 
-if curl -sf http://127.0.0.1:9223/json/version >/dev/null 2>&1; then
-  echo "🟢 Job Browser CDP    : ACTIVE (:9223)"
-else
-  echo "🔴 Job Browser CDP    : OFFLINE (:9223)"
-fi
-
 echo ""
 echo "Social state:"
 node threads-agent.js status || true
 
 echo ""
-echo "Job state:"
-node job-agent.js status || true
-
-echo ""
 echo "Recent social activity:"
 tail -n 10 "$SCRIPT_DIR/logs/daemon.log" 2>/dev/null || true
 
-echo ""
-echo "Recent job activity:"
-tail -n 10 "$SCRIPT_DIR/logs/job-daemon.log" 2>/dev/null || true

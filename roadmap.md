@@ -104,10 +104,6 @@ Cross-platform identity is resolved conservatively. Exact platform identities ca
 
 Relationship state is shared across supported social platforms.
 
-## Job revenue plane
-
-The job-revenue engine remains a separate execution plane with its own browser profile, authentication state and application state. It follows the same live-observe → reason → act → verify philosophy.
-
 ## Current verification
 
 Run:

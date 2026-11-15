@@ -9,7 +9,6 @@ Write-Host "==================================================" -ForegroundColor
 
 $files = @(
     @{ Name = "Social Automation"; Path = "$scriptDir\threads-agent.pid"; Pattern = "*threads-agent.js run*" },
-    @{ Name = "Job Revenue Engine"; Path = "$scriptDir\job-agent.pid"; Pattern = "*job-agent.js run*" }
 )
 
 foreach ($item in $files) {
@@ -32,5 +31,5 @@ foreach ($item in $files) {
     }
 }
 
-Write-Host "✅ Social + Job workers stopped." -ForegroundColor Green
+Write-Host "✅ Social worker stopped." -ForegroundColor Green
 Write-Host "Browser windows were left open intentionally." -ForegroundColor Gray
